@@ -3,6 +3,8 @@
 use App\Http\Controllers\ProfileController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\KuitansiController;
+use App\Http\Controllers\TagihanController;
+
 
 Route::get('/', function () {
     return view('welcome');
@@ -20,5 +22,8 @@ Route::middleware('auth')->group(function () {
 
 Route::get('/kuitansi/{pembayaran}/pdf', [KuitansiController::class, 'pdf'])
      ->name('kuitansi.pdf');
+
+Route::get('/tagihan/{tagihan}/pdf', [TagihanController::class, 'pdf'])
+     ->name('tagihan.pdf');
 
 require __DIR__.'/auth.php';

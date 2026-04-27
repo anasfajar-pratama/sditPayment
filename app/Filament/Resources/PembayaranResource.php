@@ -137,4 +137,16 @@ class PembayaranResource extends Resource
             'edit' => Pages\EditPembayaran::route('/{record}/edit'),
         ];
     }
+
+        // Redirect setelah Create langsung ke Index (List)
+    protected static function getRedirectAfterCreate(): string
+    {
+        return static::getUrl('index');
+    }
+
+    // Redirect setelah Edit juga ke Index (opsional)
+    protected static function getRedirectAfterSave(): string
+    {
+        return static::getUrl('index');
+    }
 }

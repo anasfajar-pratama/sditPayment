@@ -48,18 +48,21 @@ class SiswaResource extends Resource
     {
         return $table
             ->columns([
-                TextColumn::make('nis')->searchable(),
-                TextColumn::make('nama')->searchable(),
-                TextColumn::make('kelas'),
-                TextColumn::make('tingkat'),
-                TextColumn::make('tahun_ajaran'),
-                IconColumn::make('status_aktif')
+                Tables\Columns\TextColumn::make('nis')
+                    ->searchable(),
+                Tables\Columns\TextColumn::make('nama')
+                    ->searchable(),
+                Tables\Columns\TextColumn::make('kelas'),
+                Tables\Columns\TextColumn::make('tingkat'),
+                Tables\Columns\TextColumn::make('tahun_ajaran'),
+                Tables\Columns\IconColumn::make('status_aktif')
                     ->boolean(),
             ])
             ->filters([
-                SelectFilter::make('tingkat'),
+                Tables\Filters\SelectFilter::make('tingkat'),
             ])
-            ->searchable(['nis', 'nama']);
+            ->searchable()
+            ->defaultSort('nama', 'asc');
     }
 
     public static function getRelations(): array
