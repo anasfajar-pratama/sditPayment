@@ -51,6 +51,14 @@
                 <td>Nominal</td>
                 <td><strong>Rp {{ number_format($pembayaran->nominal, 0, ',', '.') }}</strong></td>
             </tr>
+            <tr>
+                <td>Status Pembayaran</td>
+                <td>
+                    <strong style="color: {{ $pembayaran->status === 'lunas' ? 'green' : 'orange' }}">
+                        {{ ucfirst($pembayaran->status) }}
+                    </strong>
+                </td>
+            </tr>
         </table>
 
         <div class="footer">
