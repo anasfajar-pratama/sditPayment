@@ -10,7 +10,7 @@ class Pembayaran extends Model
     protected $table = 'pembayaran';
 
     protected $fillable = [
-        'siswa_id', 'jenis_pembayaran_id', 'bulan', 'tahun',
+        'siswa_id', 'jenis_pembayaran_id', 'tagihan_id', 'bulan', 'tahun',
         'nominal', 'tanggal_bayar', 'status', 'created_by'
     ];
 
@@ -27,5 +27,10 @@ class Pembayaran extends Model
     public function jenisPembayaran()
     {
         return $this->belongsTo(JenisPembayaran::class);
+    }
+
+    public function tagihan(): BelongsTo
+    {
+        return $this->belongsTo(Tagihan::class);
     }
 }

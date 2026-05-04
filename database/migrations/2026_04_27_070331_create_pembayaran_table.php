@@ -17,7 +17,7 @@ return new class extends Migration {
             
             $table->decimal('nominal', 12, 2);
             $table->date('tanggal_bayar');
-            $table->enum('status', ['pending', 'lunas'])->default('pending');
+            $table->enum('status', ['pending', 'lunas','cicilan'])->default('pending');
             
             $table->foreignId('created_by')->constrained('users');
             $table->timestamps();

@@ -1,0 +1,223 @@
+<x-filament-panels::page>
+    <div style="display:flex;flex-direction:column;gap:1.5rem;">
+
+        {{-- FILTER BULAN/TAHUN + SALDO AWAL --}}
+        <div style="display:flex;flex-wrap:wrap;align-items:center;gap:0.75rem;">
+
+            {{-- Filter berdampingan dalam satu unit --}}
+            <div style="display:flex;align-items:center;border-radius:0.5rem;border:1px solid #d1d5db;
+                        box-shadow:0 1px 2px rgba(0,0,0,0.05);overflow:hidden;background:#fff;">
+                <select wire:model.live="filterBulan"
+                    style="border:0;background:transparent;padding:0.5rem 0.75rem;font-size:0.875rem;
+                           color:#374151;outline:none;cursor:pointer;min-width:7rem;">
+                    @foreach([
+                        '01'=>'Januari','02'=>'Februari','03'=>'Maret','04'=>'April',
+                        '05'=>'Mei','06'=>'Juni','07'=>'Juli','08'=>'Agustus',
+                        '09'=>'September','10'=>'Oktober','11'=>'November','12'=>'Desember'
+                    ] as $val => $lbl)
+                        <option value="{{ $val }}" @selected($filterBulan === $val)>{{ $lbl }}</option>
+                    @endforeach
+                </select>
+                <div style="width:1px;height:1.25rem;background:#e5e7eb;flex-shrink:0;"></div>
+                <select wire:model.live="filterTahun"
+                    style="border:0;background:transparent;padding:0.5rem 0.75rem;font-size:0.875rem;
+                           color:#374151;outline:none;cursor:pointer;">
+                    @foreach(range(now()->year, 2023) as $y)
+                        <option value="{{ $y }}" @selected($filterTahun == $y)>{{ $y }}</option>
+                    @endforeach
+                </select>
+            </div>
+
+            {{-- Badge saldo awal --}}
+            @if ($this->hasSaldoAwal)
+                <div style="display:inline-flex;align-items:center;gap:0.5rem;border-radius:0.5rem;
+                            background:#eff6ff;border:1px solid #bfdbfe;padding:0.45rem 0.875rem;font-size:0.875rem;">
+                    <span style="color:#2563eb;font-weight:500;">Saldo Awal:</span>
+                    <span style="font-weight:700;color:#1d40af;font-variant-numeric:tabular-nums;">
+                        Rp {{ number_format($this->saldoAwal, 0, ',', '.') }}
+                    </span>
+                </div>
+            @else
+                <div style="display:inline-flex;align-items:center;gap:0.5rem;border-radius:0.5rem;
+                            background:#fffbeb;border:1px solid #fde68a;padding:0.45rem 0.875rem;font-size:0.875rem;">
+                    <x-heroicon-o-exclamation-triangle style="width:1rem;height:1rem;color:#d97706;flex-shrink:0;" />
+                    <span style="color:#92400e;">Saldo awal belum diset untuk bulan ini.</span>
+                </div>
+            @endif
+        </div>
+
+        {{-- TABEL KAS HARIAN --}}
+        <div style="background:#fff;border-radius:1rem;border:1px solid #f1f5f9;
+                    box-shadow:0 1px 4px rgba(0,0,0,0.06);overflow:hidden;">
+
+            {{-- Section heading --}}
+            <div style="padding:1rem 1.5rem;border-bottom:1px solid #f1f5f9;">
+                <h2 style="font-size:1rem;font-weight:700;color:#1f2937;margin:0;">
+                    Kas Harian &mdash; {{ $this->getBulanLabel($filterBulan) }} {{ $filterTahun }}
+                </h2>
+            </div>
+
+            @if (count($this->entries) === 0)
+                <div style="padding:3rem 1.5rem;text-align:center;color:#9ca3af;">
+                    <x-heroicon-o-document-text style="width:2.5rem;height:2.5rem;margin:0 auto 0.75rem;opacity:0.5;" />
+                    <p style="font-size:0.875rem;">Belum ada transaksi untuk periode ini.</p>
+                </div>
+            @else
+                <div style="overflow-x:auto;">
+                    <table style="width:100%;border-collapse:collapse;font-size:0.8125rem;">
+                        <thead>
+                            <tr style="background:#1f2937;color:#fff;">
+                                <th style="padding:0.75rem 1rem;text-align:center;font-size:0.7rem;
+                                           font-weight:600;letter-spacing:0.05em;text-transform:uppercase;
+                                           width:2.5rem;">No</th>
+                                <th style="padding:0.75rem 1rem;text-align:left;font-size:0.7rem;
+                                           font-weight:600;letter-spacing:0.05em;text-transform:uppercase;
+                                           width:6rem;white-space:nowrap;">Tanggal</th>
+                                <th style="padding:0.75rem 1rem;text-align:left;font-size:0.7rem;
+                                           font-weight:600;letter-spacing:0.05em;text-transform:uppercase;">Uraian</th>
+                                <th style="padding:0.75rem 1rem;text-align:left;font-size:0.7rem;
+                                           font-weight:600;letter-spacing:0.05em;text-transform:uppercase;
+                                           width:10rem;">Akun</th>
+                                <th style="padding:0.75rem 1rem;text-align:right;font-size:0.7rem;
+                                           font-weight:600;letter-spacing:0.05em;text-transform:uppercase;
+                                           width:8rem;">Debit</th>
+                                <th style="padding:0.75rem 1rem;text-align:right;font-size:0.7rem;
+                                           font-weight:600;letter-spacing:0.05em;text-transform:uppercase;
+                                           width:8rem;">Kredit</th>
+                                <th style="padding:0.75rem 1rem;text-align:right;font-size:0.7rem;
+                                           font-weight:600;letter-spacing:0.05em;text-transform:uppercase;
+                                           width:9rem;">Saldo</th>
+                                <th style="padding:0.75rem 1rem;width:2.5rem;"></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach ($this->entries as $i => $e)
+                                @php $isPembayaran = $e['source'] === 'pembayaran'; @endphp
+                                <tr style="border-bottom:1px solid #f8fafc;
+                                           {{ $isPembayaran ? 'background:#fefce8;' : 'background:#fff;' }}"
+                                    onmouseover="this.style.background='#f9fafb'"
+                                    onmouseout="this.style.background='{{ $isPembayaran ? '#fefce8' : '#fff' }}'">
+
+                                    <td style="padding:0.75rem 1rem;text-align:center;
+                                               color:#9ca3af;font-size:0.75rem;">
+                                        {{ $i + 1 }}
+                                    </td>
+                                    <td style="padding:0.75rem 1rem;color:#6b7280;
+                                               font-size:0.75rem;white-space:nowrap;">
+                                        {{ $e['tanggal'] }}
+                                    </td>
+                                    <td style="padding:0.75rem 1rem;color:#1f2937;">
+                                        <div style="display:flex;align-items:center;gap:0.4rem;flex-wrap:wrap;">
+                                            @if ($isPembayaran)
+                                                <span style="font-size:0.7rem;background:#dbeafe;color:#1d4ed8;
+                                                             border-radius:0.25rem;padding:0.15rem 0.4rem;
+                                                             font-weight:600;white-space:nowrap;flex-shrink:0;">
+                                                    Siswa
+                                                </span>
+                                            @endif
+                                            <span>{{ $e['uraian'] }}</span>
+                                        </div>
+                                    </td>
+                                    <td style="padding:0.75rem 1rem;color:#9ca3af;font-size:0.75rem;">
+                                        {{ $e['akun'] ?? '—' }}
+                                    </td>
+                                    <td style="padding:0.75rem 1rem;text-align:right;font-weight:600;
+                                               color:#15803d;font-variant-numeric:tabular-nums;">
+                                        @if ($e['debit'])
+                                            {{ number_format($e['debit'], 0, ',', '.') }}
+                                        @else
+                                            <span style="color:#d1d5db;">—</span>
+                                        @endif
+                                    </td>
+                                    <td style="padding:0.75rem 1rem;text-align:right;font-weight:600;
+                                               color:#dc2626;font-variant-numeric:tabular-nums;">
+                                        @if ($e['kredit'])
+                                            {{ number_format($e['kredit'], 0, ',', '.') }}
+                                        @else
+                                            <span style="color:#d1d5db;">—</span>
+                                        @endif
+                                    </td>
+                                    <td style="padding:0.75rem 1rem;text-align:right;font-weight:700;
+                                               color:#111827;font-variant-numeric:tabular-nums;">
+                                        {{ number_format($e['saldo'], 0, ',', '.') }}
+                                    </td>
+                                    <td style="padding:0.75rem 1rem;text-align:center;">
+                                        @if ($e['source'] === 'manual')
+                                            <button
+                                                wire:click="deleteEntry({{ $e['id'] }})"
+                                                wire:confirm="Yakin hapus jurnal ini?"
+                                                style="background:none;border:none;cursor:pointer;
+                                                       color:#d1d5db;padding:0.25rem;"
+                                                onmouseover="this.style.color='#ef4444'"
+                                                onmouseout="this.style.color='#d1d5db'"
+                                                title="Hapus">
+                                                <x-heroicon-o-trash style="width:1rem;height:1rem;" />
+                                            </button>
+                                        @endif
+                                    </td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+
+                {{-- Footer Total --}}
+                <div style="margin:0;padding:1rem 1.5rem;background:#1f2937;
+                            display:flex;flex-wrap:wrap;justify-content:flex-end;gap:2rem;
+                            align-items:center;">
+                    <div style="text-align:right;">
+                        <div style="font-size:0.68rem;color:#6b7280;text-transform:uppercase;
+                                    letter-spacing:0.07em;font-weight:600;margin-bottom:0.3rem;">
+                            Total Debit
+                        </div>
+                        <div style="font-weight:700;color:#4ade80;font-variant-numeric:tabular-nums;
+                                    font-size:0.9rem;">
+                            Rp {{ number_format($this->totalDebit, 0, ',', '.') }}
+                        </div>
+                    </div>
+                    <div style="text-align:right;">
+                        <div style="font-size:0.68rem;color:#6b7280;text-transform:uppercase;
+                                    letter-spacing:0.07em;font-weight:600;margin-bottom:0.3rem;">
+                            Total Kredit
+                        </div>
+                        <div style="font-weight:700;color:#f87171;font-variant-numeric:tabular-nums;
+                                    font-size:0.9rem;">
+                            Rp {{ number_format($this->totalKredit, 0, ',', '.') }}
+                        </div>
+                    </div>
+                    <div style="text-align:right;border-left:1px solid #374151;padding-left:2rem;">
+                        <div style="font-size:0.68rem;color:#6b7280;text-transform:uppercase;
+                                    letter-spacing:0.07em;font-weight:600;margin-bottom:0.3rem;">
+                            Saldo Akhir
+                        </div>
+                        <div style="font-weight:800;color:#fde68a;font-variant-numeric:tabular-nums;
+                                    font-size:1.05rem;">
+                            Rp {{ number_format($this->saldoAkhir, 0, ',', '.') }}
+                        </div>
+                    </div>
+                </div>
+
+                {{-- Legend --}}
+                <div style="padding:0.75rem 1.5rem;background:#f9fafb;border-top:1px solid #f1f5f9;
+                            display:flex;gap:1.25rem;">
+                    <span style="display:inline-flex;align-items:center;gap:0.4rem;
+                                 font-size:0.75rem;color:#9ca3af;">
+                        <span style="width:0.75rem;height:0.75rem;border-radius:0.2rem;
+                                     background:#fefce8;border:1px solid #fde68a;display:inline-block;
+                                     flex-shrink:0;"></span>
+                        Otomatis dari pembayaran siswa
+                    </span>
+                    <span style="display:inline-flex;align-items:center;gap:0.4rem;
+                                 font-size:0.75rem;color:#9ca3af;">
+                        <span style="width:0.75rem;height:0.75rem;border-radius:0.2rem;
+                                     background:#fff;border:1px solid #e5e7eb;display:inline-block;
+                                     flex-shrink:0;"></span>
+                        Input manual
+                    </span>
+                </div>
+
+            @endif
+        </div>
+
+    </div>
+</x-filament-panels::page>
