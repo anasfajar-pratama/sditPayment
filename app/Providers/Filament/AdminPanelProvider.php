@@ -37,6 +37,9 @@ class AdminPanelProvider extends PanelProvider
                 \App\Filament\Pages\PembayaranSiswaPage::class,
                 \App\Filament\Pages\KasHarianPage::class,
                 \App\Filament\Pages\RekapBulananPage::class,  
+                \App\Filament\Pages\PengeluaranOperasionalPage::class,  
+                \App\Filament\Pages\PengeluaranSosialPage::class,       
+                \App\Filament\Pages\PengeluaranUpahPage::class,         
             ])
             ->discoverWidgets(in: app_path('Filament/Widgets'), for: 'App\\Filament\\Widgets')
             ->middleware([

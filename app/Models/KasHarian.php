@@ -12,7 +12,7 @@ class KasHarian extends Model
 {
     protected $table = 'kas_harians';
     protected $fillable = [
-        'tanggal', 'uraian', 'akun_id',
+        'tanggal', 'uraian','sub_kategori', 'akun_id',
         'debit', 'kredit',
         'source', 'source_id',
         'bulan', 'tahun',

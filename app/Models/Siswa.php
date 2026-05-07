@@ -19,6 +19,8 @@ class Siswa extends Model
         'nama_orang_tua', 
         'no_hp_orang_tua', 
         'email_orang_tua', 
+        'is_calon',
+        'calon_jenis',
         'status_aktif'
     ];
 
@@ -30,5 +32,22 @@ class Siswa extends Model
     public function tagihans()
     {
         return $this->hasMany(Tagihan::class);
+    }
+
+    // Di dalam class Siswa
+    protected $casts = [
+        'is_calon' => 'boolean',
+        // ... cast lain yang sudah ada
+    ];
+
+    // Scope untuk mempermudah
+    public function scopeCalon($query)
+    {
+        return $query->where('is_calon', true);
+    }
+
+    public function scopeSiswa($query)
+    {
+        return $query->where('is_calon', false);
     }
 }
