@@ -42,4 +42,11 @@ class Tagihan extends Model
             $q->where('nama', 'SPP');
         });
     }
+
+    public function pembayaran()
+    {
+        return $this->hasOne(Pembayaran::class);        // atau hasMany
+        // atau kalau ada kolom status di pembayaran:
+        // return $this->hasOne(Pembayaran::class)->where('status', 'lunas');
+    }
 }

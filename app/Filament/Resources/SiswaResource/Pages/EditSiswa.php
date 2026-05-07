@@ -16,4 +16,13 @@ class EditSiswa extends EditRecord
             Actions\DeleteAction::make(),
         ];
     }
+
+    protected function getRedirectUrl(): string
+    {
+        $isCaon = $this->record->is_calon;
+
+        $tab = $isCaon ? 'calon' : 'siswa';
+
+        return $this->getResource()::getUrl('index') . '?activeTab=' . $tab;
+    }
 }

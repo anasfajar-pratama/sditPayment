@@ -53,12 +53,39 @@ class TagihanResource extends Resource
             ])
             // Hilangkan tombol New Tagihan
             ->headerActions([])
+            // ->actions([
+            //     Action::make('cetak_tagihan')
+            //         ->label('Cetak Tagihan')
+            //         ->icon('heroicon-o-printer')
+            //         ->color('warning')
+            //         ->url(fn (Tagihan $record) => route('tagihan.pdf', $record))
+            //         ->openUrlInNewTab(),
+            // ]);
             ->actions([
-                Action::make('cetak_tagihan')
-                    ->label('Cetak Tagihan')
+                Action::make('cetak')
+                    ->label(fn (Tagihan $record) => $record->status === 'lunas' 
+                        ? 'Cetak Kuitansi' 
+                        : 'Cetak Tagihan')
+                    
                     ->icon('heroicon-o-printer')
-                    ->color('warning')
-                    ->url(fn (Tagihan $record) => route('tagihan.pdf', $record))
+                    
+                    ->color(fn (Tagihan $record) => $record->status === 'lunas' 
+                        ? 'success' 
+                        : 'warning')
+                    
+                    ->url(function (Tagihan $record) {
+                        if ($record->status === 'lunas') {
+                            // GANTI 'pembayaran' sesuai nama relasi di model Tagihan kamu
+                            $pembayaran = $record->pembayaran;   // ← ini yang penting
+                            
+                            if ($pembayaran) {
+                                return "/kuitansi/{$pembayaran->id}";
+                            }
+                        }
+                        // default: cetak tagihan seperti sebelumnya
+                        return route('tagihan.pdf', $record);
+                    })
+                    
                     ->openUrlInNewTab(),
             ]);
     }
