@@ -23,6 +23,55 @@ class ListTagihans extends ListRecords
     protected function getHeaderActions(): array
     {
         return [
+
+            // ── Export CSV ────────────────────────────────────────────────────
+            Action::make('exportCsv')
+                ->label('Export CSV')
+                ->icon('heroicon-o-arrow-down-tray')
+                ->color('gray')
+                ->modalHeading('Export Tagihan ke CSV')
+                ->modalDescription('Pilih filter data yang ingin di-export. Kosongkan untuk export semua data.')
+                ->modalWidth('md')
+                ->modalSubmitActionLabel('Download CSV')
+                ->form([
+                    Select::make('bulan')
+                        ->label('Bulan')
+                        ->options([
+                            '01' => 'Januari',  '02' => 'Februari', '03' => 'Maret',
+                            '04' => 'April',    '05' => 'Mei',       '06' => 'Juni',
+                            '07' => 'Juli',     '08' => 'Agustus',   '09' => 'September',
+                            '10' => 'Oktober',  '11' => 'November',  '12' => 'Desember',
+                        ])
+                        ->placeholder('Semua Bulan')
+                        ->native(false),
+
+                    Select::make('tahun')
+                        ->label('Tahun')
+                        ->options(fn (): array => Tagihan::query()
+                            ->distinct()
+                            ->orderByDesc('tahun')
+                            ->pluck('tahun', 'tahun')
+                            ->toArray()
+                        )
+                        ->placeholder('Semua Tahun')
+                        ->native(false),
+
+                    Select::make('status')
+                        ->label('Status')
+                        ->options([
+                            'lunas'       => 'Lunas',
+                            'belum_bayar' => 'Belum Bayar',
+                        ])
+                        ->placeholder('Semua Status')
+                        ->native(false),
+                ])
+                ->action(function (array $data, \Livewire\Component $livewire): void {
+                    // Kirim ke route export dengan query params filter
+                    $params = http_build_query(array_filter($data, fn ($v) => filled($v)));
+                    $livewire->redirect(url('/tagihan/export' . ($params ? '?' . $params : '')));
+                }),
+
+            // ── Generate Tagihan ─────────────────────────────────────────────
             Action::make('generateTagihan')
                 ->label('Generate Tagihan')
                 ->icon('heroicon-o-bolt')
@@ -63,18 +112,10 @@ class ListTagihans extends ListRecords
                     Select::make('bulan')
                         ->label('Bulan')
                         ->options([
-                            '01' => 'Januari',
-                            '02' => 'Februari',
-                            '03' => 'Maret',
-                            '04' => 'April',
-                            '05' => 'Mei',
-                            '06' => 'Juni',
-                            '07' => 'Juli',
-                            '08' => 'Agustus',
-                            '09' => 'September',
-                            '10' => 'Oktober',
-                            '11' => 'November',
-                            '12' => 'Desember',
+                            '01' => 'Januari',  '02' => 'Februari', '03' => 'Maret',
+                            '04' => 'April',    '05' => 'Mei',       '06' => 'Juni',
+                            '07' => 'Juli',     '08' => 'Agustus',   '09' => 'September',
+                            '10' => 'Oktober',  '11' => 'November',  '12' => 'Desember',
                         ])
                         ->default(Carbon::now()->format('m'))
                         ->required(),
