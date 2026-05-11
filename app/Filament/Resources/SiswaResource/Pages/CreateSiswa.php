@@ -2,16 +2,24 @@
 // ════════════════════════════════════════════════════════════
 // File: app/Filament/Resources/SiswaResource/Pages/CreateSiswa.php
 // Redirect setelah save → list dengan tab yang sesuai
+// + otomatis buat tagihan biaya pendaftaran untuk calon siswa
 // ════════════════════════════════════════════════════════════
 
 namespace App\Filament\Resources\SiswaResource\Pages;
 
 use App\Filament\Resources\SiswaResource;
+use App\Models\Tagihan;
 use Filament\Resources\Pages\CreateRecord;
 
 class CreateSiswa extends CreateRecord
 {
     protected static string $resource = SiswaResource::class;
+
+    /**
+     * Simpan sementara nominal biaya pendaftaran sebelum record dibuat.
+     * Field ini tidak ada di tabel siswa, jadi diambil manual dari form data.
+     */
+    protected ?string $nominalBiayaPendaftaran = null;
 
     // Label tombol submit utama
     protected function getCreateFormAction(): \Filament\Actions\Action
@@ -28,25 +36,60 @@ class CreateSiswa extends CreateRecord
     }
 
     /**
+     * Sebelum record Siswa dibuat:
+     * - Ambil & simpan nominal_biaya_pendaftaran dari form data
+     * - Hapus field tersebut dari data agar tidak error saat insert ke tabel siswa
+     */
+    protected function mutateFormDataBeforeCreate(array $data): array
+    {
+        if (isset($data['nominal_biaya_pendaftaran'])) {
+            $this->nominalBiayaPendaftaran = $data['nominal_biaya_pendaftaran'];
+            unset($data['nominal_biaya_pendaftaran']);
+        }
+
+        return $data;
+    }
+
+    /**
+     * Setelah record Siswa berhasil dibuat:
+     * - Jika is_calon = true, buat row tagihan biaya pendaftaran (jenis_pembayaran_id = 1)
+     */
+    protected function afterCreate(): void
+    {
+        if ($this->record->is_calon && $this->nominalBiayaPendaftaran !== null) {
+            Tagihan::create([
+                'siswa_id'            => $this->record->id,
+                'jenis_pembayaran_id' => 1,
+                'bulan'               => now()->format('m'),
+                'tahun'               => now()->format('Y'),
+                'nominal_tagihan'     => $this->nominalBiayaPendaftaran,
+                'status'              => 'belum_bayar',
+            ]);
+        }
+    }
+
+    /**
      * Setelah berhasil create, redirect ke list dengan tab yang tepat:
      * - is_calon = 1 → tab calon
      * - is_calon = 0 → tab siswa
      */
     protected function getRedirectUrl(): string
     {
-        $isCaon = $this->record->is_calon;
+        $isCalon = $this->record->is_calon;
 
-        $tab = $isCaon ? 'calon' : 'siswa';
+        $tab = $isCalon ? 'calon' : 'siswa';
 
         return $this->getResource()::getUrl('index') . '?activeTab=' . $tab;
     }
 
     /**
-     * Setelah "Simpan & Tambah Lagi", form direset ke tab yang sama
+     * Notifikasi setelah simpan
      */
     protected function getCreatedNotificationTitle(): ?string
     {
-        $isCaon = $this->record->is_calon;
-        return $isCaon ? 'Calon siswa berhasil ditambahkan' : 'Siswa berhasil ditambahkan';
+        $isCalon = $this->record->is_calon;
+        return $isCalon
+            ? 'Calon siswa & Tagihan Biaya Pendaftaran Berhasil ditambahkan'
+            : 'Siswa berhasil ditambahkan';
     }
 }

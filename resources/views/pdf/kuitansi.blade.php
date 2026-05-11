@@ -339,7 +339,7 @@
                 </thead>
                 <tbody>
                     @foreach ($historiCicilan as $i => $cicil)
-                        <tr class="{{ $cicil->id === $pembayaran->id ? 'highlight-row' : '' }}">
+                        <tr class="">
                             <td class="center">{{ $i + 1 }}</td>
                             <td>{{ \Carbon\Carbon::parse($cicil->tanggal_bayar)->format('d M Y') }}</td>
                             <td class="right">Rp {{ number_format($cicil->nominal, 0, ',', '.') }}</td>
@@ -383,7 +383,7 @@
             </thead>
             <tbody>
                 @foreach ($historiCicilan as $i => $cicil)
-                    <tr class="{{ $cicil->id === $pembayaran->id ? 'highlight-row' : '' }}">
+                    <tr class="">
                         <td class="center">{{ $i + 1 }}</td>
                         <td>{{ \Carbon\Carbon::parse($cicil->tanggal_bayar)->format('d M Y') }}</td>
                         <td class="right">Rp {{ number_format($cicil->nominal, 0, ',', '.') }}</td>

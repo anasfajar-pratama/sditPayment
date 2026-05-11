@@ -7,6 +7,7 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\SiswaResource\Pages;
 use App\Models\Siswa;
+use App\Models\Tagihan;
 use Filament\Forms\Components\Grid;
 use Filament\Forms\Components\Section;
 use Filament\Forms\Components\Select;
@@ -43,6 +44,17 @@ class SiswaResource extends Resource
         }
 
         return $options;
+    }
+
+    private static function isTagihanLunas(?\Illuminate\Database\Eloquent\Model $record): bool
+    {
+        if (! $record) {
+            return false;
+        }
+        return Tagihan::where('siswa_id', $record->id)
+            ->where('jenis_pembayaran_id', 1)
+            ->where('status', 'lunas')
+            ->exists();
     }
 
     // ─── Form ─────────────────────────────────────────────────────────────────
@@ -154,6 +166,20 @@ class SiswaResource extends Resource
                                 ->native(false)
                                 ->required()
                                 ->placeholder('Pilih jenjang'),
+
+                            // ── Field biaya pendaftaran (tidak disimpan ke tabel siswa) ──
+                            TextInput::make('nominal_biaya_pendaftaran')
+                                ->label('Nominal Biaya Pendaftaran')
+                                ->numeric()
+                                ->prefix('Rp')
+                                ->minValue(0)
+                                ->placeholder('Contoh: 500000')
+                                ->required(fn ($record) => ! static::isTagihanLunas($record))
+                                ->disabled(fn ($record) => static::isTagihanLunas($record))
+                                ->helperText(fn ($record) => static::isTagihanLunas($record)
+                                    ? '⚠ Tagihan sudah lunas, nominal tidak dapat diubah.'
+                                    : null),
+                                // ->dehydrated(false), // tidak ikut disimpan ke model Siswa
 
                             Toggle::make('status_aktif')
                                 ->label('Status Aktif')

@@ -14,6 +14,15 @@ class KuitansiController extends Controller
 
         $isSpp = strtolower($pembayaran->jenisPembayaran?->nama ?? '') === 'spp';
 
+        if ($pembayaran->tagihan_id) {
+
+            $pembayaran = Pembayaran::with(['siswa', 'jenisPembayaran'])
+                ->where('tagihan_id', $pembayaran->tagihan_id)
+                ->latest('tanggal_bayar') // pembayaran terbaru
+                ->latest('id') // backup jika tanggal sama
+                ->first();
+        }
+
         // Semua transaksi pembayaran untuk jenis + siswa + bulan/tahun yang sama
         $historiCicilan = Pembayaran::with('jenisPembayaran')
             ->where('siswa_id', $pembayaran->siswa_id)
@@ -24,6 +33,7 @@ class KuitansiController extends Controller
             ->get();
 
         $totalTerbayar = $historiCicilan->sum('nominal');
+                   
 
         // Tagihan asli (untuk mendapatkan nominal asal & sisa)
         $tagihan = $pembayaran->tagihan_id
