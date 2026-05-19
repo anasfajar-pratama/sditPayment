@@ -1,6 +1,8 @@
 <?php
 // ════════════════════════════════════════════════════════════
 // File: app/Filament/Resources/SiswaResource.php
+// Versi 2 — menyesuaikan nilai calon_jenis lowercase sesuai DB
+//           + DTA ditambahkan ke enum calon_jenis
 // ════════════════════════════════════════════════════════════
 
 namespace App\Filament\Resources;
@@ -15,8 +17,8 @@ use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Forms\Form;
 use Filament\Forms\Get;
+use Filament\Navigation\NavigationItem;
 use Filament\Resources\Resource;
-use Filament\Tables\Columns\BadgeColumn;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
@@ -26,23 +28,76 @@ class SiswaResource extends Resource
     protected static ?string $model = Siswa::class;
 
     protected static ?string $navigationIcon  = 'heroicon-o-academic-cap';
-    protected static ?string $navigationLabel = 'Siswas';
+    protected static ?string $navigationLabel = 'Siswa';
+    protected static ?string $navigationGroup = 'Siswa';
     protected static ?int    $navigationSort  = 1;
 
-    // ─── Opsi Kelas ───────────────────────────────────────────────────────────
+    // ─── Sub-menu sidebar: SD, SMP, DTA, PAUD, Calon Siswa ───────────────────
 
-    private static function getKelasOptions(): array
+    public static function getNavigationItems(): array
     {
-        $options = [];
-        $huruf   = ['A', 'B', 'C'];
+        $jenjangConfig = [
+            'SD'   => 'heroicon-o-book-open',
+            'SMP'  => 'heroicon-o-building-library',
+            'DTA'  => 'heroicon-o-star',
+            'PAUD' => 'heroicon-o-face-smile',
+        ];
 
-        for ($i = 1; $i <= 6; $i++) {
-            foreach ($huruf as $h) {
-                $label            = "{$i}{$h}";
-                $options[$label]  = $label;
-            }
+        $items = [];
+        $sort  = 1;
+
+        foreach ($jenjangConfig as $jenjang => $icon) {
+            $items[] = NavigationItem::make($jenjang)
+                ->group('Siswa')
+                ->sort($sort++)
+                ->icon($icon)
+                // ->badge(Siswa::where('jenis_sekolah', $jenjang)->where('is_calon', 0)->count() ?: null)
+                // ->badgeColor('primary')
+                ->badge(Siswa::where('jenis_sekolah', $jenjang)->where('is_calon', 0)->count() ?: null)
+                ->url(static::getUrl('jenjang', ['jenjang' => $jenjang]))
+                ->isActiveWhen(fn () =>
+                    request()->routeIs('filament.admin.resources.siswas.jenjang')
+                    && request()->route('jenjang') === $jenjang
+                );
         }
 
+        // Sub-menu Calon Siswa
+        $items[] = NavigationItem::make('Calon Siswa')
+            ->group('Siswa')
+            ->sort($sort)
+            ->icon('heroicon-o-user-plus')
+            ->badge(Siswa::where('is_calon', 1)->count() ?: null)
+            // ->badgeColor('warning')
+            ->url(static::getUrl('calon'))
+            ->isActiveWhen(fn () =>
+                request()->routeIs('filament.admin.resources.siswas.calon')
+            );
+
+        return $items;
+    }
+
+    // ─── Opsi kelas berdasarkan jenjang ───────────────────────────────────────
+
+    public static function getKelasOptions(string $jenjang = 'SD'): array
+    {
+        return match (strtoupper($jenjang)) {
+            'SD'   => self::buildKelas(6, ['A', 'B', 'C', 'D']),
+            'SMP'  => self::buildKelas(3, ['A', 'B', 'C']),
+            'DTA'  => self::buildKelas(4, ['A', 'B']),
+            'PAUD' => ['TK-A' => 'TK-A', 'TK-B' => 'TK-B', 'Kelompok Bermain' => 'Kelompok Bermain'],
+            default => [],
+        };
+    }
+
+    private static function buildKelas(int $maxTingkat, array $huruf): array
+    {
+        $options = [];
+        for ($i = 1; $i <= $maxTingkat; $i++) {
+            foreach ($huruf as $h) {
+                $label           = "{$i}{$h}";
+                $options[$label] = $label;
+            }
+        }
         return $options;
     }
 
@@ -64,7 +119,7 @@ class SiswaResource extends Resource
         return $form
             ->schema([
 
-                // ── Toggle is_calon — selalu di atas ──────────────────────────
+                // ── Toggle is_calon ────────────────────────────────────────────
                 Section::make()
                     ->schema([
                         Toggle::make('is_calon')
@@ -94,9 +149,22 @@ class SiswaResource extends Resource
                                 ->required()
                                 ->maxLength(100),
 
+                            Select::make('jenis_sekolah')
+                                ->label('Jenjang Sekolah')
+                                ->options([
+                                    'SD'   => 'SD',
+                                    'SMP'  => 'SMP',
+                                    'DTA'  => 'DTA',
+                                    'PAUD' => 'PAUD',
+                                ])
+                                ->native(false)
+                                ->required()
+                                ->live()
+                                ->placeholder('Pilih jenjang'),
+
                             Select::make('kelas')
                                 ->label('Kelas')
-                                ->options(static::getKelasOptions())
+                                ->options(fn (Get $get) => static::getKelasOptions($get('jenis_sekolah') ?? 'SD'))
                                 ->searchable()
                                 ->native(false)
                                 ->placeholder('Pilih kelas'),
@@ -105,7 +173,7 @@ class SiswaResource extends Resource
                                 ->label('Tahun Ajaran')
                                 ->placeholder('2025-2026')
                                 ->maxLength(20),
-                            
+
                             TextInput::make('nama_orang_tua')
                                 ->label('Nama Orang Tua / Wali')
                                 ->maxLength(100),
@@ -130,6 +198,8 @@ class SiswaResource extends Resource
 
                 // ══════════════════════════════════════════════════════════════
                 // FORM CALON SISWA — hanya muncul saat is_calon = true
+                // PENTING: nilai calon_jenis menggunakan lowercase sesuai DB
+                //          ('sd', 'smp', 'dta', 'paud', 'tk')
                 // ══════════════════════════════════════════════════════════════
                 Section::make('Data Calon Siswa')
                     ->description('Isi data pendaftar / calon siswa baru')
@@ -157,17 +227,17 @@ class SiswaResource extends Resource
                             Select::make('calon_jenis')
                                 ->label('Jenjang Pendidikan yang Dituju')
                                 ->options([
-                                    'PAUD' => 'PAUD',
-                                    'TK'   => 'TK',
-                                    'SD'   => 'SD',
-                                    'SMP'  => 'SMP',
-                                    'SMA'  => 'SMA',
+                                    // Nilai lowercase sesuai enum di database
+                                    'paud' => 'PAUD',
+                                    'tk'   => 'TK',
+                                    'sd'   => 'SD',
+                                    'smp'  => 'SMP',
+                                    'dta'  => 'DTA',
                                 ])
                                 ->native(false)
                                 ->required()
                                 ->placeholder('Pilih jenjang'),
 
-                            // ── Field biaya pendaftaran (tidak disimpan ke tabel siswa) ──
                             TextInput::make('nominal_biaya_pendaftaran')
                                 ->label('Nominal Biaya Pendaftaran')
                                 ->numeric()
@@ -179,7 +249,6 @@ class SiswaResource extends Resource
                                 ->helperText(fn ($record) => static::isTagihanLunas($record)
                                     ? '⚠ Tagihan sudah lunas, nominal tidak dapat diubah.'
                                     : null),
-                                // ->dehydrated(false), // tidak ikut disimpan ke model Siswa
 
                             Toggle::make('status_aktif')
                                 ->label('Status Aktif')
@@ -187,7 +256,6 @@ class SiswaResource extends Resource
                         ]),
                     ])
                     ->hidden(fn (Get $get) => ! (bool) $get('is_calon')),
-
             ]);
     }
 
@@ -197,55 +265,66 @@ class SiswaResource extends Resource
     {
         return $table
             ->columns([
-                // Tab Siswa
                 TextColumn::make('nis')
                     ->label('NIS')
                     ->searchable()
                     ->sortable()
-                    ->hidden(fn (Pages\ListSiswas $livewire) => $livewire->activeTab === 'calon'),
+                    ->placeholder('-'),
 
                 TextColumn::make('nama')
                     ->label('Nama')
                     ->searchable()
                     ->sortable(),
 
+                // TextColumn::make('jenis_sekolah')
+                //     ->label('Jenjang')
+                //     ->badge()
+                //     ->color(fn ($state) => match ($state) {
+                //         'SD'   => 'success',
+                //         'SMP'  => 'info',
+                //         'DTA'  => 'warning',
+                //         'PAUD' => 'danger',
+                //         default => 'gray',
+                //     })
+                //     ->placeholder('-'),
+
                 TextColumn::make('kelas')
                     ->label('Kelas')
                     ->sortable()
-                    ->hidden(fn (Pages\ListSiswas $livewire) => $livewire->activeTab === 'calon'),
+                    ->placeholder('-'),
 
-                TextColumn::make('tahun_ajaran')
-                    ->label('Tahun Ajaran')
-                    ->sortable()
-                    ->hidden(fn (Pages\ListSiswas $livewire) => $livewire->activeTab === 'calon'),
+                // TextColumn::make('tahun_ajaran')
+                //     ->label('Tahun Ajaran')
+                //     ->sortable()
+                //     ->placeholder('-'),
 
-                // Tab Calon Siswa
-                TextColumn::make('nama_orang_tua')
-                    ->label('Nama Orang Tua')
-                    ->searchable()
-                    ->hidden(fn (Pages\ListSiswas $livewire) => $livewire->activeTab === 'siswa'),
+                // Kolom khusus calon siswa
+                // TextColumn::make('calon_jenis')
+                //     ->label('Calon Jenjang')
+                //     ->badge()
+                //     ->formatStateUsing(fn ($state) => strtoupper($state ?? ''))
+                //     ->color(fn ($state) => match (strtolower($state ?? '')) {
+                //         'paud' => 'danger',
+                //         'tk'   => 'gray',
+                //         'sd'   => 'success',
+                //         'smp'  => 'info',
+                //         'dta'  => 'warning',
+                //         default => 'gray',
+                //     })
+                //     ->placeholder('-'),
 
-                TextColumn::make('no_hp_orang_tua')
-                    ->label('Nomor Handphone Orang Tua')
-                    ->searchable()
-                    ->hidden(fn (Pages\ListSiswas $livewire) => $livewire->activeTab === 'siswa'),
+                // TextColumn::make('nama_orang_tua')
+                //     ->label('Orang Tua')
+                //     ->searchable()
+                //     ->placeholder('-'),
 
-                TextColumn::make('calon_jenis')
-                    ->label('Jenjang')
-                    ->badge()
-                    ->color(fn ($state) => match ($state) {
-                        'PAUD' => 'gray',
-                        'TK'   => 'info',
-                        'SD'   => 'success',
-                        'SMP'  => 'warning',
-                        'SMA'  => 'danger',
-                        default => 'gray',
-                    })
-                    ->hidden(fn (Pages\ListSiswas $livewire) => $livewire->activeTab === 'siswa'),
+                // TextColumn::make('no_hp_orang_tua')
+                //     ->label('No HP')
+                //     ->searchable()
+                //     ->placeholder('-'),
 
-                // Kolom bersama
                 IconColumn::make('status_aktif')
-                    ->label('Status Aktif')
+                    ->label('Aktif')
                     ->boolean()
                     ->trueIcon('heroicon-o-check-circle')
                     ->falseIcon('heroicon-o-x-circle')
@@ -260,9 +339,12 @@ class SiswaResource extends Resource
     public static function getPages(): array
     {
         return [
-            'index'  => Pages\ListSiswas::route('/'),
-            'create' => Pages\CreateSiswa::route('/create'),
-            'edit'   => Pages\EditSiswa::route('/{record}/edit'),
+            'index'   => Pages\ListSiswas::route('/'),
+            'jenjang' => Pages\ListSiswaByJenjang::route('/jenjang/{jenjang}'),
+            'kelas'   => Pages\ListSiswaByKelas::route('/jenjang/{jenjang}/kelas/{kelas}'),
+            'calon'   => Pages\ListCalonSiswa::route('/calon'),
+            'create'  => Pages\CreateSiswa::route('/create'),
+            'edit'    => Pages\EditSiswa::route('/{record}/edit'),
         ];
     }
 }

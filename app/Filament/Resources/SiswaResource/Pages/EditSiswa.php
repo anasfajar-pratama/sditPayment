@@ -1,4 +1,8 @@
 <?php
+// ════════════════════════════════════════════════════════════
+// File: app/Filament/Resources/SiswaResource/Pages/EditSiswa.php
+// Perubahan: redirect ke halaman jenjang baru, bukan activeTab lama
+// ════════════════════════════════════════════════════════════
 
 namespace App\Filament\Resources\SiswaResource\Pages;
 
@@ -10,8 +14,9 @@ use Filament\Resources\Pages\EditRecord;
 class EditSiswa extends EditRecord
 {
     protected static string $resource = SiswaResource::class;
+
     protected ?string $nominalBiayaPendaftaran = null;
-    protected ?string $statusBayar = null;
+    protected ?string $statusBayar             = null;
 
     protected function getHeaderActions(): array
     {
@@ -20,14 +25,22 @@ class EditSiswa extends EditRecord
         ];
     }
 
+    // ─── Redirect setelah simpan ──────────────────────────────────────────────
+
     protected function getRedirectUrl(): string
     {
-        $isCaon = $this->record->is_calon;
+        // Calon siswa → halaman Calon Siswa
+        if ($this->record->is_calon) {
+            return SiswaResource::getUrl('calon');
+        }
 
-        $tab = $isCaon ? 'calon' : 'siswa';
+        // Siswa aktif → halaman kartu kelas sesuai jenjang
+        $jenjang = $this->record->jenis_sekolah ?? 'SD';
 
-        return $this->getResource()::getUrl('index') . '?activeTab=' . $tab;
+        return SiswaResource::getUrl('jenjang', ['jenjang' => $jenjang]);
     }
+
+    // ─── Isi form dengan data tagihan (untuk calon siswa) ────────────────────
 
     protected function mutateFormDataBeforeFill(array $data): array
     {
@@ -37,24 +50,26 @@ class EditSiswa extends EditRecord
                 ->first();
 
             $data['nominal_biaya_pendaftaran'] = $tagihan?->nominal_tagihan;
-            $data['status'] = $tagihan?->status;
+            $data['status']                    = $tagihan?->status;
         }
 
         return $data;
     }
+
+    // ─── Ambil nominal dari form sebelum disimpan ─────────────────────────────
 
     protected function mutateFormDataBeforeSave(array $data): array
     {
         if (isset($data['nominal_biaya_pendaftaran'])) {
-            // Simpan sebagai string — tidak di-cast ke int/float agar tidak kehilangan presisi
             $this->nominalBiayaPendaftaran = $data['nominal_biaya_pendaftaran'];
-            $this->statusBayar = $data['status'];
+            $this->statusBayar             = $data['status'] ?? null;
             unset($data['nominal_biaya_pendaftaran']);
-           
         }
 
         return $data;
     }
+
+    // ─── Update tagihan setelah simpan ───────────────────────────────────────
 
     protected function afterSave(): void
     {
@@ -66,7 +81,7 @@ class EditSiswa extends EditRecord
             ->where('jenis_pembayaran_id', 1)
             ->first();
 
-        // Proteksi server-side: jika sudah lunas, jangan ubah nominal
+        // Proteksi: jika sudah lunas, jangan ubah nominal
         if ($tagihan && $tagihan->status === 'lunas') {
             return;
         }
@@ -75,13 +90,12 @@ class EditSiswa extends EditRecord
             [
                 'siswa_id'            => $this->record->id,
                 'jenis_pembayaran_id' => 1,
-                'bulan'               => now()->format('m'),  
-                'tahun'               => now()->format('Y'), 
+                'bulan'               => now()->format('m'),
+                'tahun'               => now()->format('Y'),
             ],
             [
                 'nominal_tagihan' => $this->nominalBiayaPendaftaran,
             ]
         );
     }
-
 }
