@@ -104,16 +104,16 @@ class DonaturResource extends Resource
                     ->sortable(),
             ])
             ->defaultSort('nama', 'asc')
-            ->recordUrl(fn (Donatur $record) => static::getUrl('detail', ['record' => $record]))
-            ->actions([
-                Tables\Actions\Action::make('detail')
-                    ->label('Detail')
-                    ->icon('heroicon-o-eye')
-                    ->url(fn (Donatur $record) => static::getUrl('detail', ['record' => $record])),
+            ->recordUrl(fn (Donatur $record) => static::getUrl('detail', ['record' => $record]));
+            // ->actions([
+            //     Tables\Actions\Action::make('detail')
+            //         ->label('Detail')
+            //         ->icon('heroicon-o-eye')
+            //         ->url(fn (Donatur $record) => static::getUrl('detail', ['record' => $record])),
 
-                Tables\Actions\EditAction::make(),
-                Tables\Actions\DeleteAction::make(),
-            ]);
+            //     // Tables\Actions\EditAction::make(),
+            //     // Tables\Actions\DeleteAction::make(),
+            // ]);
     }
 
     // ─── Pages ────────────────────────────────────────────────────────────────
