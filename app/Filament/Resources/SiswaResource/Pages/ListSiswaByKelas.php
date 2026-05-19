@@ -1,7 +1,6 @@
 <?php
-// ════════════════════════════════════════════════════════════
 // File: app/Filament/Resources/SiswaResource/Pages/ListSiswaByKelas.php
-// ════════════════════════════════════════════════════════════
+// Perubahan v2: klik baris → halaman detail siswa (bukan edit)
 
 namespace App\Filament\Resources\SiswaResource\Pages;
 
@@ -9,27 +8,37 @@ use App\Filament\Resources\SiswaResource;
 use App\Models\Siswa;
 use Filament\Actions\Action;
 use Filament\Resources\Pages\ListRecords;
+use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 
 class ListSiswaByKelas extends ListRecords
 {
     protected static string $resource = SiswaResource::class;
 
-    // Parameter dari URL: /admin/siswas/jenjang/{jenjang}/kelas/{kelas}
     public string $jenjang = '';
     public string $kelas   = '';
 
     public function mount(): void
     {
-        // Ambil parameter dari URL route, bukan dari method signature
-        // (ListRecords::mount() tidak boleh punya parameter)
         $this->jenjang = strtoupper(request()->route('jenjang') ?? '');
         $this->kelas   = strtoupper(request()->route('kelas') ?? '');
 
         parent::mount();
     }
 
-    // ─── Filter query berdasarkan jenjang + kelas ─────────────────────────────
+    // ─── Override recordUrl → halaman detail, bukan edit ──────────────────────
+    // Cara Filament v4: override table() dan set ->recordUrl() di sini
+
+    public function table(Table $table): Table
+    {
+        return parent::table($table)
+            ->recordUrl(
+                fn (Siswa $record): string =>
+                    SiswaResource::getUrl('detail', ['record' => $record])
+            );
+    }
+
+    // ─── Filter query ─────────────────────────────────────────────────────────
 
     protected function getTableQuery(): Builder
     {
@@ -58,7 +67,7 @@ class ListSiswaByKelas extends ListRecords
         return 'Kelas ' . $this->kelas . ' — ' . $this->jenjang;
     }
 
-    // ─── Actions ──────────────────────────────────────────────────────────────
+    // ─── Header actions ───────────────────────────────────────────────────────
 
     protected function getHeaderActions(): array
     {

@@ -1,8 +1,8 @@
 <?php
 // ════════════════════════════════════════════════════════════
 // File: app/Filament/Resources/SiswaResource.php
-// Versi 2 — menyesuaikan nilai calon_jenis lowercase sesuai DB
-//           + DTA ditambahkan ke enum calon_jenis
+// Versi 3 — tambah route 'detail' untuk halaman detail siswa
+// Diff dari v2: hanya bagian getPages() yang berubah
 // ════════════════════════════════════════════════════════════
 
 namespace App\Filament\Resources;
@@ -32,7 +32,7 @@ class SiswaResource extends Resource
     protected static ?string $navigationGroup = 'Siswa';
     protected static ?int    $navigationSort  = 1;
 
-    // ─── Sub-menu sidebar: SD, SMP, DTA, PAUD, Calon Siswa ───────────────────
+    // ─── Sub-menu sidebar ─────────────────────────────────────────────────────
 
     public static function getNavigationItems(): array
     {
@@ -51,8 +51,6 @@ class SiswaResource extends Resource
                 ->group('Siswa')
                 ->sort($sort++)
                 ->icon($icon)
-                // ->badge(Siswa::where('jenis_sekolah', $jenjang)->where('is_calon', 0)->count() ?: null)
-                // ->badgeColor('primary')
                 ->badge(Siswa::where('jenis_sekolah', $jenjang)->where('is_calon', 0)->count() ?: null)
                 ->url(static::getUrl('jenjang', ['jenjang' => $jenjang]))
                 ->isActiveWhen(fn () =>
@@ -61,13 +59,11 @@ class SiswaResource extends Resource
                 );
         }
 
-        // Sub-menu Calon Siswa
         $items[] = NavigationItem::make('Calon Siswa')
             ->group('Siswa')
             ->sort($sort)
             ->icon('heroicon-o-user-plus')
             ->badge(Siswa::where('is_calon', 1)->count() ?: null)
-            // ->badgeColor('warning')
             ->url(static::getUrl('calon'))
             ->isActiveWhen(fn () =>
                 request()->routeIs('filament.admin.resources.siswas.calon')
@@ -76,7 +72,7 @@ class SiswaResource extends Resource
         return $items;
     }
 
-    // ─── Opsi kelas berdasarkan jenjang ───────────────────────────────────────
+    // ─── Opsi kelas ───────────────────────────────────────────────────────────
 
     public static function getKelasOptions(string $jenjang = 'SD'): array
     {
@@ -118,8 +114,6 @@ class SiswaResource extends Resource
     {
         return $form
             ->schema([
-
-                // ── Toggle is_calon ────────────────────────────────────────────
                 Section::make()
                     ->schema([
                         Toggle::make('is_calon')
@@ -132,9 +126,6 @@ class SiswaResource extends Resource
                     ])
                     ->compact(),
 
-                // ══════════════════════════════════════════════════════════════
-                // FORM SISWA — hanya muncul saat is_calon = false
-                // ══════════════════════════════════════════════════════════════
                 Section::make('Data Siswa')
                     ->description('Isi data siswa yang sudah terdaftar')
                     ->schema([
@@ -196,11 +187,6 @@ class SiswaResource extends Resource
                     ])
                     ->hidden(fn (Get $get) => (bool) $get('is_calon')),
 
-                // ══════════════════════════════════════════════════════════════
-                // FORM CALON SISWA — hanya muncul saat is_calon = true
-                // PENTING: nilai calon_jenis menggunakan lowercase sesuai DB
-                //          ('sd', 'smp', 'dta', 'paud', 'tk')
-                // ══════════════════════════════════════════════════════════════
                 Section::make('Data Calon Siswa')
                     ->description('Isi data pendaftar / calon siswa baru')
                     ->schema([
@@ -227,7 +213,6 @@ class SiswaResource extends Resource
                             Select::make('calon_jenis')
                                 ->label('Jenjang Pendidikan yang Dituju')
                                 ->options([
-                                    // Nilai lowercase sesuai enum di database
                                     'paud' => 'PAUD',
                                     'tk'   => 'TK',
                                     'sd'   => 'SD',
@@ -298,7 +283,6 @@ class SiswaResource extends Resource
                 //     ->sortable()
                 //     ->placeholder('-'),
 
-                // Kolom khusus calon siswa
                 // TextColumn::make('calon_jenis')
                 //     ->label('Calon Jenjang')
                 //     ->badge()
@@ -335,6 +319,7 @@ class SiswaResource extends Resource
     }
 
     // ─── Pages ────────────────────────────────────────────────────────────────
+    // PERUBAHAN dari v2: tambah route 'detail'
 
     public static function getPages(): array
     {
@@ -345,6 +330,7 @@ class SiswaResource extends Resource
             'calon'   => Pages\ListCalonSiswa::route('/calon'),
             'create'  => Pages\CreateSiswa::route('/create'),
             'edit'    => Pages\EditSiswa::route('/{record}/edit'),
+            'detail'  => Pages\DetailSiswa::route('/{record}/detail'),  // ← BARU
         ];
     }
 }
