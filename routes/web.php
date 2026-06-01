@@ -5,6 +5,8 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\KuitansiController;
 use App\Http\Controllers\TagihanController;
 use App\Http\Controllers\TagihanPublicController;
+use App\Http\Controllers\KasHarianPrintController;
+use App\Http\Controllers\KaryawanPdfController;
 
 
 Route::get('/', function () {
@@ -19,12 +21,22 @@ Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+    // Route::get('/kuitansi/{pembayaran}', [KuitansiController::class, 'cetak'])
+    //     ->name('kuitansi.pdf');
+    Route::get('/kas-harian/print', KasHarianPrintController::class)
+         ->name('kas-harian.print');
+
+    // Data Karyawan — cetak PDF (dengan filter job/status/kepeg/search)
+    Route::get('/karyawan/pdf', [KaryawanPdfController::class, 'print'])
+         ->name('karyawan.pdf');
+
     Route::get('/kuitansi/{pembayaran}', [KuitansiController::class, 'cetak'])
-        ->name('kuitansi.pdf');
+    ->name('kuitansi.cetak');
 });
 
 Route::get('/kuitansi/{pembayaran}/pdf', [KuitansiController::class, 'pdf'])
      ->name('kuitansi.pdf');
+
 
 Route::get('/tagihan/{tagihan}/pdf', [TagihanController::class, 'pdf'])
      ->name('tagihan.pdf');

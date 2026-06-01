@@ -20,6 +20,19 @@ class ListTagihans extends ListRecords
 {
     protected static string $resource = TagihanResource::class;
 
+    /**
+     * Cek apakah jenis_pembayaran_id yang dipilih adalah "Daftar Masuk".
+     * Jika nama di DB berbeda, sesuaikan string di sini.
+     */
+    protected static function isDaftarMasuk(?int $id): bool
+    {
+        if (! $id) {
+            return false;
+        }
+
+        return JenisPembayaran::find($id)?->nama === 'Daftar Masuk';
+    }
+
     protected function getHeaderActions(): array
     {
         return [
@@ -66,7 +79,6 @@ class ListTagihans extends ListRecords
                         ->native(false),
                 ])
                 ->action(function (array $data, \Livewire\Component $livewire): void {
-                    // Kirim ke route export dengan query params filter
                     $params = http_build_query(array_filter($data, fn ($v) => filled($v)));
                     $livewire->redirect(url('/tagihan/export' . ($params ? '?' . $params : '')));
                 }),
@@ -80,12 +92,15 @@ class ListTagihans extends ListRecords
                 ->modalWidth('lg')
                 ->modalSubmitActionLabel('Generate')
                 ->form([
+                    // ── Jenis Pembayaran (live agar form bereaksi) ──────────
                     Select::make('jenis_pembayaran_id')
                         ->label('Jenis Pembayaran')
                         ->options(JenisPembayaran::pluck('nama', 'id'))
                         ->required()
-                        ->placeholder('Pilih Jenis Pembayaran'),
+                        ->placeholder('Pilih Jenis Pembayaran')
+                        ->live(),   // ← PENTING: reactive agar field di bawah muncul/hilang
 
+                    // ── Kelas (muncul hanya jika BUKAN Daftar Masuk) ───────
                     Radio::make('filter_kelas')
                         ->label('Kelas')
                         ->options([
@@ -94,7 +109,8 @@ class ListTagihans extends ListRecords
                         ])
                         ->default('semua')
                         ->live()
-                        ->inline(false),
+                        ->inline(false)
+                        ->visible(fn (Get $get) => ! static::isDaftarMasuk((int) $get('jenis_pembayaran_id'))),
 
                     Select::make('kelas')
                         ->label('Kelas')
@@ -106,9 +122,38 @@ class ListTagihans extends ListRecords
                                 ->pluck('kelas', 'kelas')
                         )
                         ->placeholder('Pilih Kelas')
-                        ->visible(fn (Get $get) => $get('filter_kelas') === 'pilih')
-                        ->required(fn (Get $get) => $get('filter_kelas') === 'pilih'),
+                        ->visible(fn (Get $get) => ! static::isDaftarMasuk((int) $get('jenis_pembayaran_id'))
+                            && $get('filter_kelas') === 'pilih')
+                        ->required(fn (Get $get) => ! static::isDaftarMasuk((int) $get('jenis_pembayaran_id'))
+                            && $get('filter_kelas') === 'pilih'),
 
+                    // ── Calon Siswa (muncul hanya jika Daftar Masuk dipilih) ─
+                    Radio::make('filter_calon')
+                        ->label('Calon Siswa')
+                        ->options([
+                            'semua' => 'Semua',
+                            'pilih' => 'Pilih Jenis',
+                        ])
+                        ->default('semua')
+                        ->live()
+                        ->inline(false)
+                        ->visible(fn (Get $get) => static::isDaftarMasuk((int) $get('jenis_pembayaran_id'))),
+
+                    Select::make('calon_jenis')
+                        ->label('Kelas')
+                        ->options([
+                            'SD'   => 'Calon Siswa SD',
+                            'PAUD' => 'Calon Siswa PAUD',
+                            'SMP'  => 'Calon Siswa SMP',
+                            'DTA'  => 'Calon Siswa DTA',
+                        ])
+                        ->placeholder('Pilih Kelas')
+                        ->visible(fn (Get $get) => static::isDaftarMasuk((int) $get('jenis_pembayaran_id'))
+                            && $get('filter_calon') === 'pilih')
+                        ->required(fn (Get $get) => static::isDaftarMasuk((int) $get('jenis_pembayaran_id'))
+                            && $get('filter_calon') === 'pilih'),
+
+                    // ── Field lain (tetap sama) ─────────────────────────────
                     Select::make('bulan')
                         ->label('Bulan')
                         ->options([
@@ -142,8 +187,21 @@ class ListTagihans extends ListRecords
                 ->action(function (array $data): void {
                     $query = Siswa::query();
 
-                    if ($data['filter_kelas'] === 'pilih' && filled($data['kelas'] ?? null)) {
-                        $query->where('kelas', $data['kelas']);
+                    $isDaftarMasuk = static::isDaftarMasuk((int) $data['jenis_pembayaran_id']);
+
+                    if ($isDaftarMasuk) {
+                        // Hanya ambil calon siswa (is_calon = 1)
+                        $query->where('is_calon', true);
+
+                        // Filter berdasarkan calon_jenis jika dipilih
+                        if (($data['filter_calon'] ?? 'semua') === 'pilih' && filled($data['calon_jenis'] ?? null)) {
+                            $query->where('calon_jenis', $data['calon_jenis']);
+                        }
+                    } else {
+                        // Logika kelas biasa (siswa reguler)
+                        if ($data['filter_kelas'] === 'pilih' && filled($data['kelas'] ?? null)) {
+                            $query->where('kelas', $data['kelas']);
+                        }
                     }
 
                     $siswaList = $query->get();

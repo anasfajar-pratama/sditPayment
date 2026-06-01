@@ -1,7 +1,7 @@
 <?php
 // ════════════════════════════════════════════════════════════
-// File: app/Filament/Pages/KasHarianPage.php  (VERSI UPDATE v2)
-// Perubahan: tambah field sub_kategori di form Input Jurnal
+// File: app/Filament/Pages/KasHarianPage.php
+// Update: tambah filter mode (bulanan/harian/7hari/range) + cetak PDF
 // ════════════════════════════════════════════════════════════
 
 namespace App\Filament\Pages;
@@ -9,6 +9,7 @@ namespace App\Filament\Pages;
 use App\Models\Akun;
 use App\Models\KasHarian;
 use App\Models\SaldoAwalBulan;
+use Carbon\Carbon;
 use Filament\Actions\Action;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Radio;
@@ -32,46 +33,120 @@ class KasHarianPage extends Page
 
     protected static string $view = 'filament.pages.kas-harian-page';
 
+    // ─── Filter state ─────────────────────────────────────────────────────────
+
     #[Url] public string $filterBulan;
     #[Url] public string $filterTahun;
 
+    /** bulanan | harian | 7hari | range */
+    #[Url] public string $filterMode    = 'bulanan';
+    #[Url] public string $filterTanggal = ''; // mode harian & 7hari
+    #[Url] public string $filterDari    = ''; // mode range
+    #[Url] public string $filterSampai  = ''; // mode range
+
     public function mount(): void
     {
-        $this->filterBulan = now()->format('m');
-        $this->filterTahun = now()->format('Y');
+        $this->filterBulan   = now()->format('m');
+        $this->filterTahun   = now()->format('Y');
+        $this->filterTanggal = now()->toDateString();
+        $this->filterDari    = now()->startOfMonth()->toDateString();
+        $this->filterSampai  = now()->toDateString();
     }
 
     // ─── Sub kategori per kelompok akun ──────────────────────────────────────
-    // Ini const — ubah sesuai kebutuhan
+
     public const SUB_KATEGORI = [
         'Operasional' => [
             'TOKEN & PULSA', 'PERLENGKAPAN', 'MAINTENANCE & FC',
             'TRANSPORT & DINAS', 'PEMBANGUNAN', 'BUKU PAKET', 'BANGKU & SERAGAM'
-            // 'MAKAN & MINUM',
         ],
         'Sosial' => [
             'SOSIAL & OBAT', 'JAMUAN', 'KELUARGA', 'KASBON'
-            // 'TOKEN AC', 'KOPERASI & ATRIBUT',
         ],
-        'Upah' => [], // Diisi bebas (nama orang)
+        'Upah' => [],
     ];
+
+    // ─── Query helper ─────────────────────────────────────────────────────────
+
+    private function buildQuery()
+    {
+        $q = KasHarian::with('akun');
+
+        switch ($this->filterMode) {
+            case 'harian':
+                $q->whereDate('tanggal', $this->filterTanggal ?: now()->toDateString());
+                break;
+
+            case '7hari':
+                $start = Carbon::parse($this->filterTanggal ?: now()->toDateString());
+                $q->whereBetween('tanggal', [
+                    $start->toDateString(),
+                    $start->copy()->addDays(6)->toDateString(),
+                ]);
+                break;
+
+            case 'range':
+                $dari   = $this->filterDari   ?: now()->startOfMonth()->toDateString();
+                $sampai = $this->filterSampai ?: now()->toDateString();
+                $q->whereBetween('tanggal', [$dari, $sampai]);
+                break;
+
+            default: // bulanan
+                $q->where('tahun', $this->filterTahun)
+                  ->where('bulan', $this->filterBulan);
+                break;
+        }
+
+        return $q;
+    }
+
+    /**
+     * Hitung saldo tepat sebelum periode filter dimulai (untuk running saldo akurat).
+     */
+    private function hitungSaldoAwalPeriode(): float
+    {
+        if ($this->filterMode === 'bulanan') {
+            return SaldoAwalBulan::getSaldo($this->filterBulan, $this->filterTahun);
+        }
+
+        $startDate = match($this->filterMode) {
+            'harian' => $this->filterTanggal ?: now()->toDateString(),
+            '7hari'  => $this->filterTanggal ?: now()->toDateString(),
+            'range'  => $this->filterDari    ?: now()->startOfMonth()->toDateString(),
+            default  => now()->toDateString(),
+        };
+
+        $start  = Carbon::parse($startDate);
+        $bulan  = $start->format('m');
+        $tahun  = $start->format('Y');
+        $saldo  = SaldoAwalBulan::getSaldo($bulan, $tahun);
+
+        // Tambahkan semua transaksi di bulan yang sama SEBELUM tanggal mulai
+        $before = KasHarian::where('tahun', $tahun)
+                            ->where('bulan', $bulan)
+                            ->whereDate('tanggal', '<', $startDate);
+
+        $saldo += (float) (clone $before)->sum('debit');
+        $saldo -= (float) (clone $before)->sum('kredit');
+
+        return $saldo;
+    }
 
     // ─── Computed ─────────────────────────────────────────────────────────────
 
     #[Computed]
     public function entries(): array
     {
-        $rows   = KasHarian::with('akun')
-            ->where('tahun', $this->filterTahun)
-            ->where('bulan', $this->filterBulan)
-            ->orderBy('tanggal')->orderBy('id')
-            ->get();
+        $rows   = $this->buildQuery()
+                       ->orderBy('tanggal')
+                       ->orderBy('id')
+                       ->get();
 
         $saldo  = $this->saldoAwal;
         $result = [];
 
         foreach ($rows as $row) {
-            $saldo += (float) ($row->debit ?? 0);
+            $saldo += (float) ($row->debit  ?? 0);
             $saldo -= (float) ($row->kredit ?? 0);
 
             $result[] = [
@@ -90,25 +165,112 @@ class KasHarianPage extends Page
         return $result;
     }
 
-    #[Computed] public function saldoAwal(): float   { return SaldoAwalBulan::getSaldo($this->filterBulan, $this->filterTahun); }
-    #[Computed] public function totalDebit(): float   { return (float) KasHarian::where('tahun', $this->filterTahun)->where('bulan', $this->filterBulan)->sum('debit'); }
-    #[Computed] public function totalKredit(): float  { return (float) KasHarian::where('tahun', $this->filterTahun)->where('bulan', $this->filterBulan)->sum('kredit'); }
-    #[Computed] public function saldoAkhir(): float   { return $this->saldoAwal + $this->totalDebit - $this->totalKredit; }
-    #[Computed] public function hasSaldoAwal(): bool  { return SaldoAwalBulan::where('bulan', $this->filterBulan)->where('tahun', $this->filterTahun)->exists(); }
+    #[Computed]
+    public function saldoAwal(): float
+    {
+        return $this->hitungSaldoAwalPeriode();
+    }
 
-    public function updatedFilterBulan(): void { unset($this->entries, $this->saldoAwal, $this->totalDebit, $this->totalKredit); }
-    public function updatedFilterTahun(): void { unset($this->entries, $this->saldoAwal, $this->totalDebit, $this->totalKredit); }
+    #[Computed]
+    public function totalDebit(): float
+    {
+        return (float) $this->buildQuery()->sum('debit');
+    }
+
+    #[Computed]
+    public function totalKredit(): float
+    {
+        return (float) $this->buildQuery()->sum('kredit');
+    }
+
+    #[Computed]
+    public function saldoAkhir(): float
+    {
+        return $this->saldoAwal + $this->totalDebit - $this->totalKredit;
+    }
+
+    #[Computed]
+    public function hasSaldoAwal(): bool
+    {
+        if ($this->filterMode === 'bulanan') {
+            return SaldoAwalBulan::where('bulan', $this->filterBulan)
+                                 ->where('tahun', $this->filterTahun)
+                                 ->exists();
+        }
+
+        $startDate = $this->filterTanggal ?: $this->filterDari ?: now()->toDateString();
+        $start     = Carbon::parse($startDate);
+
+        return SaldoAwalBulan::where('bulan', $start->format('m'))
+                              ->where('tahun', $start->format('Y'))
+                              ->exists();
+    }
+
+    #[Computed]
+    public function judulPeriode(): string
+    {
+        return match($this->filterMode) {
+            'harian' => Carbon::parse($this->filterTanggal)->translatedFormat('d F Y'),
+            '7hari'  => Carbon::parse($this->filterTanggal)->format('d M y')
+                        . ' – '
+                        . Carbon::parse($this->filterTanggal)->addDays(6)->format('d M Y'),
+            'range'  => Carbon::parse($this->filterDari)->format('d M y')
+                        . ' – '
+                        . Carbon::parse($this->filterSampai)->format('d M Y'),
+            default  => $this->getBulanLabel($this->filterBulan) . ' ' . $this->filterTahun,
+        };
+    }
+
+    // ─── Invalidate computed cache saat filter berubah ────────────────────────
+
+    public function updatedFilterBulan(): void    { $this->clearCache(); }
+    public function updatedFilterTahun(): void    { $this->clearCache(); }
+    public function updatedFilterMode(): void     { $this->clearCache(); }
+    public function updatedFilterTanggal(): void  { $this->clearCache(); }
+    public function updatedFilterDari(): void     { $this->clearCache(); }
+    public function updatedFilterSampai(): void   { $this->clearCache(); }
+
+    private function clearCache(): void
+    {
+        unset(
+            $this->entries,
+            $this->saldoAwal,
+            $this->totalDebit,
+            $this->totalKredit,
+            $this->saldoAkhir,
+            $this->hasSaldoAwal,
+            $this->judulPeriode,
+        );
+    }
 
     // ─── Header Actions ───────────────────────────────────────────────────────
 
     protected function getHeaderActions(): array
     {
         return [
-            // Set Saldo Awal
+            // ── Cetak PDF (buka tab baru) ──────────────────────────────────
+            Action::make('cetakPdf')
+                ->label('Cetak PDF')
+                ->icon('heroicon-o-printer')
+                ->color('gray')
+                ->action(function () {
+                    $url = route('kas-harian.print', [
+                        'mode'    => $this->filterMode,
+                        'bulan'   => $this->filterBulan,
+                        'tahun'   => $this->filterTahun,
+                        'tanggal' => $this->filterTanggal,
+                        'dari'    => $this->filterDari,
+                        'sampai'  => $this->filterSampai,
+                    ]);
+                    $this->js("window.open('{$url}', '_blank')");
+                }),
+
+            // ── Set Saldo Awal (hanya mode bulanan) ───────────────────────
             Action::make('setSaldoAwal')
                 ->label('Set Saldo Awal')
                 ->icon('heroicon-o-currency-dollar')
                 ->color('info')
+                ->visible(fn () => $this->filterMode === 'bulanan')
                 ->modalHeading('Set Saldo Awal Bulan')
                 ->modalWidth('sm')
                 ->form([
@@ -129,7 +291,7 @@ class KasHarianPage extends Page
                     Notification::make()->title('Saldo awal berhasil disimpan')->success()->send();
                 }),
 
-            // Input Jurnal (dengan sub_kategori)
+            // ── Input Jurnal ───────────────────────────────────────────────
             Action::make('inputJurnal')
                 ->label('Input Jurnal')
                 ->icon('heroicon-o-plus')
@@ -156,14 +318,11 @@ class KasHarianPage extends Page
                         ->afterStateUpdated(function ($state, Set $set) {
                             if (! $state) return;
                             $akun = Akun::find($state);
-                            // Auto set tipe: Pendapatan → debit, Beban → kredit
                             $set('tipe', $akun?->kelompok === 'Pendapatan' ? 'debit' : 'kredit');
-                            // Reset sub_kategori saat akun ganti
                             $set('sub_kategori', null);
                         })
                         ->required()->searchable()->preload(),
 
-                    // Sub Kategori — muncul saat akun adalah Beban
                     Select::make('sub_kategori')
                         ->label('Sub Kategori Pengeluaran')
                         ->helperText('Pilih kategori agar masuk ke laporan pengeluaran yang sesuai')
@@ -177,7 +336,6 @@ class KasHarianPage extends Page
                             $subKelompok = $akun->sub_kelompok ?? 'Operasional';
 
                             if ($subKelompok === 'Upah') {
-                                // Ambil daftar penerima yang pernah ada + bisa tambah baru
                                 $existing = KasHarian::whereNotNull('sub_kategori')
                                     ->whereHas('akun', fn ($q) => $q->where('sub_kelompok', 'Upah'))
                                     ->distinct()->orderBy('sub_kategori')
@@ -193,7 +351,7 @@ class KasHarianPage extends Page
                         ->visible(fn (Get $get) => Akun::find($get('akun_id'))?->kelompok === 'Beban')
                         ->live()
                         ->searchable()
-                        ->createOptionUsing(fn (string $value) => $value) // allow free-text untuk UPAH
+                        ->createOptionUsing(fn (string $value) => $value)
                         ->nullable(),
 
                     Textarea::make('uraian')
@@ -212,16 +370,16 @@ class KasHarianPage extends Page
                     $tanggal = \Carbon\Carbon::parse($data['tanggal']);
 
                     KasHarian::create([
-                        'tanggal'       => $data['tanggal'],
-                        'uraian'        => $data['uraian'],
-                        'akun_id'       => $data['akun_id'],
-                        'sub_kategori'  => $data['sub_kategori'] ?? null,
-                        'debit'         => $data['tipe'] === 'debit'  ? $data['nominal'] : null,
-                        'kredit'        => $data['tipe'] === 'kredit' ? $data['nominal'] : null,
-                        'source'        => 'manual',
-                        'bulan'         => $tanggal->format('m'),
-                        'tahun'         => $tanggal->format('Y'),
-                        'created_by'    => auth()->id(),
+                        'tanggal'      => $data['tanggal'],
+                        'uraian'       => $data['uraian'],
+                        'akun_id'      => $data['akun_id'],
+                        'sub_kategori' => $data['sub_kategori'] ?? null,
+                        'debit'        => $data['tipe'] === 'debit'  ? $data['nominal'] : null,
+                        'kredit'       => $data['tipe'] === 'kredit' ? $data['nominal'] : null,
+                        'source'       => 'manual',
+                        'bulan'        => $tanggal->format('m'),
+                        'tahun'        => $tanggal->format('Y'),
+                        'created_by'   => auth()->id(),
                     ]);
 
                     unset($this->entries, $this->totalDebit, $this->totalKredit, $this->saldoAkhir);
@@ -229,6 +387,8 @@ class KasHarianPage extends Page
                 }),
         ];
     }
+
+    // ─── Delete ───────────────────────────────────────────────────────────────
 
     public function deleteEntry(int $id): void
     {
@@ -246,6 +406,8 @@ class KasHarianPage extends Page
         unset($this->entries, $this->totalDebit, $this->totalKredit, $this->saldoAkhir);
         Notification::make()->title('Jurnal dihapus')->success()->send();
     }
+
+    // ─── Helpers ──────────────────────────────────────────────────────────────
 
     public function getBulanLabel(string $bulan): string
     {
