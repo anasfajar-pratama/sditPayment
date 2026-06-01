@@ -26,6 +26,38 @@ class AdminPanelProvider extends PanelProvider
             ->default()
             ->id('admin')
             ->path('admin')
+            ->brandLogo(new \Illuminate\Support\HtmlString(
+                '<div class="sit-brand" style="display:flex;align-items:center;gap:10px;">' .
+                '<img src="' . asset('images/logo-sit.png') . '" alt="Logo SIT" style="height:2.5rem;">' .
+                '<span style="font-weight:700;font-size:0.9rem;white-space:nowrap;">Finance SIT Bunga Cempaka</span>' .
+                '</div>'
+            ))
+            ->brandLogoHeight('2.5rem')
+            ->renderHook(
+                \Filament\View\PanelsRenderHook::BODY_START,
+                fn() => new \Illuminate\Support\HtmlString('
+                    <style>
+                        /* Sembunyikan fi-logo bawaan di halaman login */
+                        .fi-simple-page .fi-logo { display: none !important; }
+                    </style>
+                ')
+            )
+            ->renderHook(
+                \Filament\View\PanelsRenderHook::AUTH_LOGIN_FORM_BEFORE,
+                fn() => new \Illuminate\Support\HtmlString('
+                    <div style="text-align:center; margin-bottom:1.5rem;">
+                        <img src="' . asset('images/logo-sit.png') . '" 
+                            alt="Logo SIT" 
+                            style="height:5rem; display:block; margin:0 auto 0.75rem;">
+                        <div style="font-weight:700; font-size:1.2rem; color:#111827;">
+                            Finance SIT Bunga Cempaka
+                        </div>
+                        <div style="font-size:0.8rem; color:#6b7280; margin-top:0.25rem;">
+                            Sistem Informasi Keuangan
+                        </div>
+                    </div>
+                ')
+            )
             ->login()
             ->colors([
                 'primary' => Color::Amber,

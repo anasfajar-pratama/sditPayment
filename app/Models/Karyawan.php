@@ -49,7 +49,7 @@ class Karyawan extends Model
 
     public function scopeGuru($query)
     {
-        return $query->where('job', 'guru');
+        return $query->whereIn('job', ['guru','admin']);
     }
 
     // ─── Helpers ─────────────────────────────────────────────────────────────
