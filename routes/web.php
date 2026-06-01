@@ -6,6 +6,7 @@ use App\Http\Controllers\KuitansiController;
 use App\Http\Controllers\TagihanController;
 use App\Http\Controllers\TagihanPublicController;
 use App\Http\Controllers\KasHarianPrintController;
+use App\Http\Controllers\KaryawanPdfController;
 
 
 Route::get('/', function () {
@@ -24,6 +25,10 @@ Route::middleware('auth')->group(function () {
         ->name('kuitansi.pdf');
     Route::get('/kas-harian/print', KasHarianPrintController::class)
          ->name('kas-harian.print');
+
+    // Data Karyawan — cetak PDF (dengan filter job/status/kepeg/search)
+    Route::get('/karyawan/pdf', [KaryawanPdfController::class, 'print'])
+         ->name('karyawan.pdf');
 });
 
 Route::get('/kuitansi/{pembayaran}/pdf', [KuitansiController::class, 'pdf'])
