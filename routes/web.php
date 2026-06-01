@@ -5,6 +5,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\KuitansiController;
 use App\Http\Controllers\TagihanController;
 use App\Http\Controllers\TagihanPublicController;
+use App\Http\Controllers\KasHarianPrintController;
 
 
 Route::get('/', function () {
@@ -21,6 +22,8 @@ Route::middleware('auth')->group(function () {
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
     Route::get('/kuitansi/{pembayaran}', [KuitansiController::class, 'cetak'])
         ->name('kuitansi.pdf');
+    Route::get('/kas-harian/print', KasHarianPrintController::class)
+         ->name('kas-harian.print');
 });
 
 Route::get('/kuitansi/{pembayaran}/pdf', [KuitansiController::class, 'pdf'])

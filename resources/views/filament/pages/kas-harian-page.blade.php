@@ -1,60 +1,153 @@
 <x-filament-panels::page>
     <div style="display:flex;flex-direction:column;gap:1.5rem;">
 
-        {{-- FILTER BULAN/TAHUN + SALDO AWAL --}}
+        {{-- ══════════════════════════════════════════════════════════
+             FILTER BAR — mode tabs + input sesuai mode + saldo awal
+        ══════════════════════════════════════════════════════════════ --}}
         <div style="display:flex;flex-wrap:wrap;align-items:center;gap:0.75rem;">
 
-            {{-- Filter berdampingan dalam satu unit --}}
+            {{-- Tab mode filter --}}
             <div style="display:flex;align-items:center;border-radius:0.5rem;border:1px solid #d1d5db;
-                        box-shadow:0 1px 2px rgba(0,0,0,0.05);overflow:hidden;background:#fff;">
-                <select wire:model.live="filterBulan"
-                    style="border:0;background:transparent;padding:0.5rem 0.75rem;font-size:0.875rem;
-                           color:#374151;outline:none;cursor:pointer;min-width:7rem;">
-                    @foreach([
-                        '01'=>'Januari','02'=>'Februari','03'=>'Maret','04'=>'April',
-                        '05'=>'Mei','06'=>'Juni','07'=>'Juli','08'=>'Agustus',
-                        '09'=>'September','10'=>'Oktober','11'=>'November','12'=>'Desember'
-                    ] as $val => $lbl)
-                        <option value="{{ $val }}" @selected($filterBulan === $val)>{{ $lbl }}</option>
-                    @endforeach
-                </select>
-                <div style="width:1px;height:1.25rem;background:#e5e7eb;flex-shrink:0;"></div>
-                <select wire:model.live="filterTahun"
-                    style="border:0;background:transparent;padding:0.5rem 0.75rem;font-size:0.875rem;
-                           color:#374151;outline:none;cursor:pointer;">
-                    @foreach(range(now()->year, 2023) as $y)
-                        <option value="{{ $y }}" @selected($filterTahun == $y)>{{ $y }}</option>
-                    @endforeach
-                </select>
+                        overflow:hidden;background:#f9fafb;flex-shrink:0;">
+                @foreach([
+                    'bulanan' => 'Bulanan',
+                    'harian'  => 'Harian',
+                    '7hari'   => '7 Hari',
+                    'range'   => 'Rentang',
+                ] as $mode => $label)
+                    <button
+                        wire:click="$set('filterMode', '{{ $mode }}')"
+                        style="padding:0.45rem 0.9rem;font-size:0.8rem;border:none;cursor:pointer;
+                               white-space:nowrap;font-weight:{{ $filterMode === $mode ? '700' : '500' }};
+                               background:{{ $filterMode === $mode ? '#1f2937' : 'transparent' }};
+                               color:{{ $filterMode === $mode ? '#fff' : '#6b7280' }};
+                               {{ !($loop->last) ? 'border-right:1px solid #e5e7eb;' : '' }}">
+                        {{ $label }}
+                    </button>
+                @endforeach
             </div>
 
-            {{-- Badge saldo awal --}}
-            @if ($this->hasSaldoAwal)
-                <div style="display:inline-flex;align-items:center;gap:0.5rem;border-radius:0.5rem;
-                            background:#eff6ff;border:1px solid #bfdbfe;padding:0.45rem 0.875rem;font-size:0.875rem;">
-                    <span style="color:#2563eb;font-weight:500;">Saldo Awal:</span>
-                    <span style="font-weight:700;color:#1d40af;font-variant-numeric:tabular-nums;">
-                        Rp {{ number_format($this->saldoAwal, 0, ',', '.') }}
-                    </span>
+            {{-- Input: BULANAN --}}
+            @if ($filterMode === 'bulanan')
+                <div style="display:flex;align-items:center;border-radius:0.5rem;border:1px solid #d1d5db;
+                            box-shadow:0 1px 2px rgba(0,0,0,0.05);overflow:hidden;background:#fff;">
+                    <select wire:model.live="filterBulan"
+                        style="border:0;background:transparent;padding:0.5rem 0.75rem;font-size:0.875rem;
+                               color:#374151;outline:none;cursor:pointer;min-width:7rem;">
+                        @foreach([
+                            '01'=>'Januari','02'=>'Februari','03'=>'Maret','04'=>'April',
+                            '05'=>'Mei','06'=>'Juni','07'=>'Juli','08'=>'Agustus',
+                            '09'=>'September','10'=>'Oktober','11'=>'November','12'=>'Desember'
+                        ] as $val => $lbl)
+                            <option value="{{ $val }}" @selected($filterBulan === $val)>{{ $lbl }}</option>
+                        @endforeach
+                    </select>
+                    <div style="width:1px;height:1.25rem;background:#e5e7eb;flex-shrink:0;"></div>
+                    <select wire:model.live="filterTahun"
+                        style="border:0;background:transparent;padding:0.5rem 0.75rem;font-size:0.875rem;
+                               color:#374151;outline:none;cursor:pointer;">
+                        @foreach(range(now()->year, 2023) as $y)
+                            <option value="{{ $y }}" @selected($filterTahun == $y)>{{ $y }}</option>
+                        @endforeach
+                    </select>
                 </div>
-            @else
-                <div style="display:inline-flex;align-items:center;gap:0.5rem;border-radius:0.5rem;
-                            background:#fffbeb;border:1px solid #fde68a;padding:0.45rem 0.875rem;font-size:0.875rem;">
-                    <x-heroicon-o-exclamation-triangle style="width:1rem;height:1rem;color:#d97706;flex-shrink:0;" />
-                    <span style="color:#92400e;">Saldo awal belum diset untuk bulan ini.</span>
+
+            {{-- Input: HARIAN --}}
+            @elseif ($filterMode === 'harian')
+                <div style="display:flex;align-items:center;border-radius:0.5rem;border:1px solid #d1d5db;
+                            box-shadow:0 1px 2px rgba(0,0,0,0.05);overflow:hidden;background:#fff;">
+                    <span style="padding:0.5rem 0.75rem;font-size:0.8rem;color:#6b7280;
+                                 border-right:1px solid #e5e7eb;white-space:nowrap;">Tanggal</span>
+                    <input type="date" wire:model.live="filterTanggal"
+                        value="{{ $filterTanggal }}"
+                        style="border:0;background:transparent;padding:0.5rem 0.75rem;font-size:0.875rem;
+                               color:#374151;outline:none;cursor:pointer;">
+                </div>
+
+            {{-- Input: 7 HARI --}}
+            @elseif ($filterMode === '7hari')
+                <div style="display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap;">
+                    <div style="display:flex;align-items:center;border-radius:0.5rem;border:1px solid #d1d5db;
+                                box-shadow:0 1px 2px rgba(0,0,0,0.05);overflow:hidden;background:#fff;">
+                        <span style="padding:0.5rem 0.75rem;font-size:0.8rem;color:#6b7280;
+                                     border-right:1px solid #e5e7eb;white-space:nowrap;">Mulai</span>
+                        <input type="date" wire:model.live="filterTanggal"
+                            value="{{ $filterTanggal }}"
+                            style="border:0;background:transparent;padding:0.5rem 0.75rem;font-size:0.875rem;
+                                   color:#374151;outline:none;cursor:pointer;">
+                    </div>
+                    @if ($filterTanggal)
+                        <div style="display:inline-flex;align-items:center;gap:0.3rem;
+                                    font-size:0.8rem;color:#9ca3af;padding:0.5rem 0;">
+                            s/d
+                            <span style="color:#374151;font-weight:600;">
+                                {{ \Carbon\Carbon::parse($filterTanggal)->addDays(6)->format('d M Y') }}
+                            </span>
+                        </div>
+                    @endif
+                </div>
+
+            {{-- Input: RENTANG --}}
+            @elseif ($filterMode === 'range')
+                <div style="display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap;">
+                    <div style="display:flex;align-items:center;border-radius:0.5rem;border:1px solid #d1d5db;
+                                box-shadow:0 1px 2px rgba(0,0,0,0.05);overflow:hidden;background:#fff;">
+                        <span style="padding:0.5rem 0.75rem;font-size:0.8rem;color:#6b7280;
+                                     border-right:1px solid #e5e7eb;white-space:nowrap;">Dari</span>
+                        <input type="date" wire:model.live="filterDari"
+                            value="{{ $filterDari }}"
+                            style="border:0;background:transparent;padding:0.5rem 0.75rem;font-size:0.875rem;
+                                   color:#374151;outline:none;cursor:pointer;">
+                    </div>
+                    <span style="color:#d1d5db;font-size:1rem;">—</span>
+                    <div style="display:flex;align-items:center;border-radius:0.5rem;border:1px solid #d1d5db;
+                                box-shadow:0 1px 2px rgba(0,0,0,0.05);overflow:hidden;background:#fff;">
+                        <span style="padding:0.5rem 0.75rem;font-size:0.8rem;color:#6b7280;
+                                     border-right:1px solid #e5e7eb;white-space:nowrap;">Sampai</span>
+                        <input type="date" wire:model.live="filterSampai"
+                            value="{{ $filterSampai }}"
+                            style="border:0;background:transparent;padding:0.5rem 0.75rem;font-size:0.875rem;
+                                   color:#374151;outline:none;cursor:pointer;">
+                    </div>
                 </div>
             @endif
+
+            {{-- Badge saldo awal — hanya mode bulanan --}}
+            @if ($filterMode === 'bulanan')
+                @if ($this->hasSaldoAwal)
+                    <div style="display:inline-flex;align-items:center;gap:0.5rem;border-radius:0.5rem;
+                                background:#eff6ff;border:1px solid #bfdbfe;padding:0.45rem 0.875rem;font-size:0.875rem;">
+                        <span style="color:#2563eb;font-weight:500;">Saldo Awal:</span>
+                        <span style="font-weight:700;color:#1d40af;font-variant-numeric:tabular-nums;">
+                            Rp {{ number_format($this->saldoAwal, 0, ',', '.') }}
+                        </span>
+                    </div>
+                @else
+                    <div style="display:inline-flex;align-items:center;gap:0.5rem;border-radius:0.5rem;
+                                background:#fffbeb;border:1px solid #fde68a;padding:0.45rem 0.875rem;font-size:0.875rem;">
+                        <x-heroicon-o-exclamation-triangle style="width:1rem;height:1rem;color:#d97706;flex-shrink:0;" />
+                        <span style="color:#92400e;">Saldo awal belum diset untuk bulan ini.</span>
+                    </div>
+                @endif
+            @endif
+
         </div>
 
-        {{-- TABEL KAS HARIAN --}}
+        {{-- ══════════════════════════════════════════════════════════
+             TABEL KAS HARIAN
+        ══════════════════════════════════════════════════════════════ --}}
         <div style="background:#fff;border-radius:1rem;border:1px solid #f1f5f9;
                     box-shadow:0 1px 4px rgba(0,0,0,0.06);overflow:hidden;">
 
             {{-- Section heading --}}
-            <div style="padding:1rem 1.5rem;border-bottom:1px solid #f1f5f9;">
+            <div style="padding:1rem 1.5rem;border-bottom:1px solid #f1f5f9;
+                        display:flex;align-items:center;justify-content:space-between;gap:0.5rem;flex-wrap:wrap;">
                 <h2 style="font-size:1rem;font-weight:700;color:#1f2937;margin:0;">
-                    Kas Harian &mdash; {{ $this->getBulanLabel($filterBulan) }} {{ $filterTahun }}
+                    Kas Harian &mdash; {{ $this->judulPeriode }}
                 </h2>
+                <span style="font-size:0.75rem;color:#9ca3af;">
+                    {{ count($this->entries) }} transaksi
+                </span>
             </div>
 
             @if (count($this->entries) === 0)
