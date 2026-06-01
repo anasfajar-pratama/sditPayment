@@ -36,13 +36,10 @@ class TagihanPublicController extends Controller
     // ─── Halaman publik tagihan (tanpa login) ─────────────────────────────────
 
     /**
-     * Redirect ke halaman PDF tagihan yang sudah ada.
-     *
-     * PENTING: Pastikan route 'tagihan.pdf' (biasanya /tagihan/{id}/pdf)
-     * diletakkan di LUAR middleware auth agar dapat diakses tanpa login.
-     * Lihat routes_snippet.php untuk contoh struktur route yang benar.
+     * Tampilkan detail tagihan langsung di halaman web.
+     * Dapat diakses tanpa login — aman karena ID dienkripsi di URL.
      */
-    public function show(string $token): \Illuminate\Http\RedirectResponse
+    public function show(string $token): \Illuminate\View\View
     {
         try {
             $id = $this->decryptToken($token);
@@ -50,11 +47,12 @@ class TagihanPublicController extends Controller
             abort(404, 'Link tidak valid atau sudah tidak berlaku.');
         }
 
-        // Pastikan ID valid sebelum redirect
-        Tagihan::findOrFail($id);
+        $tagihan = Tagihan::with(['siswa', 'jenisPembayaran', 'pembayaran'])
+            ->findOrFail($id);
 
-        // Redirect ke route PDF yang sudah ada tanpa perlu login
-        return redirect(url("/tagihan/{$id}/pdf"));
+        $namaBulan = self::$namaBulan[$tagihan->bulan] ?? $tagihan->bulan;
+
+        return view('tagihan.public', compact('tagihan', 'namaBulan'));
     }
 
     // ─── Export CSV (hanya untuk user login) ──────────────────────────────────
@@ -105,20 +103,18 @@ class TagihanPublicController extends Controller
                 'Tahun',
                 'Nominal',
                 'Status',
-                'Link PDF Tagihan / Kuitansi',   // URL PDF yang butuh login
-                'Link Share Wali Murid',          // URL publik terenkripsi
+                'Link PDF Tagihan / Kuitansi',
+                'Link Share Wali Murid',
             ]);
 
             foreach ($tagihans as $t) {
-                // Link PDF internal (butuh login)
                 if ($t->status === 'lunas' && $t->pembayaran) {
                     $linkPdf = url("/kuitansi/{$t->pembayaran->id}");
                 } else {
                     $linkPdf = url("/tagihan/{$t->id}/pdf");
                 }
 
-                // Link share publik (enkripsi ID, tanpa login)
-                $token    = self::encryptId($t->id);
+                $token     = self::encryptId($t->id);
                 $linkShare = url("/tagihan/share/{$token}");
 
                 fputcsv($file, [
@@ -140,7 +136,7 @@ class TagihanPublicController extends Controller
         ]);
     }
 
-    // ─── Helper enkripsi ID (sama dengan di TagihanResource) ──────────────────
+    // ─── Helper enkripsi ID (dipanggil juga dari TagihanResource) ─────────────
 
     public static function encryptId(int $id): string
     {
