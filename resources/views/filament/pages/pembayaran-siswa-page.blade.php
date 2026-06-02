@@ -73,22 +73,130 @@
         @if ($selectedSiswa)
 
             {{-- INFO SISWA --}}
-            <div class="rounded-xl bg-primary-50 dark:bg-primary-900/20
-                        border border-primary-200 dark:border-primary-700
-                        px-5 py-3 flex flex-wrap gap-6 text-sm">
-                <div>
-                    <span class="font-semibold text-primary-700 dark:text-primary-300">NIS:</span>
-                    {{ $selectedSiswa->nis }}
+            <x-filament::section>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-10 gap-y-1">
+
+                    {{-- Kolom Kiri: Data Siswa --}}
+                    <div class="space-y-3">
+                        <h3 class="text-xs font-semibold uppercase tracking-wider text-gray-400 pb-1
+                                border-b border-gray-100 dark:border-gray-700">
+                            Data Siswa
+                        </h3>
+
+                        <dl class="space-y-2 text-sm">
+                            <div class="flex gap-2">
+                                <dt class="w-32 shrink-0 text-gray-500">NIS</dt>
+                                <dd class="font-medium text-gray-800 dark:text-gray-100">
+                                    {{ $selectedSiswa->nis ?: '—' }}
+                                </dd>
+                            </div>
+                            <div class="flex gap-2">
+                                <dt class="w-32 shrink-0 text-gray-500">Nama</dt>
+                                <dd class="font-semibold text-gray-900 dark:text-white">
+                                    {{ $selectedSiswa->nama ?: '—' }}
+                                </dd>
+                            </div>
+                            <div class="flex gap-2">
+                                <dt class="w-32 shrink-0 text-gray-500">Kelas</dt>
+                                <dd class="font-medium text-gray-800 dark:text-gray-100">
+                                    {{ $selectedSiswa->kelas ?: '—' }}
+                                </dd>
+                            </div>
+                            <div class="flex gap-2">
+                                <dt class="w-32 shrink-0 text-gray-500">Tingkat</dt>
+                                <dd class="font-medium text-gray-800 dark:text-gray-100">
+                                    {{ $selectedSiswa->tingkat ?: '—' }}
+                                </dd>
+                            </div>
+                            <div class="flex gap-2">
+                                <dt class="w-32 shrink-0 text-gray-500">Jenis Sekolah</dt>
+                                <dd>
+                                    @if ($selectedSiswa->jenis_sekolah)
+                                        <span class="rounded-full bg-primary-100 text-primary-700
+                                                    dark:bg-primary-900/40 dark:text-primary-300
+                                                    text-xs font-semibold px-2.5 py-0.5">
+                                            {{ $selectedSiswa->jenis_sekolah }}
+                                        </span>
+                                    @else
+                                        <span class="text-gray-400">—</span>
+                                    @endif
+                                </dd>
+                            </div>
+                            <div class="flex gap-2">
+                                <dt class="w-32 shrink-0 text-gray-500">Tahun Ajaran</dt>
+                                <dd class="font-medium text-gray-800 dark:text-gray-100">
+                                    {{ $selectedSiswa->tahun_ajaran ?: '—' }}
+                                </dd>
+                            </div>
+                            <div class="flex gap-2">
+                                <dt class="w-32 shrink-0 text-gray-500">Status</dt>
+                                <dd>
+                                    @if ($selectedSiswa->status_aktif)
+                                        <span class="rounded-full bg-success-100 text-success-700
+                                                    text-xs font-semibold px-2.5 py-0.5">
+                                            Aktif
+                                        </span>
+                                    @else
+                                        <span class="rounded-full bg-danger-100 text-danger-700
+                                                    text-xs font-semibold px-2.5 py-0.5">
+                                            Tidak Aktif
+                                        </span>
+                                    @endif
+                                </dd>
+                            </div>
+                        </dl>
+                    </div>
+
+                    {{-- Kolom Kanan: Data Orang Tua --}}
+                    <div class="space-y-3 mt-6 sm:mt-0">
+                        <h3 class="text-xs font-semibold uppercase tracking-wider text-gray-400 pb-1
+                                border-b border-gray-100 dark:border-gray-700">
+                            Data Orang Tua / Wali
+                        </h3>
+
+                        <dl class="space-y-2 text-sm">
+                            <div class="flex gap-2">
+                                <dt class="w-32 shrink-0 text-gray-500">Nama</dt>
+                                <dd class="font-medium text-gray-800 dark:text-gray-100">
+                                    {{ $selectedSiswa->nama_orang_tua ?: '—' }}
+                                </dd>
+                            </div>
+                            <div class="flex gap-2">
+                                <dt class="w-32 shrink-0 text-gray-500">No. HP / WA</dt>
+                                <dd class="font-medium text-gray-800 dark:text-gray-100">
+                                    @if ($selectedSiswa->no_hp_orang_tua)
+                                        <a href="https://wa.me/{{ preg_replace('/\D/', '', str_starts_with(ltrim($selectedSiswa->no_hp_orang_tua, '0'), '8') ? '62' . ltrim($selectedSiswa->no_hp_orang_tua, '0') : $selectedSiswa->no_hp_orang_tua) }}"
+                                        target="_blank"
+                                        class="inline-flex items-center gap-1 text-[#128C7E] hover:underline">
+                                            {{ $selectedSiswa->no_hp_orang_tua }}
+                                            <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">
+                                                <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/>
+                                                <path d="M12 0C5.373 0 0 5.373 0 12c0 2.124.558 4.118 1.531 5.845L.057 23.428a.5.5 0 00.609.61l5.703-1.498A11.952 11.952 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 21.818a9.808 9.808 0 01-5.034-1.388l-.36-.214-3.733.98.999-3.645-.235-.374A9.818 9.818 0 012.182 12C2.182 6.57 6.57 2.182 12 2.182S21.818 6.57 21.818 12 17.43 21.818 12 21.818z"/>
+                                            </svg>
+                                        </a>
+                                    @else
+                                        <span class="text-gray-400">—</span>
+                                    @endif
+                                </dd>
+                            </div>
+                            <div class="flex gap-2">
+                                <dt class="w-32 shrink-0 text-gray-500">Email</dt>
+                                <dd class="font-medium text-gray-800 dark:text-gray-100">
+                                    @if ($selectedSiswa->email_orang_tua)
+                                        <a href="mailto:{{ $selectedSiswa->email_orang_tua }}"
+                                        class="text-primary-600 hover:underline">
+                                            {{ $selectedSiswa->email_orang_tua }}
+                                        </a>
+                                    @else
+                                        <span class="text-gray-400">—</span>
+                                    @endif
+                                </dd>
+                            </div>
+                        </dl>
+                    </div>
+
                 </div>
-                <div>
-                    <span class="font-semibold text-primary-700 dark:text-primary-300">Nama:</span>
-                    {{ $selectedSiswa->nama }}
-                </div>
-                <div>
-                    <span class="font-semibold text-primary-700 dark:text-primary-300">Kelas:</span>
-                    {{ $selectedSiswa->kelas }}
-                </div>
-            </div>
+            </x-filament::section>
 
             {{-- TAGIHAN BELUM BAYAR --}}
             <x-filament::section heading="Tagihan Belum Bayar">
@@ -254,30 +362,58 @@
                                                 </span>
                                             @endif
                                         </td>
-                                        {{-- Tombol Cetak Kuitansi --}}
+
+                                        {{-- Tombol Kuitansi + WhatsApp --}}
                                         <td class="py-2.5 text-center">
-                                            <a
-                                                href="{{ route('kuitansi.pdf', $bayar) }}"
-                                                target="_blank"
-                                                class="inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5
-                                                    text-xs font-medium transition
-                                                    {{ $bayar->status === 'lunas'
-                                                        ? 'bg-success-50 text-success-700 hover:bg-success-100 border border-success-200'
-                                                        : 'bg-warning-50 text-warning-700 hover:bg-warning-100 border border-warning-200' }}"
-                                            >
-                                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor"
-                                                    viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                                                    <path stroke-linecap="round" stroke-linejoin="round"
-                                                        stroke-width="2"
-                                                        d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z">
-                                                    </path>
-                                                </svg>
-                                                @if ($bayar->status === 'lunas')
-                                                    Kuitansi
+                                            <div class="inline-flex items-center gap-1.5">
+
+                                                {{-- Tombol Kuitansi / Bukti Cicilan --}}
+                                                @if ($bayar->share_token)
+                                                    <a
+                                                        href="{{ url('/k/' . $bayar->share_token) }}"
+                                                        target="_blank"
+                                                        class="inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5
+                                                            text-xs font-medium transition
+                                                            {{ $bayar->status === 'lunas'
+                                                                ? 'bg-success-50 text-success-700 hover:bg-success-100 border border-success-200'
+                                                                : 'bg-warning-50 text-warning-700 hover:bg-warning-100 border border-warning-200' }}"
+                                                        title="{{ $bayar->status === 'lunas' ? 'Lihat Kuitansi' : 'Lihat Bukti Cicilan' }}"
+                                                    >
+                                                        {{-- Ikon printer --}}
+                                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor"
+                                                            viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                                            <path stroke-linecap="round" stroke-linejoin="round"
+                                                                stroke-width="2"
+                                                                d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z">
+                                                            </path>
+                                                        </svg>
+                                                        {{ $bayar->status === 'lunas' ? 'Kuitansi' : 'Bukti Cicilan' }}
+                                                    </a>
+
+                                                    {{-- Tombol Bagikan via WhatsApp --}}
+                                                    <a
+                                                        href="{{ $this->getWhatsappUrl($bayar) }}"
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        class="inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5
+                                                               text-xs font-medium transition
+                                                               bg-[#25D366]/10 text-[#128C7E] hover:bg-[#25D366]/20
+                                                               border border-[#25D366]/30"
+                                                        title="Bagikan via WhatsApp"
+                                                    >
+                                                        {{-- Ikon WhatsApp --}}
+                                                        <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor"
+                                                            xmlns="http://www.w3.org/2000/svg">
+                                                            <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/>
+                                                            <path d="M12 0C5.373 0 0 5.373 0 12c0 2.124.558 4.118 1.531 5.845L.057 23.428a.5.5 0 00.609.61l5.703-1.498A11.952 11.952 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 21.818a9.808 9.808 0 01-5.034-1.388l-.36-.214-3.733.98.999-3.645-.235-.374A9.818 9.818 0 012.182 12C2.182 6.57 6.57 2.182 12 2.182S21.818 6.57 21.818 12 17.43 21.818 12 21.818z"/>
+                                                        </svg>
+                                                        WA
+                                                    </a>
                                                 @else
-                                                    Bukti Cicilan
+                                                    <span class="text-xs text-gray-400 italic">Token tidak tersedia</span>
                                                 @endif
-                                            </a>
+
+                                            </div>
                                         </td>
                                     </tr>
                                 @endforeach
