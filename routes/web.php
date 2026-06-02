@@ -44,6 +44,7 @@ Route::get('/k/{token}', function (string $token) {
             ->where('expired_at', '>', now())
             ->first();
     abort_if(!$link, 404);
+        
     return redirect($link->original_url . '?_internal=1&_token='.$token);
 })->name('pdf.kuitansi');
 
