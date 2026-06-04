@@ -1,5 +1,4 @@
 <?php
-// File: app/Filament/Pages/GajiBulananPage.php
 
 namespace App\Filament\Pages;
 
@@ -25,9 +24,13 @@ class GajiBulananPage extends Page
     #[Url] public string $filterTahun;
 
     /**
-     * Array form: [karyawan_id => ['nominal' => '', 'keterangan' => '']]
+     * Array form: [karyawan_id => [...fields]]
      */
     public array $gajiForm = [];
+
+    // ─── Modal state ──────────────────────────────────────────────────────────
+    public bool  $showModal      = false;
+    public ?int  $modalKaryawanId = null;
 
     public function mount(): void
     {
@@ -83,14 +86,49 @@ class GajiBulananPage extends Page
                 ->count();
 
             $this->gajiForm[$k->id] = [
-                'nama'        => $k->nama,
-                'jabatan'     => $k->jabatan,
-                'hari_masuk'  => $hariMasuk,
-                'nominal'     => $rec ? (string) (int) $rec->nominal_gaji : '',
-                'keterangan'  => $rec?->keterangan ?? '',
-                'status_bayar'=> $rec?->status_bayar ?? 'belum',
+                'nama'         => $k->nama,
+                'jabatan'      => $k->jabatan,
+                'hari_masuk'   => $hariMasuk,
+                'gaji_pokok'   => $rec ? (string)(int)$rec->gaji_pokok  : '',
+                'tunjangan'    => $rec ? (string)(int)$rec->tunjangan    : '',
+                'transport'    => $rec ? (string)(int)$rec->transport    : '',
+                'thr'          => $rec ? (string)(int)$rec->thr          : '',
+                'keterangan'   => $rec?->keterangan ?? '',
+                'status_bayar' => $rec?->status_bayar ?? 'belum',
             ];
         }
+    }
+
+    /** Total nominal satu baris = jumlah 4 komponen */
+    public function hitungNominal(int $karyawanId): int
+    {
+        $d = $this->gajiForm[$karyawanId] ?? [];
+        return (int)preg_replace('/[^0-9]/', '', $d['gaji_pokok'] ?? '0')
+             + (int)preg_replace('/[^0-9]/', '', $d['tunjangan']  ?? '0')
+             + (int)preg_replace('/[^0-9]/', '', $d['transport']  ?? '0')
+             + (int)preg_replace('/[^0-9]/', '', $d['thr']        ?? '0');
+    }
+
+    public function totalGaji(): int
+    {
+        return array_sum(array_map(
+            fn($id) => $this->hitungNominal($id),
+            array_keys($this->gajiForm)
+        ));
+    }
+
+    // ─── Modal ────────────────────────────────────────────────────────────────
+
+    public function bukaModal(int $karyawanId): void
+    {
+        $this->modalKaryawanId = $karyawanId;
+        $this->showModal       = true;
+    }
+
+    public function tutupModal(): void
+    {
+        $this->modalKaryawanId = null;
+        $this->showModal       = false;
     }
 
     // ─── Submit ───────────────────────────────────────────────────────────────
@@ -101,8 +139,13 @@ class GajiBulananPage extends Page
     public function simpanGaji(): void
     {
         foreach ($this->gajiForm as $karyawanId => $data) {
-            $nominal = preg_replace('/[^0-9]/', '', $data['nominal'] ?? '');
-            if ($nominal === '' || $nominal === '0') continue;
+            $gajiPokok  = (int)preg_replace('/[^0-9]/', '', $data['gaji_pokok'] ?? '0');
+            $tunjangan  = (int)preg_replace('/[^0-9]/', '', $data['tunjangan']  ?? '0');
+            $transport  = (int)preg_replace('/[^0-9]/', '', $data['transport']  ?? '0');
+            $thr        = (int)preg_replace('/[^0-9]/', '', $data['thr']        ?? '0');
+            $nominalTotal = $gajiPokok + $tunjangan + $transport + $thr;
+
+            if ($nominalTotal === 0) continue;
 
             GajiBulanan::updateOrCreate(
                 [
@@ -112,7 +155,11 @@ class GajiBulananPage extends Page
                 ],
                 [
                     'hari_masuk'   => $data['hari_masuk'],
-                    'nominal_gaji' => (int) $nominal,
+                    'gaji_pokok'   => $gajiPokok,
+                    'tunjangan'    => $tunjangan,
+                    'transport'    => $transport,
+                    'thr'          => $thr,
+                    'nominal_gaji' => $nominalTotal,
                     'keterangan'   => $data['keterangan'] ?? null,
                     'status_bayar' => $data['status_bayar'] ?? 'belum',
                     'created_by'   => auth()->id(),
@@ -152,16 +199,19 @@ class GajiBulananPage extends Page
 
     public function getBulanLabel(string $bulan): string
     {
-        return ['01'=>'Januari','02'=>'Februari','03'=>'Maret','04'=>'April',
-                '05'=>'Mei','06'=>'Juni','07'=>'Juli','08'=>'Agustus',
-                '09'=>'September','10'=>'Oktober','11'=>'November','12'=>'Desember'][$bulan] ?? $bulan;
+        return [
+            '01'=>'Januari','02'=>'Februari','03'=>'Maret','04'=>'April',
+            '05'=>'Mei','06'=>'Juni','07'=>'Juli','08'=>'Agustus',
+            '09'=>'September','10'=>'Oktober','11'=>'November','12'=>'Desember',
+        ][$bulan] ?? $bulan;
     }
 
-    public function totalGaji(): int
+    /** URL untuk generate PDF slip gaji */
+    public function urlSlipGaji(): string
     {
-        return (int) array_sum(array_map(
-            fn ($d) => (int) preg_replace('/[^0-9]/', '', $d['nominal'] ?? '0'),
-            $this->gajiForm
-        ));
+        return route('slip-gaji.pdf', [
+            'bulan' => $this->filterBulan,
+            'tahun' => $this->filterTahun,
+        ]);
     }
 }
