@@ -75,3 +75,15 @@ The Laravel framework is open-sourced software licensed under the [MIT license](
 ## membuat akun filament
 1. php artisan make:filament-user
 2. php artisan make:filament-user --email=admin@bungacempaka.sch.id --password=admin1234
+
+## QRcide: composer require simplesoftwareio/simple-qrcode 
+## 16062026
+- generate tagihan :
+-- jenis spp. pilihan jenis sekolah. pilih kelas.bulan.tahun.nominal.kasih tanda jika bulan ini sudah generate tagihan spp. simpan log pembuatan tagihan. jangan sampai ada tagihan double.
+-- jenis daftar ulang. muncul 4 jenis sekolah dengan form nominal . pilih tahun ajaran. simpan log pembuatan tagihan. validasi jika akan dibuat lagi dalam 12 bulan terakhir.
+-- hilangkan pilihan daftar masuk.
+- pembayaran siswa buat breadcumb.
+- potongan dan nominal bayar menggunakan event yang bikin berat karena saling membaca setiap perubahan angka. jangan pakai event itu.
+- pembayaran den struk trf berhasil , hanya saja bukti bayar nya diklik 403.
+- buat kompresi gambar dengan library bawaan laravel.
+-  

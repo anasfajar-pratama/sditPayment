@@ -7,29 +7,44 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 class Pembayaran extends Model
 {
+    use HasFactory;
+
     protected $table = 'pembayaran';
 
     protected $fillable = [
-        'siswa_id', 'jenis_pembayaran_id', 'tagihan_id', 'bulan', 'tahun',
-        'nominal', 'tanggal_bayar', 'status', 'created_by'
+        'siswa_id',
+        'jenis_pembayaran_id',
+        'tagihan_id',
+        'bulan',
+        'tahun',
+        'nominal',
+        'tanggal_bayar',
+        'status',
+        'no_ref',
+        'tgl_bayar_struk',
+        'potongan',
+        'bukti_bayar',
+        'created_by',
     ];
 
     protected $casts = [
-        'tanggal_bayar' => 'date',     // ← Ini yang penting
-        'nominal'       => 'decimal:2',
+        'tanggal_bayar'   => 'date',
+        'tgl_bayar_struk' => 'date',
+        'nominal'         => 'decimal:2',
+        'potongan'        => 'decimal:2',
     ];
 
-    public function siswa()
+    public function siswa(): \Illuminate\Database\Eloquent\Relations\BelongsTo
     {
         return $this->belongsTo(Siswa::class);
     }
 
-    public function jenisPembayaran()
+    public function jenisPembayaran(): \Illuminate\Database\Eloquent\Relations\BelongsTo
     {
         return $this->belongsTo(JenisPembayaran::class);
     }
 
-    public function tagihan()
+    public function tagihan(): \Illuminate\Database\Eloquent\Relations\BelongsTo
     {
         return $this->belongsTo(Tagihan::class);
     }
