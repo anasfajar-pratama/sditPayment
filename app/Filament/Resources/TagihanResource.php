@@ -30,8 +30,58 @@ class TagihanResource extends Resource
 
     public static function encryptTagihanId(int $id): string
     {
-        // base64url: ganti +/ → -_ dan strip padding = agar URL bersih
         return TagihanPublicController::encryptId($id);
+    }
+
+    // ─── Helper: build public share URL ──────────────────────────────────────
+
+    public static function publicShareUrl(Tagihan $record): string
+    {
+        return url('/tagihan/share/' . static::encryptTagihanId($record->id));
+    }
+
+    // ─── Helper: nama bulan dari angka ───────────────────────────────────────
+
+    protected static function namaBulan(string $bulan): string
+    {
+        return match ($bulan) {
+            '01' => 'Januari',  '02' => 'Februari', '03' => 'Maret',
+            '04' => 'April',    '05' => 'Mei',       '06' => 'Juni',
+            '07' => 'Juli',     '08' => 'Agustus',   '09' => 'September',
+            '10' => 'Oktober',  '11' => 'November',  '12' => 'Desember',
+            default => $bulan,
+        };
+    }
+
+    // ─── Helper: build URL WhatsApp dengan pesan otomatis ────────────────────
+
+    public static function whatsappUrl(Tagihan $record): string
+    {
+        $nama    = $record->siswa?->nama ?? 'Siswa';
+        $jenis   = $record->jenisPembayaran?->nama ?? '-';
+        $bulan   = static::namaBulan($record->bulan);
+        $tahun   = $record->tahun;
+        $nominal = 'Rp ' . number_format($record->nominal_tagihan, 0, ',', '.');
+        $status  = $record->status === 'lunas' ? 'LUNAS ✅' : 'BELUM DIBAYAR ⚠️';
+        $link    = static::publicShareUrl($record);
+
+        $pesan = implode("\n", [
+            "Yth. Orang Tua/Wali Murid *{$nama}*",
+            '',
+            'Berikut informasi tagihan sekolah:',
+            "• Jenis    : {$jenis}",
+            "• Periode  : {$bulan} {$tahun}",
+            "• Nominal  : {$nominal}",
+            "• Status   : {$status}",
+            '',
+            'Lihat detail tagihan:',
+            $link,
+            '',
+            'Terima kasih. 🙏',
+        ]);
+
+        // wa.me tanpa nomor → pengguna pilih kontak sendiri di WA
+        return 'https://wa.me/?text=' . urlencode($pesan);
     }
 
     // ─── Table ────────────────────────────────────────────────────────────────
@@ -49,13 +99,7 @@ class TagihanResource extends Resource
                 Tables\Columns\TextColumn::make('jenisPembayaran.nama')
                     ->label('Jenis'),
                 Tables\Columns\TextColumn::make('bulan')
-                    ->formatStateUsing(fn (string $state): string => match ($state) {
-                        '01' => 'Januari',  '02' => 'Februari', '03' => 'Maret',
-                        '04' => 'April',    '05' => 'Mei',       '06' => 'Juni',
-                        '07' => 'Juli',     '08' => 'Agustus',   '09' => 'September',
-                        '10' => 'Oktober',  '11' => 'November',  '12' => 'Desember',
-                        default => $state,
-                    }),
+                    ->formatStateUsing(fn (string $state): string => static::namaBulan($state)),
                 Tables\Columns\TextColumn::make('tahun'),
                 Tables\Columns\TextColumn::make('nominal_tagihan')
                     ->money('IDR')
@@ -107,7 +151,7 @@ class TagihanResource extends Resource
             ->headerActions([])
             ->actions([
 
-                // ── Cetak: icon saja, tooltip menggantikan label ──────────────
+                // ── Cetak: buka PDF di tab baru ───────────────────────────────
                 Action::make('cetak')
                     ->tooltip(fn (Tagihan $record) => $record->status === 'lunas'
                         ? 'Cetak Kuitansi'
@@ -126,26 +170,66 @@ class TagihanResource extends Resource
                     })
                     ->openUrlInNewTab(),
 
-                // ── Salin link: icon saja, clipboard via Alpine.js ────────────
+                // ── Salin Link publik (tanpa login) ───────────────────────────
+                //
+                // x-on:click  → copy ke clipboard (sync, satu baris JS — WAJIB satu baris,
+                //               newline di atribut HTML akan memotong ekspresi)
+                // wire:click  → Livewire action → notifikasi sukses
                 Action::make('salin_link')
                     ->tooltip('Salin Link Tagihan (tanpa login)')
                     ->icon('heroicon-o-clipboard-document')
                     ->color('gray')
                     ->iconButton()
-                    // Salin ke clipboard saat klik (harus client-side / user gesture)
                     ->extraAttributes(fn (Tagihan $record): array => [
-                        'x-data' => json_encode([
-                            'shareUrl' => url('/tagihan/share/' . static::encryptTagihanId($record->id)),
-                        ]),
-                        'x-on:click' => 'navigator.clipboard.writeText(shareUrl)',
+                        'x-on:click' => self::clipboardJs(static::publicShareUrl($record)),
                     ])
                     ->action(fn () => Notification::make()
                         ->title('Link berhasil disalin!')
-                        ->body('Bagikan link ini ke wali murid. Dapat dibuka tanpa login.')
+                        ->body('Bagikan ke wali murid — dapat dibuka tanpa login.')
                         ->success()
                         ->send()),
 
+                // ── Kirim via WhatsApp ────────────────────────────────────────
+                //
+                // Membuka wa.me tanpa nomor — pengguna tinggal pilih/ketik kontak
+                // di WhatsApp. Pesan sudah terisi otomatis: nama siswa, jenis,
+                // periode, nominal, status, dan link tagihan publik.
+                Action::make('kirim_wa')
+                    ->tooltip('Kirim Tagihan via WhatsApp')
+                    ->icon('heroicon-o-chat-bubble-left-ellipsis')
+                    ->color('success')
+                    ->iconButton()
+                    ->url(fn (Tagihan $record): string => static::whatsappUrl($record))
+                    ->openUrlInNewTab(),
+
             ]);
+    }
+
+    /**
+     * Hasilkan JS SATU BARIS untuk menyalin $url ke clipboard.
+     *
+     * ── Mengapa harus satu baris? ────────────────────────────────────────────
+     * Nilai atribut HTML (x-on:click="...") diparse oleh browser sebagai
+     * satu token — newline di dalamnya menyebabkan ekspresi terpotong dan
+     * operasi clipboard gagal total tanpa error di console.
+     * Heredoc PHP menghasilkan baris jamak dengan indentasi, sehingga TIDAK
+     * boleh dipakai di sini. Gunakan string biasa yang flat.
+     *
+     * ── Mengapa variabel __u dan __fb? ──────────────────────────────────────
+     * Nama pendek dan diawali __ menghindari tabrakan dengan variabel Alpine
+     * atau variabel lain yang mungkin sudah ada di scope yang sama.
+     *
+     * ── Dukungan browser ────────────────────────────────────────────────────
+     * - HTTPS (isSecureContext = true)  → navigator.clipboard.writeText()
+     * - HTTP / browser lama             → execCommand('copy') via textarea
+     */
+    protected static function clipboardJs(string $url): string
+    {
+        // addslashes: escape karakter ' dan \ agar aman di dalam JS single-quoted string
+        $safe = addslashes($url);
+
+        // Satu baris flat — tidak boleh ada newline sama sekali
+        return "var __u='{$safe}';function __fb(t){var ta=document.createElement('textarea');ta.value=t;ta.style.cssText='position:fixed;top:-9999px;left:-9999px;opacity:0;';document.body.appendChild(ta);ta.focus();ta.select();try{document.execCommand('copy')}catch(e){}document.body.removeChild(ta);}if(navigator.clipboard&&window.isSecureContext){navigator.clipboard.writeText(__u).catch(function(){__fb(__u)});}else{__fb(__u);}";
     }
 
     public static function getPages(): array

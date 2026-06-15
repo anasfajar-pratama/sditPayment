@@ -71,3 +71,7 @@ The Laravel framework is open-sourced software licensed under the [MIT license](
 9. pindahkan semua yang ada dalam public ke public_html
 10. karna direktori sejajar dengan html mala modifikasi index.php dengan /sditPayment/ sebelum nama folder dalam direktori.
 11. coba refresh link pada browser.
+
+## membuat akun filament
+1. php artisan make:filament-user
+2. php artisan make:filament-user --email=admin@bungacempaka.sch.id --password=admin1234
