@@ -108,11 +108,40 @@ class PembayaranSiswaPage extends Page
             return collect();
         }
 
-        return Pembayaran::with('jenisPembayaran')
+        return Pembayaran::with(['jenisPembayaran', 'tagihan'])
             ->where('siswa_id', $this->siswa_id)
             ->orderByDesc('tanggal_bayar')
             ->limit(15)
-            ->get();
+            ->get()
+            ->map(function ($p) {
+                $p->share_token = \DB::table('pdf_links')
+                    ->where('pdf_id', $p->id)
+                    ->where('jenis', 'kuitansi')
+                    ->where('expired_at', '>', now())
+                    ->value('token');
+
+                // Semua pembayaran untuk tagihan yang sama, urut tanggal
+                $semuaPembayaran = Pembayaran::where('tagihan_id', $p->tagihan_id)
+                    ->orderBy('tanggal_bayar')
+                    ->orderBy('id')
+                    ->get(['id', 'nominal', 'tanggal_bayar', 'status']);
+
+                $totalTerbayar = $semuaPembayaran->sum('nominal');
+
+                $sisaTagihan = ($p->tagihan && $p->tagihan->status !== 'lunas')
+                    ? $p->tagihan->nominal_tagihan
+                    : 0;
+
+                $p->total_tagihan  = $totalTerbayar + $sisaTagihan;
+                $p->total_terbayar = $totalTerbayar;
+                $p->sisa_tagihan   = $sisaTagihan;
+
+                // Nomor urut cicilan untuk pembayaran ini
+                $p->cicilan_list = $semuaPembayaran->values(); // index 0,1,2,...
+                $p->cicilan_ke   = $semuaPembayaran->search(fn($x) => $x->id === $p->id) + 1;
+
+                return $p;
+            });
     }
 
     // ─── Reactive: hitung persentase saat nominal diketik ─────────────────────
@@ -187,6 +216,32 @@ class PembayaranSiswaPage extends Page
         $pembayaran->setRelation('siswa', $this->selectedSiswa);
         $pembayaran->setRelation('jenisPembayaran', $tagihan->jenisPembayaran);
         KasHarian::postingDariPembayaran($pembayaran);
+        // Auto-posting ke kas harian
+        // try {
+        //     $pembayaran->setRelation('siswa', $this->selectedSiswa);
+        //     $pembayaran->setRelation('jenisPembayaran', $tagihan->jenisPembayaran);
+        //     KasHarian::postingDariPembayaran($pembayaran);
+        //     \Log::info('KasHarian posting OK', ['pembayaran_id' => $pembayaran->id]);
+        // } catch (\Throwable $e) {
+        //     \Log::error('KasHarian posting GAGAL', [
+        //         'message' => $e->getMessage(),
+        //         'file'    => $e->getFile(),
+        //         'line'    => $e->getLine(),
+        //     ]);
+        // }
+
+        // ===== GENERATE LINK KUITANSI =====
+        \DB::table('pdf_links')->insert([
+            'token'        => \Str::random(16),
+            'pdf_id'       => $pembayaran->id,
+            'original_url' => "/kuitansi/{$pembayaran->id}/pdf",
+            'jenis'        => 'kuitansi',
+            'jumlah_view'  => 0,
+            'expired_at'   => now()->addDays(30),
+            'created_at'   => now(),
+            'updated_at'   => now(),
+        ]);
+        // ==================================
 
         if ($lunas) {
             // Lunas: update status tagihan
@@ -226,5 +281,98 @@ class PembayaranSiswaPage extends Page
             '07' => 'Juli',    '08' => 'Agustus',   '09' => 'September',
             '10' => 'Oktober', '11' => 'November',  '12' => 'Desember',
         ][$bulan] ?? $bulan;
+    }
+
+    /**
+     * Generate URL WhatsApp dengan pesan berisi info pembayaran & link kuitansi.
+     */
+    public function getWhatsappUrl($bayar): string
+    {
+        $namaSiswa  = $this->selectedSiswa?->nama ?? '-';
+        $nisSiswa   = $this->selectedSiswa?->nis  ?? '-';
+        $jenis      = $bayar->jenisPembayaran?->nama ?? '-';
+        $bulanLabel = $bayar->bulan ? $this->getBulanLabel($bayar->bulan) : '-';
+        $tahun      = $bayar->tahun ?? '-';
+        $nominal    = 'Rp ' . number_format($bayar->nominal, 0, ',', '.');
+        $tanggal    = \Carbon\Carbon::parse($bayar->tanggal_bayar)->translatedFormat('d F Y');
+        $linkUrl    = $bayar->share_token ? url('/k/' . $bayar->share_token) : '-';
+
+        // Baris detail setiap cicilan
+        $barisCicilan = $bayar->cicilan_list->map(function ($c, $i) {
+            $tgl = \Carbon\Carbon::parse($c->tanggal_bayar)->translatedFormat('d F Y');
+            $nom = 'Rp ' . number_format($c->nominal, 0, ',', '.');
+            $no  = $i + 1;
+            return "  Cicilan {$no}  : {$nom} ({$tgl})";
+        })->implode("\n");
+
+        $totalTagihan  = 'Rp ' . number_format($bayar->total_tagihan,  0, ',', '.');
+        $totalTerbayar = 'Rp ' . number_format($bayar->total_terbayar, 0, ',', '.');
+        $sisa          = 'Rp ' . number_format($bayar->sisa_tagihan,   0, ',', '.');
+
+        if ($bayar->status === 'lunas') {
+            $pesan = implode("\n", [
+                'Assalamualaikum,',
+                '',
+                'Berikut kami sampaikan kuitansi pembayaran:',
+                '',
+                "Nama          : {$namaSiswa}",
+                "NIS           : {$nisSiswa}",
+                "Jenis         : {$jenis}",
+                "Periode       : {$bulanLabel} {$tahun}",
+                '',
+                'Rincian Pembayaran:',
+                $barisCicilan,
+                '',
+                "Total Tagihan : {$totalTagihan}",
+                "Total Terbayar: {$totalTerbayar}",
+                "Sisa Tagihan  : Rp 0",
+                "Status        : *Lunas*",
+                '',
+                'Silakan lihat kuitansi di tautan berikut:',
+                $linkUrl,
+                '',
+                'Terima kasih.',
+            ]);
+        } else {
+            $pesan = implode("\n", [
+                'Assalamualaikum,',
+                '',
+                'Berikut kami sampaikan bukti cicilan pembayaran:',
+                '',
+                "Nama          : {$namaSiswa}",
+                "NIS           : {$nisSiswa}",
+                "Jenis         : {$jenis}",
+                "Periode       : {$bulanLabel} {$tahun}",
+                '',
+                'Rincian Pembayaran:',
+                $barisCicilan,
+                '',
+                "Total Tagihan : {$totalTagihan}",
+                "Total Terbayar: {$totalTerbayar}",
+                "Sisa Tagihan  : {$sisa}",
+                "Status        : *Cicilan*",
+                '',
+                'Silakan lihat bukti cicilan di tautan berikut:',
+                $linkUrl,
+                '',
+                'Terima kasih.',
+            ]);
+        }
+
+        // Normalisasi no_hp ke format internasional Indonesia (628xxx)
+        $noHp = $this->selectedSiswa?->no_hp_orang_tua ?? '';
+        $noHp = preg_replace('/\D/', '', $noHp); // hapus non-angka
+        if (str_starts_with($noHp, '0')) {
+            $noHp = '62' . substr($noHp, 1);
+        } elseif (str_starts_with($noHp, '8')) {
+            $noHp = '62' . $noHp;
+        }
+
+        $teks = rawurlencode($pesan);
+
+        // Kalau no_hp terisi → langsung ke nomor; kalau kosong → pilih kontak manual
+        return $noHp
+            ? "https://wa.me/{$noHp}?text={$teks}"
+            : "https://wa.me/?text={$teks}";
     }
 }

@@ -29,7 +29,7 @@ class Pembayaran extends Model
         return $this->belongsTo(JenisPembayaran::class);
     }
 
-    public function tagihan(): BelongsTo
+    public function tagihan()
     {
         return $this->belongsTo(Tagihan::class);
     }

@@ -176,6 +176,41 @@
             flex: 1;
         }
 
+        /* ── DETAIL CICILAN ── */
+        .cicilan-detail {
+            margin-top: 7px;
+            /* border-top: 2px solid #dc2626; */
+            padding-top: 5px;
+        }
+        .cicilan-detail .cicilan-title {
+            font-size: 8px;
+            font-weight: bold;
+            text-transform: uppercase;
+            color: #555;
+            letter-spacing: 0.5px;
+            margin-bottom: 3px;
+        }
+        .cicilan-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 9px;
+        }
+        .cicilan-table td {
+            padding: 1.5px 4px;
+            vertical-align: middle;
+        }
+        .cicilan-table td.c-no  { width: 65px; color: #555; }
+        .cicilan-table td.c-tgl { color: #666; }
+        .cicilan-table td.c-nom { text-align: right; font-weight: 600; width: 90px; }
+        .cicilan-table tr.c-total td {
+            border-top: 1px solid #999;
+            font-weight: bold;
+            padding-top: 3px;
+        }
+        .cicilan-table tr.c-asli td  { color: #444; }
+        .cicilan-table tr.c-sisa td  { color: #dc2626; font-weight: bold; }
+        .cicilan-table tr.c-lunas td { color: #059669; font-weight: bold; }
+
         /* ── BOTTOM TABLE ── */
         .bottom-table { width: 100%; border-collapse: collapse; margin-top: 8px; }
         .bottom-table td { vertical-align: bottom; padding: 0 6px; }
@@ -232,18 +267,29 @@
 </div>
 
 {{-- NO & STATUS --}}
-<div class="doc-meta">
-    <span>
-        No: <strong>{{ $nomorKuitansi }}</strong>
-        &nbsp;
-        @if($isLunas)
-            <span class="badge badge-lunas">LUNAS</span>
-        @else
-            <span class="badge badge-cicilan">CICILAN</span>
-        @endif
-    </span>
-    <span>Tanggal cetak: {{ $cetakTanggal }}</span>
-</div>
+<table style="width:100%; border-collapse:collapse; font-size:9px;
+              color:#555; margin-bottom:8px;">
+    <tr>
+        <td style="text-align:left; vertical-align:middle; padding:0;">
+            No: <strong>{{ $nomorKuitansi }}</strong>
+            &nbsp;
+            @if($isLunas)
+                <span class="badge badge-lunas">LUNAS</span>
+            @else
+                <span class="badge badge-cicilan">CICILAN</span>
+                @if($historiCicilan->count() > 1)
+                    <span class="badge" style="background:#f3f4f6; color:#6b7280;
+                                               border:1px solid #d1d5db;">
+                        Cicilan ke-{{ $historiCicilan->count() }}
+                    </span>
+                @endif
+            @endif
+        </td>
+        <td style="text-align:right; vertical-align:middle; padding:0;">
+            Tanggal cetak: {{ $cetakTanggal }}
+        </td>
+    </tr>
+</table>
 
 {{-- MAIN LAYOUT --}}
 <div class="main-layout">
@@ -252,47 +298,71 @@
     <div class="col-left" style="width:100%;">
 
         <div class="body-kuitansi">
-            {{-- Sudah diterima dari --}}
-            <div class="row-k">
-                <span class="lbl">Sudah diterima dari</span>
-                <span class="sep">:</span>
-                <span class="val">
-                    {{ $pembayaran->siswa->nis }} – {{ $pembayaran->siswa->nama }}
-                    (Kelas {{ $pembayaran->siswa->kelas }})
+            <table style="width:100%; border-collapse:collapse; font-size:10px;">
+                <colgroup>
+                    <col style="width:115px;">
+                    <col style="width:10px;">
+                    <col>
+                </colgroup>
+                <tbody>
+                    <tr>
+                        <td style="padding:3px 0; color:#444; vertical-align:top;">Sudah diterima dari</td>
+                        <td style="padding:3px 5px; vertical-align:top;">:</td>
+                        <td style="padding:3px 0; font-weight:600;
+                                border-bottom:1px dotted #ccc; vertical-align:top;">
+                            {{ $pembayaran->siswa->nis }}  {{ $pembayaran->siswa->nama }}
+                            @if($pembayaran->siswa->is_calon)
+                                &nbsp;<span style="display:inline-block; font-size:7.5px; font-weight:bold;
+                                                background:#f3e8ff; color:#7e22ce;
+                                                border:1px solid #d8b4fe; border-radius:20px;
+                                                padding:1px 6px; vertical-align:middle;">
+                                    Calon Siswa{{ $pembayaran->siswa->calon_jenis ? ' – ' . $pembayaran->siswa->calon_jenis : '' }}
+                                </span>
+                            @else
+                                (Kelas {{ $pembayaran->siswa->kelas }})
+                            @endif
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="padding:3px 0; color:#444; vertical-align:top;">Banyaknya uang</td>
+                        <td style="padding:3px 5px; vertical-align:top;">:</td>
+                        <td style="padding:3px 0; font-weight:600;
+                                border-bottom:1px dotted #ccc; vertical-align:top;">
+                            {{ $terbilang }}
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="padding:3px 0; color:#444; vertical-align:top;">Untuk pembayaran</td>
+                        <td style="padding:3px 5px; vertical-align:top;">:</td>
+                        <td style="padding:3px 0; font-weight:600;
+                                border-bottom:1px dotted #ccc; vertical-align:top;">
+                            {{ $pembayaran->jenisPembayaran->nama }}
+                            @if($pembayaran->bulan) {{ $bulanLabels[$pembayaran->bulan] ?? $pembayaran->bulan }} @endif
+                            @if($pembayaran->tahun) {{ $pembayaran->tahun }} @endif
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="padding:6px 0 3px; color:#444; vertical-align:middle;">Jumlah Rp</td>
+                        <td style="padding:6px 5px 3px; vertical-align:middle;">:</td>
+                        <td style="padding:6px 0 3px; vertical-align:middle;font-weight:600;">
+                            <div class="box-rp">
+                                Rp{{ number_format($pembayaran->nominal, 0, ',', '.') }}
+                            </div>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+
+            {{-- NOTE CICILAN: 1 baris ringkas --}}
+            @if($historiCicilan->count() > 1 || $isCicilan)
+            <div style="margin-top:7px;">
+                <span style="font-size:8px; font-style:italic; color:#999;">
+                    Tagihan Rp{{ number_format($nominalAsli, 0, ',', '.') }};
+                    Pembayaran {{ $historiCicilan->map(fn($c) => 'Rp' . number_format($c->nominal, 0, ',', '.'))->implode(' + ') }};
+                    Sisa Tagihan Rp{{ number_format($sisaTagihan, 0, ',', '.') }}
                 </span>
             </div>
-
-            {{-- Banyaknya uang --}}
-            <div class="row-k">
-                <span class="lbl">Banyaknya uang</span>
-                <span class="sep">:</span>
-                <span class="val">{{ $terbilang }}</span>
-            </div>
-
-            {{-- Untuk pembayaran --}}
-            <div class="row-k">
-                <span class="lbl">Untuk pembayaran</span>
-                <span class="sep">:</span>
-                <span class="val">
-                    {{ $pembayaran->jenisPembayaran->nama }}
-                    @if($pembayaran->bulan) {{ $bulanLabels[$pembayaran->bulan] ?? $pembayaran->bulan }} @endif
-                    @if($pembayaran->tahun) {{ $pembayaran->tahun }} @endif
-                </span>
-            </div>
-
-            {{-- Jumlah Rp --}}
-            <div class="jumlah-row">
-                <span class="lbl">Jumlah Rp</span>
-                <span class="sep">:</span>
-                <div class="box-rp">Rp {{ number_format($pembayaran->nominal, 0, ',', '.') }}</div>
-            </div>
-
-            {{-- Terbilang --}}
-            <!-- <div class="terbilang-row">
-                <span class="lbl">Terbilang</span>
-                <span class="sep">:</span>
-                <span class="val">{{ $terbilang }}</span>
-            </div> -->
+            @endif
         </div>
 
         {{-- BOTTOM: TTD | STAMP | QR sejajar --}}

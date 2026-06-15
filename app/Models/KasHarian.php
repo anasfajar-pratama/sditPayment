@@ -44,6 +44,10 @@ class KasHarian extends Model
             return;
         }
 
+        // if (static::where('source', 'pembayaran')->where('source_id', $pembayaran->id)->exists()) {
+        //     \Log::warning('KasHarian: SKIP duplikat', ['source_id' => $pembayaran->id]);
+        //     return;  // ← ini kemungkinan besar penyebabnya
+        // }
         $namaJenis = strtolower($pembayaran->jenisPembayaran?->nama ?? '');
         $kodeAkun  = match(true) {
             str_contains($namaJenis, 'spp')          => '4101',
@@ -80,6 +84,7 @@ class KasHarian extends Model
             'tahun'      => $pembayaran->tahun,
             'created_by' => $pembayaran->created_by,
         ]);
+        // \Log::info('KasHarian: row DIBUAT', ['kas_id' => $record->id, 'akun_id' => $akun?->id]);
     }
 
     public static function hapusPostingPembayaran(int $pembayaranId): void
