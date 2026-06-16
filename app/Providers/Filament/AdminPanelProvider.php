@@ -29,7 +29,7 @@ class AdminPanelProvider extends PanelProvider
             ->brandLogo(new \Illuminate\Support\HtmlString(
                 '<div class="sit-brand" style="display:flex;align-items:center;gap:10px;">' .
                 '<img src="' . asset('images/logo-sit.png') . '" alt="Logo SIT" style="height:2.5rem;">' .
-                '<span style="font-weight:700;font-size:0.9rem;white-space:nowrap;">Finance SIT Bunga Cempaka</span>' .
+                '<span style="font-weight:700;font-size:0.9rem;white-space:nowrap;">Finance Bunga Cempaka</span>' .
                 '</div>'
             ))
             ->brandLogoHeight('2.5rem')
@@ -50,7 +50,7 @@ class AdminPanelProvider extends PanelProvider
                             alt="Logo SIT" 
                             style="height:5rem; display:block; margin:0 auto 0.75rem;">
                         <div style="font-weight:700; font-size:1.2rem; color:#111827;">
-                            Finance SIT Bunga Cempaka
+                            Finance Bunga Cempaka
                         </div>
                         <div style="font-size:0.8rem; color:#6b7280; margin-top:0.25rem;">
                             Sistem Informasi Keuangan
@@ -65,7 +65,7 @@ class AdminPanelProvider extends PanelProvider
             ->discoverResources(in: app_path('Filament/Resources'), for: 'App\\Filament\\Resources')
             ->discoverPages(in: app_path('Filament/Pages'), for: 'App\\Filament\\Pages')
             ->pages([
-                Pages\Dashboard::class,
+                \App\Filament\Pages\Dashboard::class,
                 \App\Filament\Pages\PembayaranSiswaPage::class,
                 \App\Filament\Pages\KasHarianPage::class,
                 \App\Filament\Pages\RekapBulananPage::class,  

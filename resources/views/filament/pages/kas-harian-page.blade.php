@@ -2,11 +2,10 @@
     <div style="display:flex;flex-direction:column;gap:1.5rem;">
 
         {{-- ══════════════════════════════════════════════════════════
-             FILTER BAR — mode tabs + input sesuai mode + saldo awal
+             FILTER BAR
         ══════════════════════════════════════════════════════════════ --}}
         <div style="display:flex;flex-wrap:wrap;align-items:center;gap:0.75rem;">
 
-            {{-- Tab mode filter --}}
             <div style="display:flex;align-items:center;border-radius:0.5rem;border:1px solid #d1d5db;
                         overflow:hidden;background:#f9fafb;flex-shrink:0;">
                 @foreach([
@@ -27,7 +26,6 @@
                 @endforeach
             </div>
 
-            {{-- Input: BULANAN --}}
             @if ($filterMode === 'bulanan')
                 <div style="display:flex;align-items:center;border-radius:0.5rem;border:1px solid #d1d5db;
                             box-shadow:0 1px 2px rgba(0,0,0,0.05);overflow:hidden;background:#fff;">
@@ -52,7 +50,6 @@
                     </select>
                 </div>
 
-            {{-- Input: HARIAN --}}
             @elseif ($filterMode === 'harian')
                 <div style="display:flex;align-items:center;border-radius:0.5rem;border:1px solid #d1d5db;
                             box-shadow:0 1px 2px rgba(0,0,0,0.05);overflow:hidden;background:#fff;">
@@ -64,7 +61,6 @@
                                color:#374151;outline:none;cursor:pointer;">
                 </div>
 
-            {{-- Input: 7 HARI --}}
             @elseif ($filterMode === '7hari')
                 <div style="display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap;">
                     <div style="display:flex;align-items:center;border-radius:0.5rem;border:1px solid #d1d5db;
@@ -87,7 +83,6 @@
                     @endif
                 </div>
 
-            {{-- Input: RENTANG --}}
             @elseif ($filterMode === 'range')
                 <div style="display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap;">
                     <div style="display:flex;align-items:center;border-radius:0.5rem;border:1px solid #d1d5db;
@@ -112,7 +107,6 @@
                 </div>
             @endif
 
-            {{-- Badge saldo awal — hanya mode bulanan --}}
             @if ($filterMode === 'bulanan')
                 @if ($this->hasSaldoAwal)
                     <div style="display:inline-flex;align-items:center;gap:0.5rem;border-radius:0.5rem;
@@ -134,12 +128,41 @@
         </div>
 
         {{-- ══════════════════════════════════════════════════════════
+             SUMMARY KAS HARI INI
+        ══════════════════════════════════════════════════════════════ --}}
+        @php
+            $kasHariIni = $this->kasHariIni;
+            $kasPositif = $kasHariIni >= 0;
+        @endphp
+        <div style="display:flex;align-items:center;gap:0.75rem;padding:0.875rem 1.25rem;
+                    border-radius:0.75rem;border:1px solid {{ $kasPositif ? '#bbf7d0' : '#fecaca' }};
+                    background:{{ $kasPositif ? '#f0fdf4' : '#fff1f2' }};">
+            <div style="display:flex;align-items:center;justify-content:center;width:2.25rem;height:2.25rem;
+                        border-radius:0.5rem;background:{{ $kasPositif ? '#dcfce7' : '#fee2e2' }};flex-shrink:0;">
+                <x-heroicon-o-banknotes style="width:1.1rem;height:1.1rem;color:{{ $kasPositif ? '#16a34a' : '#dc2626' }};" />
+            </div>
+            <div>
+                <div style="font-size:0.7rem;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;
+                            color:{{ $kasPositif ? '#15803d' : '#b91c1c' }};margin-bottom:0.15rem;">
+                    Kas Hari Ini
+                </div>
+                <div style="font-size:1rem;font-weight:800;font-variant-numeric:tabular-nums;
+                            color:{{ $kasPositif ? '#15803d' : '#b91c1c' }};">
+                    {{ $kasPositif ? '' : '−' }}Rp {{ number_format(abs($kasHariIni), 0, ',', '.') }}
+                </div>
+            </div>
+            <div style="margin-left:auto;font-size:0.75rem;color:{{ $kasPositif ? '#4ade80' : '#f87171' }};
+                        font-weight:500;text-align:right;white-space:nowrap;">
+                {{ now()->translatedFormat('d F Y') }}
+            </div>
+        </div>
+
+        {{-- ══════════════════════════════════════════════════════════
              TABEL KAS HARIAN
         ══════════════════════════════════════════════════════════════ --}}
         <div style="background:#fff;border-radius:1rem;border:1px solid #f1f5f9;
                     box-shadow:0 1px 4px rgba(0,0,0,0.06);overflow:hidden;">
 
-            {{-- Section heading --}}
             <div style="padding:1rem 1.5rem;border-bottom:1px solid #f1f5f9;
                         display:flex;align-items:center;justify-content:space-between;gap:0.5rem;flex-wrap:wrap;">
                 <h2 style="font-size:1rem;font-weight:700;color:#1f2937;margin:0;">
@@ -180,7 +203,7 @@
                                 <th style="padding:0.75rem 1rem;text-align:right;font-size:0.7rem;
                                            font-weight:600;letter-spacing:0.05em;text-transform:uppercase;
                                            width:9rem;">Saldo</th>
-                                <th style="padding:0.75rem 1rem;width:2.5rem;"></th>
+                                <th style="padding:0.75rem 1rem;width:4rem;"></th>
                             </tr>
                         </thead>
                         <tbody>
@@ -234,18 +257,30 @@
                                                color:#111827;font-variant-numeric:tabular-nums;">
                                         {{ number_format($e['saldo'], 0, ',', '.') }}
                                     </td>
-                                    <td style="padding:0.75rem 1rem;text-align:center;">
+                                    <td style="padding:0.75rem 0.5rem;text-align:center;">
                                         @if ($e['source'] === 'manual')
-                                            <button
-                                                wire:click="deleteEntry({{ $e['id'] }})"
-                                                wire:confirm="Yakin hapus jurnal ini?"
-                                                style="background:none;border:none;cursor:pointer;
-                                                       color:#d1d5db;padding:0.25rem;"
-                                                onmouseover="this.style.color='#ef4444'"
-                                                onmouseout="this.style.color='#d1d5db'"
-                                                title="Hapus">
-                                                <x-heroicon-o-trash style="width:1rem;height:1rem;" />
-                                            </button>
+                                            <div style="display:flex;align-items:center;gap:0.25rem;justify-content:center;">
+                                                {{-- Tombol Edit --}}
+                                                <button
+                                                    wire:click="mountAction('editKas', { id: {{ $e['id'] }} })"
+                                                    style="background:none;border:none;cursor:pointer;
+                                                           color:#d1d5db;padding:0.25rem;border-radius:0.25rem;"
+                                                    onmouseover="this.style.color='#2563eb';this.style.background='#eff6ff'"
+                                                    onmouseout="this.style.color='#d1d5db';this.style.background='none'"
+                                                    title="Edit">
+                                                    <x-heroicon-o-pencil-square style="width:1rem;height:1rem;" />
+                                                </button>
+                                                {{-- Tombol Hapus --}}
+                                                <button
+                                                    wire:click="mountAction('deleteKas', { id: {{ $e['id'] }} })"
+                                                    style="background:none;border:none;cursor:pointer;
+                                                           color:#d1d5db;padding:0.25rem;border-radius:0.25rem;"
+                                                    onmouseover="this.style.color='#ef4444';this.style.background='#fff1f2'"
+                                                    onmouseout="this.style.color='#d1d5db';this.style.background='none'"
+                                                    title="Hapus">
+                                                    <x-heroicon-o-trash style="width:1rem;height:1rem;" />
+                                                </button>
+                                            </div>
                                         @endif
                                     </td>
                                 </tr>
@@ -309,6 +344,82 @@
                     </span>
                 </div>
 
+            @endif
+        </div>
+
+        {{-- ══════════════════════════════════════════════════════════
+             LOG AKTIVITAS
+        ══════════════════════════════════════════════════════════════ --}}
+        <div style="background:#fff;border-radius:1rem;border:1px solid #f1f5f9;
+                    box-shadow:0 1px 4px rgba(0,0,0,0.06);overflow:hidden;">
+
+            <div style="padding:1rem 1.5rem;border-bottom:1px solid #f1f5f9;
+                        display:flex;align-items:center;justify-content:space-between;">
+                <h2 style="font-size:0.9rem;font-weight:700;color:#1f2937;margin:0;
+                            display:flex;align-items:center;gap:0.5rem;">
+                    <x-heroicon-o-clipboard-document-list style="width:1rem;height:1rem;color:#6b7280;" />
+                    Log Aktivitas
+                </h2>
+                <span style="font-size:0.75rem;color:#9ca3af;">50 entri terakhir</span>
+            </div>
+
+            @if (count($this->logEntries) === 0)
+                <div style="padding:2rem 1.5rem;text-align:center;color:#9ca3af;font-size:0.875rem;">
+                    Belum ada aktivitas tercatat.
+                </div>
+            @else
+                <div style="overflow-x:auto;">
+                    <table style="width:100%;border-collapse:collapse;font-size:0.8rem;">
+                        <thead>
+                            <tr style="background:#f8fafc;">
+                                <th style="padding:0.6rem 1rem;text-align:left;font-size:0.68rem;
+                                           font-weight:600;letter-spacing:0.05em;text-transform:uppercase;
+                                           color:#6b7280;white-space:nowrap;">Waktu</th>
+                                <th style="padding:0.6rem 1rem;text-align:left;font-size:0.68rem;
+                                           font-weight:600;letter-spacing:0.05em;text-transform:uppercase;
+                                           color:#6b7280;width:5rem;">Aksi</th>
+                                <th style="padding:0.6rem 1rem;text-align:left;font-size:0.68rem;
+                                           font-weight:600;letter-spacing:0.05em;text-transform:uppercase;
+                                           color:#6b7280;">Keterangan</th>
+                                <th style="padding:0.6rem 1rem;text-align:left;font-size:0.68rem;
+                                           font-weight:600;letter-spacing:0.05em;text-transform:uppercase;
+                                           color:#6b7280;width:8rem;">Admin</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach ($this->logEntries as $log)
+                                @php
+                                    $aksiConfig = match($log['aksi']) {
+                                        'buat'  => ['label' => 'Buat',  'bg' => '#dcfce7', 'color' => '#15803d'],
+                                        'edit'  => ['label' => 'Edit',  'bg' => '#dbeafe', 'color' => '#1d4ed8'],
+                                        'hapus' => ['label' => 'Hapus', 'bg' => '#fee2e2', 'color' => '#b91c1c'],
+                                        default => ['label' => $log['aksi'], 'bg' => '#f3f4f6', 'color' => '#374151'],
+                                    };
+                                @endphp
+                                <tr style="border-bottom:1px solid #f8fafc;"
+                                    onmouseover="this.style.background='#fafafa'"
+                                    onmouseout="this.style.background='transparent'">
+                                    <td style="padding:0.65rem 1rem;color:#9ca3af;white-space:nowrap;font-size:0.75rem;">
+                                        {{ $log['waktu'] }}
+                                    </td>
+                                    <td style="padding:0.65rem 1rem;">
+                                        <span style="display:inline-block;padding:0.15rem 0.5rem;border-radius:0.3rem;
+                                                     font-size:0.7rem;font-weight:700;
+                                                     background:{{ $aksiConfig['bg'] }};color:{{ $aksiConfig['color'] }};">
+                                            {{ $aksiConfig['label'] }}
+                                        </span>
+                                    </td>
+                                    <td style="padding:0.65rem 1rem;color:#374151;">
+                                        {{ $log['keterangan'] ?? '—' }}
+                                    </td>
+                                    <td style="padding:0.65rem 1rem;color:#6b7280;font-size:0.75rem;">
+                                        {{ $log['admin'] }}
+                                    </td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
             @endif
         </div>
 

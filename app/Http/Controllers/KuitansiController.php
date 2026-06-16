@@ -20,6 +20,26 @@ class KuitansiController extends Controller
     // ── Method baru (publik, untuk barcode scan) ──────────────
     public function pdf(Pembayaran $pembayaran)
     {
+        $token = request('_token');
+
+        \DB::table('pdf_links')
+        ->where('token', $token)
+        ->increment('jumlah_view');
+
+        if (!request()->has('_internal')) {
+            abort(404);
+        }
+
+        $link = \DB::table('pdf_links')
+            ->where('token', $token)
+            ->where('jenis', 'kuitansi')
+            ->where('expired_at', '>', now())
+            ->first();
+
+        if($pembayaran->id <> $link->pdf_id){
+            abort(404);
+        }
+
         $data = $this->buildData($pembayaran);
         $pdf = Pdf::loadView('pdf.kuitansi', $data)->setPaper('a5', 'landscape');
         $filename = 'kuitansi-' . $data['pembayaran']->siswa->nis . '-' . $data['pembayaran']->id . '.pdf';
@@ -97,7 +117,7 @@ class KuitansiController extends Controller
             'cetakTanggal'   => now()->format('d M Y H:i'),
             'nomorKuitansi'  => $nomorKuitansi,
             'urlKuitansi'    => $urlKuitansi,
-            'terbilang' => $terbilang,
+            'terbilang'      => $terbilang
         ];
     }
 

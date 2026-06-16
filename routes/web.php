@@ -32,10 +32,21 @@ Route::middleware('auth')->group(function () {
 
     Route::get('/kuitansi/{pembayaran}', [KuitansiController::class, 'cetak'])
     ->name('kuitansi.cetak');
+    
 });
 
 Route::get('/kuitansi/{pembayaran}/pdf', [KuitansiController::class, 'pdf'])
      ->name('kuitansi.pdf');
+Route::get('/k/{token}', function (string $token) {
+    $link = \DB::table('pdf_links')
+            ->where('token', $token)
+            ->where('jenis', 'kuitansi')
+            ->where('expired_at', '>', now())
+            ->first();
+    abort_if(!$link, 404);
+        
+    return redirect($link->original_url . '?_internal=1&_token='.$token);
+})->name('pdf.kuitansi');
 
 
 Route::get('/tagihan/{tagihan}/pdf', [TagihanController::class, 'pdf'])
