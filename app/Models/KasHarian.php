@@ -97,35 +97,72 @@ class KasHarian extends Model
     // ─── Posting dari donasi donatur ─────────────────────────────────────────
     // Akun 7 = Pendapatan Donasi (4104)
 
-    public static function postingDariDonasi(Donasi $donasi): void
-    {
-        // Cegah duplikasi
-        if (static::where('source', 'donasi')->where('source_id', $donasi->id)->exists()) {
-            return;
-        }
+    // public static function postingDariDonasi(Donasi $donasi): void
+    // {
+    //     // Cegah duplikasi
+    //     if (static::where('source', 'donasi')->where('source_id', $donasi->id)->exists()) {
+    //         return;
+    //     }
 
-        $donatur = $donasi->donatur;
-        $uraian  = "Donasi — {$donatur->nama}"
-                 . ($donasi->note ? " ({$donasi->note})" : '');
+    //     $donatur = $donasi->donatur;
+    //     $uraian  = "Donasi — {$donatur->nama}"
+    //              . ($donasi->note ? " ({$donasi->note})" : '');
 
-        static::create([
-            'tanggal'    => $donasi->tanggal,
-            'uraian'     => $uraian,
-            'akun_id'    => 7,          // Pendapatan Donasi (4104)
-            'debit'      => $donasi->nominal,
-            'kredit'     => null,
-            'source'     => 'donasi',
-            'source_id'  => $donasi->id,
-            'bulan'      => $donasi->bulan,
-            'tahun'      => $donasi->tahun,
-            'created_by' => $donasi->created_by,
-        ]);
-    }
+    //     static::create([
+    //         'tanggal'    => $donasi->tanggal,
+    //         'uraian'     => $uraian,
+    //         'akun_id'    => 7,          // Pendapatan Donasi (4104)
+    //         'debit'      => $donasi->nominal,
+    //         'kredit'     => null,
+    //         'source'     => 'donasi',
+    //         'source_id'  => $donasi->id,
+    //         'bulan'      => $donasi->bulan,
+    //         'tahun'      => $donasi->tahun,
+    //         'created_by' => $donasi->created_by,
+    //     ]);
+    // }
 
     public static function hapusPostingDonasi(int $donasiId): void
     {
         static::where('source', 'donasi')
               ->where('source_id', $donasiId)
+              ->delete();
+    }
+
+    // ─── Posting dari pembelian token listrik ─────────────────────────────────
+    // akun_id = 9  |  sub_kategori = "TOKEN & PULSA"  |  sisi KREDIT (pengeluaran)
+
+    public static function postingDariToken(TokenPembelian $pembelian): void
+    {
+        // Cegah duplikasi
+        if (static::where('source', 'token')->where('source_id', $pembelian->id)->exists()) {
+            return;
+        }
+
+        $ruangan = $pembelian->tokenListrik?->nama_ruangan ?? 'Token Listrik';
+        $nomorToken = $pembelian->nomor_token ?? '';
+        $uraian  = 'TOKEN ' . strtoupper($ruangan)
+                 . ($nomorToken ? " ({$nomorToken})" : '');
+
+        static::create([
+            'tanggal'      => $pembelian->tanggal,
+            'uraian'       => $uraian,
+            'sub_kategori' => 'TOKEN & PULSA',
+            'akun_id'      => 9,
+            'debit'        => null,
+            'kredit'       => $pembelian->nominal,
+            'source'       => 'token',
+            'source_id'    => $pembelian->id,
+            'bulan'        => $pembelian->bulan,
+            'tahun'        => $pembelian->tahun,
+            'created_by'   => $pembelian->created_by,
+        ]);
+    }
+
+    public static function hapusPostingToken(int $pembelianId): void
+    {
+        static::where('source', 'token')
+              ->where('source_id', $pembelianId)
               ->delete();
     }
 }
