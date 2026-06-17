@@ -218,7 +218,7 @@
         .bottom-table td.stamp-cell { text-align: center; }
         .bottom-table td.qr-cell { width: 125px; text-align: center; }
         .ttd-space { height: 46px; }
-        .ttd-img { max-height: 40px; max-width: 100px; margin-bottom: 2px; }
+        .ttd-img { max-height: 55px; max-width: 140px; margin-bottom: 2px; }
         .garis-ttd { border-top: 1px solid #333; padding-top: 3px; font-weight: bold; font-size: 9px; }
         .stamp {
             display: inline-block;
@@ -376,7 +376,7 @@
                     </div>
                     <div class="ttd-space">
                         @if ($ttdBendahara)
-                            <img class="ttd-img" src="data:image/jpeg;base64,{{ $ttdBendahara }}" alt="TTD Bendahara">
+                            <img class="ttd-img" src="{{ $ttdBendahara }}" alt="TTD Bendahara">
                         @endif
                     </div>
                     <div class="garis-ttd">Rita Erninda S.M<br>Bendahara</div>
@@ -387,13 +387,13 @@
                     <div style="font-size:9px; margin-bottom:2px;"></div>
                     <div class="ttd-space">
                         @if ($ttdKepsek)
-                            <img class="ttd-img" src="data:image/jpeg;base64,{{ $ttdKepsek }}" alt="TTD Kepala Sekolah">
+                            <img class="ttd-img" src="{{ $ttdKepsek }}" alt="TTD Kepala Sekolah">
                         @endif
                     </div>
                     <div class="garis-ttd">Hj. Suci Andari S. S. , M. Hum<br>
                     Kepala Sekolah</div>
                 </td>
-<td class="stamp-cell"><td>
+<td class="stamp-cell"></td>
                 {{-- QR Code --}}
                 <td class="qr-cell">
                     <img class="qr-img"

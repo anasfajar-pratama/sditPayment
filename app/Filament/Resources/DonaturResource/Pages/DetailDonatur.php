@@ -62,8 +62,7 @@ class DetailDonatur extends Page implements HasForms
                         ->label('Tanggal Donasi')
                         ->required()
                         ->default(now()->toDateString())
-                        ->native(false)
-                        ->maxDate(now()->toDateString()),
+                        ->native(false),
 
                     TextInput::make('nominal')
                         ->label('Nominal (Rp)')

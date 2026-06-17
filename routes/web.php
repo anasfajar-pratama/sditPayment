@@ -7,6 +7,7 @@ use App\Http\Controllers\TagihanController;
 use App\Http\Controllers\TagihanPublicController;
 use App\Http\Controllers\KasHarianPrintController;
 use App\Http\Controllers\KaryawanPdfController;
+use App\Http\Controllers\SlipGajiController;
 
 
 Route::get('/', function () {
@@ -32,6 +33,9 @@ Route::middleware('auth')->group(function () {
 
     Route::get('/kuitansi/{pembayaran}', [KuitansiController::class, 'cetak'])
     ->name('kuitansi.cetak');
+
+    Route::get('/slip-gaji/pdf', [SlipGajiController::class, 'cetak'])
+        ->name('slip-gaji.pdf');
     
 });
 
