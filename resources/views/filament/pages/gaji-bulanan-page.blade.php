@@ -72,7 +72,7 @@
              RINGKASAN TOTAL
         ══════════════════════════════════════════════════════════════ --}}
         <div style="display:flex;flex-wrap:wrap;gap:1rem;">
-            <div style="flex:1;min-width:10rem;padding:1rem 1.5rem;background:#f0fdf4;
+            <div style="flex:1;min-width:8rem;padding:1rem 1.25rem;background:#f0fdf4;
                         border:1px solid #bbf7d0;border-radius:0.75rem;">
                 <div style="font-size:0.7rem;font-weight:600;color:#15803d;letter-spacing:0.05em;
                              text-transform:uppercase;margin-bottom:0.25rem;">Total Guru</div>
@@ -80,11 +80,27 @@
                     {{ count($gajiForm) }}
                 </div>
             </div>
-            <div style="flex:2;min-width:14rem;padding:1rem 1.5rem;background:#eff6ff;
+            <div style="flex:2;min-width:10rem;padding:1rem 1.25rem;background:#eff6ff;
                         border:1px solid #bfdbfe;border-radius:0.75rem;">
                 <div style="font-size:0.7rem;font-weight:600;color:#1d4ed8;letter-spacing:0.05em;
-                             text-transform:uppercase;margin-bottom:0.25rem;">Total Gaji Bulan Ini</div>
-                <div style="font-size:1.75rem;font-weight:800;color:#1e3a8a;">
+                             text-transform:uppercase;margin-bottom:0.25rem;">Total Gaji Kotor</div>
+                <div style="font-size:1.5rem;font-weight:800;color:#1e3a8a;">
+                    Rp {{ number_format($this->totalNominal(), 0, ',', '.') }}
+                </div>
+            </div>
+            <div style="flex:1;min-width:8rem;padding:1rem 1.25rem;background:#fef2f2;
+                        border:1px solid #fecaca;border-radius:0.75rem;">
+                <div style="font-size:0.7rem;font-weight:600;color:#dc2626;letter-spacing:0.05em;
+                             text-transform:uppercase;margin-bottom:0.25rem;">Total Potongan</div>
+                <div style="font-size:1.5rem;font-weight:800;color:#991b1b;">
+                    Rp {{ number_format($this->totalPotongan(), 0, ',', '.') }}
+                </div>
+            </div>
+            <div style="flex:2;min-width:10rem;padding:1rem 1.25rem;background:#f0fdf4;
+                        border:1px solid #86efac;border-radius:0.75rem;">
+                <div style="font-size:0.7rem;font-weight:600;color:#15803d;letter-spacing:0.05em;
+                             text-transform:uppercase;margin-bottom:0.25rem;">Total Bersih Diterima</div>
+                <div style="font-size:1.75rem;font-weight:800;color:#14532d;">
                     Rp {{ number_format($this->totalGaji(), 0, ',', '.') }}
                 </div>
             </div>
@@ -130,11 +146,14 @@
                                                font-weight:600;letter-spacing:0.05em;text-transform:uppercase;
                                                width:6.5rem;">Hari Masuk</th>
                                     <th style="padding:0.75rem 1rem;text-align:left;font-size:0.7rem;
-                                               font-weight:600;letter-spacing:0.05em;text-transform:uppercase;
-                                               width:12rem;">Nominal Gaji (Rp)</th>
+                                                font-weight:600;letter-spacing:0.05em;text-transform:uppercase;
+                                                width:10rem;">Nominal Gaji (Rp)</th>
                                     <th style="padding:0.75rem 1rem;text-align:left;font-size:0.7rem;
-                                               font-weight:600;letter-spacing:0.05em;text-transform:uppercase;
-                                               width:11rem;">Keterangan</th>
+                                                font-weight:600;letter-spacing:0.05em;text-transform:uppercase;
+                                                width:9rem;">Potongan (Rp)</th>
+                                    <th style="padding:0.75rem 1rem;text-align:left;font-size:0.7rem;
+                                                font-weight:600;letter-spacing:0.05em;text-transform:uppercase;
+                                                width:10rem;">Keterangan</th>
                                     <th style="padding:0.75rem 1rem;text-align:center;font-size:0.7rem;
                                                font-weight:600;letter-spacing:0.05em;text-transform:uppercase;
                                                width:7rem;">Status</th>
@@ -189,6 +208,24 @@
                                             </div>
                                         </td>
 
+                                        {{-- Input potongan --}}
+                                        <td style="padding:0.5rem 1rem;">
+                                            <div style="display:flex;align-items:center;
+                                                        border:1.5px solid #fecaca;border-radius:0.5rem;
+                                                        overflow:hidden;background:#fff;">
+                                                <span style="padding:0 0.5rem;font-size:0.75rem;
+                                                             color:#dc2626;border-right:1px solid #fecaca;
+                                                             background:#fef2f2;white-space:nowrap;">Rp</span>
+                                                <input type="text" inputmode="numeric"
+                                                    wire:model.defer="gajiForm.{{ $karyawanId }}.potongan"
+                                                    placeholder="0"
+                                                    onkeyup="this.value=this.value.replace(/[^0-9]/g,'')"
+                                                    style="flex:1;border:none;padding:0.45rem 0.625rem;
+                                                           font-size:0.8rem;color:#dc2626;outline:none;
+                                                           background:transparent;">
+                                            </div>
+                                        </td>
+
                                         {{-- Keterangan --}}
                                         <td style="padding:0.5rem 1rem;">
                                             <input type="text"
@@ -223,11 +260,33 @@
                             <tfoot>
                                 <tr style="background:#f8fafc;border-top:2px solid #e5e7eb;">
                                     <td colspan="4"
-                                        style="padding:0.875rem 1rem;text-align:right;
+                                        style="padding:0.625rem 1rem;text-align:right;
                                                font-size:0.8rem;font-weight:600;color:#6b7280;">
-                                        Total
+                                        Total Gaji
                                     </td>
-                                    <td style="padding:0.875rem 1rem;font-size:0.875rem;font-weight:800;color:#1e3a8a;">
+                                    <td style="padding:0.625rem 1rem;font-size:0.875rem;font-weight:800;color:#1e3a8a;">
+                                        Rp {{ number_format($this->totalNominal(), 0, ',', '.') }}
+                                    </td>
+                                    <td colspan="2"></td>
+                                </tr>
+                                <tr style="background:#fef2f2;border-top:1px solid #fecaca;">
+                                    <td colspan="4"
+                                        style="padding:0.625rem 1rem;text-align:right;
+                                               font-size:0.8rem;font-weight:600;color:#dc2626;">
+                                        Total Potongan
+                                    </td>
+                                    <td style="padding:0.625rem 1rem;font-size:0.875rem;font-weight:800;color:#dc2626;">
+                                        Rp {{ number_format($this->totalPotongan(), 0, ',', '.') }}
+                                    </td>
+                                    <td colspan="2"></td>
+                                </tr>
+                                <tr style="background:#f0fdf4;border-top:2px solid #86efac;">
+                                    <td colspan="4"
+                                        style="padding:0.875rem 1rem;text-align:right;
+                                               font-size:0.875rem;font-weight:700;color:#15803d;">
+                                        Total Bersih
+                                    </td>
+                                    <td style="padding:0.875rem 1rem;font-size:1rem;font-weight:800;color:#15803d;">
                                         Rp {{ number_format($this->totalGaji(), 0, ',', '.') }}
                                     </td>
                                     <td colspan="2"></td>
@@ -274,6 +333,7 @@
             <ul style="font-size:0.75rem;color:#1e40af;margin:0;padding-left:1.1rem;
                        list-style-type:disc;display:flex;flex-direction:column;gap:0.25rem;">
                 <li>Jumlah <strong>Hari Masuk</strong> dihitung otomatis dari data absen harian (status Hadir + Dinas).</li>
+                <li>Isi <strong>Potongan</strong> jika ada potongan gaji (alfa, terlambat, dll).</li>
                 <li>Pastikan absen bulan ini sudah lengkap sebelum input gaji.</li>
                 <li>Klik <strong>"Tandai Sudah Dibayar"</strong> setelah transfer/pembayaran dilakukan.</li>
                 <li>Edit gaji cukup ubah nominal lalu klik <strong>"Simpan Perubahan"</strong>.</li>

@@ -87,6 +87,7 @@ class GajiBulananPage extends Page
                 'jabatan'     => $k->jabatan,
                 'hari_masuk'  => $hariMasuk,
                 'nominal'     => $rec ? (string) (int) $rec->nominal_gaji : '',
+                'potongan'    => $rec ? (string) (int) $rec->potongan : '',
                 'keterangan'  => $rec?->keterangan ?? '',
                 'status_bayar'=> $rec?->status_bayar ?? 'belum',
             ];
@@ -102,6 +103,7 @@ class GajiBulananPage extends Page
     {
         foreach ($this->gajiForm as $karyawanId => $data) {
             $nominal = preg_replace('/[^0-9]/', '', $data['nominal'] ?? '');
+            $potongan = preg_replace('/[^0-9]/', '', $data['potongan'] ?? '');
             if ($nominal === '' || $nominal === '0') continue;
 
             GajiBulanan::updateOrCreate(
@@ -113,6 +115,7 @@ class GajiBulananPage extends Page
                 [
                     'hari_masuk'   => $data['hari_masuk'],
                     'nominal_gaji' => (int) $nominal,
+                    'potongan'     => (int) ($potongan ?: 0),
                     'keterangan'   => $data['keterangan'] ?? null,
                     'status_bayar' => $data['status_bayar'] ?? 'belum',
                     'created_by'   => auth()->id(),
@@ -157,11 +160,24 @@ class GajiBulananPage extends Page
                 '09'=>'September','10'=>'Oktober','11'=>'November','12'=>'Desember'][$bulan] ?? $bulan;
     }
 
-    public function totalGaji(): int
+    public function totalNominal(): int
     {
         return (int) array_sum(array_map(
             fn ($d) => (int) preg_replace('/[^0-9]/', '', $d['nominal'] ?? '0'),
             $this->gajiForm
         ));
+    }
+
+    public function totalPotongan(): int
+    {
+        return (int) array_sum(array_map(
+            fn ($d) => (int) preg_replace('/[^0-9]/', '', $d['potongan'] ?? '0'),
+            $this->gajiForm
+        ));
+    }
+
+    public function totalGaji(): int
+    {
+        return $this->totalNominal() - $this->totalPotongan();
     }
 }

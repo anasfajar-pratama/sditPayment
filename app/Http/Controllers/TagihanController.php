@@ -8,6 +8,13 @@ use Barryvdh\DomPDF\Facade\Pdf;
 
 class TagihanController extends Controller
 {
+    private function loadTtd(string $file): string
+    {
+        $path = storage_path('app/private/ttd/' . $file);
+        if (!file_exists($path)) return '';
+        return base64_encode(file_get_contents($path));
+    }
+
     public function pdf(Tagihan $tagihan)
     {
         $tagihan->load(['siswa', 'jenisPembayaran']);
@@ -40,6 +47,9 @@ class TagihanController extends Controller
         $urlTagihan   = url('/tagihan/share/' . \App\Http\Controllers\TagihanPublicController::encryptId($tagihan->id));
         $cetakTanggal = now()->format('d M Y, H:i');
 
+        $ttdBendahara = $this->loadTtd('bendahara.jpeg');
+        $ttdKepsek    = $this->loadTtd('kepalasekolah.jpeg');
+
         $pdf = Pdf::loadView('tagihan.tagihan', compact(
             'tagihan',
             'historiPembayaran',
@@ -52,6 +62,8 @@ class TagihanController extends Controller
             'bulanLabels',
             'urlTagihan',
             'cetakTanggal',
+            'ttdBendahara',
+            'ttdKepsek',
         ))->setPaper('a4', 'portrait');
 
         return $pdf->stream('Tagihan-' . $tagihan->siswa->nis . '.pdf');

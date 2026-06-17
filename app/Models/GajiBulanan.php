@@ -12,13 +12,14 @@ class GajiBulanan extends Model
 
     protected $fillable = [
         'karyawan_id', 'bulan', 'tahun',
-        'hari_masuk', 'nominal_gaji',
+        'hari_masuk', 'nominal_gaji', 'potongan',
         'status_bayar', 'tanggal_bayar', 'keterangan',
         'created_by', 'updated_by',
     ];
 
     protected $casts = [
         'nominal_gaji' => 'decimal:2',
+        'potongan' => 'decimal:2',
         'tanggal_bayar' => 'date',
         'hari_masuk' => 'integer',
     ];
