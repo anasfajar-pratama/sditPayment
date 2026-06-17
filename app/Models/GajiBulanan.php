@@ -13,7 +13,7 @@ class GajiBulanan extends Model
         'karyawan_id', 'bulan', 'tahun',
         'hari_masuk',
         'gaji_pokok', 'tunjangan', 'transport', 'thr',
-        'nominal_gaji',
+        'nominal_gaji', 'potongan',
         'status_bayar', 'tanggal_bayar', 'keterangan',
         'created_by', 'updated_by',
     ];
@@ -24,6 +24,7 @@ class GajiBulanan extends Model
         'transport'    => 'decimal:2',
         'thr'          => 'decimal:2',
         'nominal_gaji' => 'decimal:2',
+        'potongan'     => 'decimal:2',
         'tanggal_bayar'=> 'date',
         'hari_masuk'   => 'integer',
     ];

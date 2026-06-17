@@ -11,7 +11,7 @@ use App\Http\Controllers\SlipGajiController;
 
 
 Route::get('/', function () {
-    return view('welcome');
+    return redirect('/admin/login');
 });
 
 Route::get('/dashboard', function () {

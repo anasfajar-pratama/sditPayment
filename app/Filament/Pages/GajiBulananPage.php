@@ -29,7 +29,7 @@ class GajiBulananPage extends Page
     public array $gajiForm = [];
 
     // ─── Modal state ──────────────────────────────────────────────────────────
-    public bool  $showModal      = false;
+    public bool  $showModal       = false;
     public ?int  $modalKaryawanId = null;
 
     public function mount(): void
@@ -78,7 +78,6 @@ class GajiBulananPage extends Page
         foreach ($guru as $k) {
             $rec = $existing[$k->id] ?? null;
 
-            // Hitung hari masuk langsung dari absen_harians
             $hariMasuk = AbsenHarian::where('karyawan_id', $k->id)
                 ->whereYear('tanggal', $this->filterTahun)
                 ->whereMonth('tanggal', (int) $this->filterBulan)
@@ -93,20 +92,33 @@ class GajiBulananPage extends Page
                 'tunjangan'    => $rec ? (string)(int)$rec->tunjangan    : '',
                 'transport'    => $rec ? (string)(int)$rec->transport    : '',
                 'thr'          => $rec ? (string)(int)$rec->thr          : '',
+                'potongan'     => $rec ? (string)(int)$rec->potongan     : '',
                 'keterangan'   => $rec?->keterangan ?? '',
                 'status_bayar' => $rec?->status_bayar ?? 'belum',
             ];
         }
     }
 
-    /** Total nominal satu baris = jumlah 4 komponen */
-    public function hitungNominal(int $karyawanId): int
+    /** Gross per guru = gaji_pokok + tunjangan + transport + thr */
+    private function hitungGross(int $karyawanId): int
     {
         $d = $this->gajiForm[$karyawanId] ?? [];
         return (int)preg_replace('/[^0-9]/', '', $d['gaji_pokok'] ?? '0')
              + (int)preg_replace('/[^0-9]/', '', $d['tunjangan']  ?? '0')
              + (int)preg_replace('/[^0-9]/', '', $d['transport']  ?? '0')
              + (int)preg_replace('/[^0-9]/', '', $d['thr']        ?? '0');
+    }
+
+    /** Nominal (bersih) per guru = gross - potongan */
+    public function hitungNominal(int $karyawanId): int
+    {
+        $d = $this->gajiForm[$karyawanId] ?? [];
+        $gross = (int)preg_replace('/[^0-9]/', '', $d['gaji_pokok'] ?? '0')
+               + (int)preg_replace('/[^0-9]/', '', $d['tunjangan']  ?? '0')
+               + (int)preg_replace('/[^0-9]/', '', $d['transport']  ?? '0')
+               + (int)preg_replace('/[^0-9]/', '', $d['thr']        ?? '0');
+        $potongan = (int)preg_replace('/[^0-9]/', '', $d['potongan'] ?? '0');
+        return $gross - $potongan;
     }
 
     public function totalGaji(): int
@@ -143,6 +155,7 @@ class GajiBulananPage extends Page
             $tunjangan  = (int)preg_replace('/[^0-9]/', '', $data['tunjangan']  ?? '0');
             $transport  = (int)preg_replace('/[^0-9]/', '', $data['transport']  ?? '0');
             $thr        = (int)preg_replace('/[^0-9]/', '', $data['thr']        ?? '0');
+            $potongan   = (int)preg_replace('/[^0-9]/', '', $data['potongan']   ?? '0');
             $nominalTotal = $gajiPokok + $tunjangan + $transport + $thr;
 
             if ($nominalTotal === 0) continue;
@@ -160,6 +173,7 @@ class GajiBulananPage extends Page
                     'transport'    => $transport,
                     'thr'          => $thr,
                     'nominal_gaji' => $nominalTotal,
+                    'potongan'     => $potongan,
                     'keterangan'   => $data['keterangan'] ?? null,
                     'status_bayar' => $data['status_bayar'] ?? 'belum',
                     'created_by'   => auth()->id(),
@@ -186,7 +200,6 @@ class GajiBulananPage extends Page
                        'updated_by'    => auth()->id(),
                    ]);
 
-        // Sync status_bayar di form
         foreach ($this->gajiForm as $id => $_) {
             $this->gajiForm[$id]['status_bayar'] = 'sudah';
         }

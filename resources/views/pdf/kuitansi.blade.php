@@ -218,6 +218,7 @@
         .bottom-table td.stamp-cell { text-align: center; }
         .bottom-table td.qr-cell { width: 125px; text-align: center; }
         .ttd-space { height: 46px; }
+        .ttd-img { max-height: 55px; max-width: 140px; margin-bottom: 2px; }
         .garis-ttd { border-top: 1px solid #333; padding-top: 3px; font-weight: bold; font-size: 9px; }
         .stamp {
             display: inline-block;
@@ -370,31 +371,29 @@
             <tr>
                 {{-- TTD Bendahara --}}
                 <td class="ttd-cell">
-                    <div class="ttd-space"></div>
                     <div style="font-size:9px; margin-bottom:2px;">Karawang, 
                         {{ \Carbon\Carbon::parse($pembayaran->tanggal_bayar)->format('d M Y') }}
                     </div>
-                    <br>
-                    <br>
-                    <br>
-                    <br>
-                    <br>
+                    <div class="ttd-space">
+                        @if ($ttdBendahara)
+                            <img class="ttd-img" src="{{ $ttdBendahara }}" alt="TTD Bendahara">
+                        @endif
+                    </div>
                     <div class="garis-ttd">Rita Erninda S.M<br>Bendahara</div>
                 </td>
 
                 {{-- Kepsek --}}
                 <td class="ttd-cell">
-                    <div class="ttd-space"></div>
                     <div style="font-size:9px; margin-bottom:2px;"></div>
-                    <br>
-                    <br>
-                    <br>
-                    <br>
-                    <br>
+                    <div class="ttd-space">
+                        @if ($ttdKepsek)
+                            <img class="ttd-img" src="{{ $ttdKepsek }}" alt="TTD Kepala Sekolah">
+                        @endif
+                    </div>
                     <div class="garis-ttd">Hj. Suci Andari S. S. , M. Hum<br>
                     Kepala Sekolah</div>
                 </td>
-<td class="stamp-cell"><td>
+<td class="stamp-cell"></td>
                 {{-- QR Code --}}
                 <td class="qr-cell">
                     <img class="qr-img"

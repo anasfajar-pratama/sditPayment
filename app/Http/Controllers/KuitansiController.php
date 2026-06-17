@@ -47,6 +47,19 @@ class KuitansiController extends Controller
     }
 
     // ── Logic bersama ─────────────────────────────────────────
+    private function loadTtd(string $name): string
+    {
+        $png = storage_path("app/private/ttd/{$name}.png");
+        $jpeg = storage_path("app/private/ttd/{$name}.jpeg");
+        $path = $png;
+        if (!file_exists($png)) {
+            $path = $jpeg;
+        }
+        if (!file_exists($path)) return '';
+        $mime = str_ends_with($path, '.png') ? 'image/png' : 'image/jpeg';
+        return 'data:' . $mime . ';base64,' . base64_encode(file_get_contents($path));
+    }
+
     private function buildData(Pembayaran $pembayaran): array
     {
         $pembayaran->load(['siswa', 'jenisPembayaran']);
@@ -106,6 +119,8 @@ class KuitansiController extends Controller
 
         return [
             'pembayaran'     => $pembayaran,
+            'ttdBendahara'   => $this->loadTtd('bendahara'),
+            'ttdKepsek'      => $this->loadTtd('kepalasekolah'),
             'isSpp'          => $isSpp,
             'historiCicilan' => $historiCicilan,
             'totalTerbayar'  => $totalTerbayar,

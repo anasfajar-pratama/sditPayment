@@ -116,8 +116,10 @@
         /* ── TANDA TANGAN (sejajar, pakai table seperti kuitansi) ── */
         .ttd-table { width: 100%; border-collapse: collapse; margin-top: 12px; }
         .ttd-table td { vertical-align: bottom; text-align: center; padding: 0 8px; }
-        .ttd-space { height: 40px; }
-        .ttd-line { border-top: 1px solid #333; padding-top: 3px; font-size: 8.5px; font-weight: bold; }
+        .ttd-space { height: 60px; }
+        .ttd-img { max-height: 50px; max-width: 140px; margin-bottom: 2px; }
+        .ttd-line { padding-top: 3px; font-size: 8.5px; font-weight: bold; }
+        .ttd-line-inner { border-top: 1px solid #333; width: 130px; margin: 0 auto; padding-top: 3px; }
         .ttd-sub  { font-size: 8px; color: #555; font-weight: normal; margin-top: 1px; }
 
         /* ── PAGE BREAK ── */
@@ -292,6 +294,7 @@
                 <td style="width:50%;">
                     <div style="font-size:8px;color:#555;margin-bottom:2px;">Penerima Gaji,</div>
                     <div class="ttd-space"></div>
+                    <div class="ttd-line-inner"></div>
                     <div class="ttd-line">
                         {{ $k->nama ?? '-' }}
                         <div class="ttd-sub">Karyawan</div>
@@ -299,7 +302,12 @@
                 </td>
                 <td style="width:50%;">
                     <div style="font-size:8px;color:#555;margin-bottom:2px;">Karawang, {{ \Carbon\Carbon::createFromDate($tahun, (int)$bulan, 1)->endOfMonth()->format('d M Y') }}</div>
-                    <div class="ttd-space"></div>
+                    <div class="ttd-space">
+                        @if (!empty($ttdKepsek))
+                            <img class="ttd-img" src="{{ $ttdKepsek }}" alt="TTD Kepala Sekolah">
+                        @endif
+                    </div>
+                    <div class="ttd-line-inner"></div>
                     <div class="ttd-line">
                         Hj. Suci Andari S. S., M. Hum
                         <div class="ttd-sub">Kepala Sekolah</div>

@@ -1,3 +1,4 @@
+# admin : adminSdit@payment.com/admin@admin.com admin1234
 <p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
 
 <p align="center">
@@ -86,4 +87,4 @@ The Laravel framework is open-sourced software licensed under the [MIT license](
 - potongan dan nominal bayar menggunakan event yang bikin berat karena saling membaca setiap perubahan angka. jangan pakai event itu.
 - pembayaran den struk trf berhasil , hanya saja bukti bayar nya diklik 403.
 - buat kompresi gambar dengan library bawaan laravel.
--  
+- 

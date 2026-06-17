@@ -9,6 +9,19 @@ use Illuminate\Http\Request;
 
 class SlipGajiController extends Controller
 {
+    private function loadTtd(string $name): string
+    {
+        $png = storage_path("app/private/ttd/{$name}.png");
+        $jpeg = storage_path("app/private/ttd/{$name}.jpeg");
+        $path = $png;
+        if (!file_exists($png)) {
+            $path = $jpeg;
+        }
+        if (!file_exists($path)) return '';
+        $mime = str_ends_with($path, '.png') ? 'image/png' : 'image/jpeg';
+        return 'data:' . $mime . ';base64,' . base64_encode(file_get_contents($path));
+    }
+
     public function cetak(Request $request)
     {
         $bulan = $request->input('bulan');
@@ -35,6 +48,8 @@ class SlipGajiController extends Controller
                 return $gaji;
             });
 
+        $ttdKepsek = $this->loadTtd('kepalasekolah');
+
         $data = [
             'gajiList'    => $gajiList,
             'bulan'       => $bulan,
@@ -42,6 +57,7 @@ class SlipGajiController extends Controller
             'bulanLabel'  => $bulanLabels[$bulan] ?? $bulan,
             'namaSekolah' => config('app.nama_sekolah', 'Nama Sekolah / Yayasan'),
             'alamat'      => config('app.alamat_sekolah', 'Alamat Sekolah'),
+            'ttdKepsek'   => $ttdKepsek,
         ];
 
         $pdf = Pdf::loadView('pdf.slip-gaji', $data)
