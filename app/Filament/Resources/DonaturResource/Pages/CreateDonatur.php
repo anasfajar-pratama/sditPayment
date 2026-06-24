@@ -12,7 +12,7 @@ class CreateDonatur extends CreateRecord
 
     public function getTitle(): string
     {
-        return 'Tambah Donatur';
+        return 'Tambah Orang Tua Asuh';
     }
 
     protected function getCreateFormAction(): \Filament\Actions\Action
@@ -32,6 +32,6 @@ class CreateDonatur extends CreateRecord
 
     protected function getCreatedNotificationTitle(): ?string
     {
-        return 'Donatur berhasil ditambahkan';
+        return 'Orang Tua Asuh berhasil ditambahkan';
     }
 }

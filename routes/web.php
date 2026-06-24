@@ -56,9 +56,9 @@ Route::get('/k/{token}', function (string $token) {
 Route::get('/tagihan/{tagihan}/pdf', [TagihanController::class, 'pdf'])
      ->name('tagihan.pdf');
 
-Route::get('/', function () {
-    return view('landing');
-});
+// Route::get('/', function () {
+//     return view('landing');
+// });
 
 // Atau jika halaman lain sudah ada di '/', pakai URL berbeda:
 Route::get('/landing', function () {

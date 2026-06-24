@@ -15,9 +15,9 @@ class DonaturResource extends Resource
 {
     protected static ?string $model           = Donatur::class;
     protected static ?string $navigationIcon  = 'heroicon-o-heart';
-    protected static ?string $navigationLabel = 'Donatur';
-    protected static ?string $navigationGroup = 'Donatur';
-    protected static ?string $pluralLabel     = 'Donatur';
+    protected static ?string $navigationLabel = 'Orang Tua Asuh';
+    protected static ?string $navigationGroup = 'Orang Tua Asuh';
+    protected static ?string $pluralLabel     = 'Orang Tua Asuh';
     protected static ?int    $navigationSort  = 1;
 
     // ─── Form (dipakai halaman Create & Edit) ─────────────────────────────────
@@ -26,11 +26,11 @@ class DonaturResource extends Resource
     {
         return $form
             ->schema([
-                Forms\Components\Section::make('Data Donatur')
+                Forms\Components\Section::make('Data Orang Tua Asuh')
                     ->schema([
                         Forms\Components\Grid::make(2)->schema([
                             Forms\Components\TextInput::make('nama')
-                                ->label('Nama Donatur')
+                                ->label('Nama Orang Tua Asuh')
                                 ->required()
                                 ->maxLength(100),
 
@@ -69,7 +69,7 @@ class DonaturResource extends Resource
         return $table
             ->columns([
                 Tables\Columns\TextColumn::make('nama')
-                    ->label('Nama Donatur')
+                    ->label('Nama Orang Tua Asuh')
                     ->searchable()
                     ->sortable(),
 

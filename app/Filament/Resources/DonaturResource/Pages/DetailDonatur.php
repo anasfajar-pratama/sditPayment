@@ -130,12 +130,12 @@ class DetailDonatur extends Page implements HasForms
     {
         return [
             Action::make('edit_donatur')
-                ->label('Edit Data Donatur')
+                ->label('Edit Data Orang Tua Asuh')
                 ->icon('heroicon-o-pencil-square')
                 ->url(DonaturResource::getUrl('edit', ['record' => $this->donatur])),
 
             Action::make('kembali')
-                ->label('← Daftar Donatur')
+                ->label('← Daftar Orang Tua Asuh')
                 ->color('gray')
                 ->url(DonaturResource::getUrl('index')),
         ];
@@ -151,7 +151,7 @@ class DetailDonatur extends Page implements HasForms
     public function getBreadcrumbs(): array
     {
         return [
-            DonaturResource::getUrl('index') => 'Donatur',
+            DonaturResource::getUrl('index') => 'Orang Tua Asuh',
             '#'                              => $this->donatur->nama,
         ];
     }
