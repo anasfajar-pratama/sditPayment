@@ -255,7 +255,7 @@
                 </div>
             </td>
             <td class="logo-cell">
-                <img src="{{ public_path('images/logo-sit.png') }}" alt="Logo SIT">
+                <img src="{{ public_path('images/logo-sit.png') }}" alt="Logo Yayasan">
             </td>
         </tr>
     </table>
