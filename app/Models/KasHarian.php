@@ -1,6 +1,7 @@
 <?php
 // ════════════════════════════════════════════════════════════
 // File: app/Models/KasHarian.php
+// Perubahan: tambah postingDariDonasi() dan hapusPostingDonasi()
 // ════════════════════════════════════════════════════════════
 
 namespace App\Models;
@@ -12,7 +13,7 @@ class KasHarian extends Model
 {
     protected $table = 'kas_harians';
     protected $fillable = [
-        'tanggal', 'uraian', 'akun_id',
+        'tanggal', 'uraian', 'sub_kategori', 'akun_id',
         'debit', 'kredit',
         'source', 'source_id',
         'bulan', 'tahun',
@@ -35,22 +36,25 @@ class KasHarian extends Model
         return $this->belongsTo(User::class, 'created_by');
     }
 
-    // ─── Helper: posting otomatis dari pembayaran siswa ──────────────────────
+    // ─── Posting dari pembayaran siswa ────────────────────────────────────────
+
     public static function postingDariPembayaran(Pembayaran $pembayaran): void
     {
-        // Cek apakah sudah ada posting untuk pembayaran ini
         if (static::where('source', 'pembayaran')->where('source_id', $pembayaran->id)->exists()) {
             return;
         }
 
-        // Tentukan akun berdasarkan nama jenis pembayaran
+        // if (static::where('source', 'pembayaran')->where('source_id', $pembayaran->id)->exists()) {
+        //     \Log::warning('KasHarian: SKIP duplikat', ['source_id' => $pembayaran->id]);
+        //     return;  // ← ini kemungkinan besar penyebabnya
+        // }
         $namaJenis = strtolower($pembayaran->jenisPembayaran?->nama ?? '');
         $kodeAkun  = match(true) {
-            str_contains($namaJenis, 'spp')           => '4101',
-            str_contains($namaJenis, 'daftar ulang')   => '4102',
-            str_contains($namaJenis, 'daftar masuk')   => '4103',
-            str_contains($namaJenis, 'donasi')          => '4104',
-            default                                     => '4101',
+            str_contains($namaJenis, 'spp')          => '4101',
+            str_contains($namaJenis, 'daftar ulang')  => '4102',
+            str_contains($namaJenis, 'daftar masuk')  => '4103',
+            str_contains($namaJenis, 'donasi')         => '4104',
+            default                                    => '4101',
         };
 
         $akun = Akun::where('kode_akun', $kodeAkun)->first();
@@ -61,12 +65,12 @@ class KasHarian extends Model
             '09' => 'Sep', '10' => 'Okt', '11' => 'Nov', '12' => 'Des',
         ];
 
-        $siswa   = $pembayaran->siswa;
+        $siswa      = $pembayaran->siswa;
         $bulanLabel = $bulanLabels[$pembayaran->bulan] ?? '';
-        $uraian  = "{$siswa->nama} Kls {$siswa->kelas}"
-                 . " — {$pembayaran->jenisPembayaran->nama}"
-                 . ($bulanLabel ? " {$bulanLabel}" : '')
-                 . " {$pembayaran->tahun}";
+        $uraian     = "{$siswa->nama} Kls {$siswa->kelas}"
+                    . " — {$pembayaran->jenisPembayaran->nama}"
+                    . ($bulanLabel ? " {$bulanLabel}" : '')
+                    . " {$pembayaran->tahun}";
 
         static::create([
             'tanggal'    => $pembayaran->tanggal_bayar,
@@ -80,13 +84,85 @@ class KasHarian extends Model
             'tahun'      => $pembayaran->tahun,
             'created_by' => $pembayaran->created_by,
         ]);
+        // \Log::info('KasHarian: row DIBUAT', ['kas_id' => $record->id, 'akun_id' => $akun?->id]);
     }
 
-    // ─── Hapus posting jika pembayaran dihapus ───────────────────────────────
     public static function hapusPostingPembayaran(int $pembayaranId): void
     {
         static::where('source', 'pembayaran')
               ->where('source_id', $pembayaranId)
+              ->delete();
+    }
+
+    // ─── Posting dari donasi donatur ─────────────────────────────────────────
+    // Akun 7 = Pendapatan Donasi (4104)
+
+    // public static function postingDariDonasi(Donasi $donasi): void
+    // {
+    //     // Cegah duplikasi
+    //     if (static::where('source', 'donasi')->where('source_id', $donasi->id)->exists()) {
+    //         return;
+    //     }
+
+    //     $donatur = $donasi->donatur;
+    //     $uraian  = "Donasi — {$donatur->nama}"
+    //              . ($donasi->note ? " ({$donasi->note})" : '');
+
+    //     static::create([
+    //         'tanggal'    => $donasi->tanggal,
+    //         'uraian'     => $uraian,
+    //         'akun_id'    => 7,          // Pendapatan Donasi (4104)
+    //         'debit'      => $donasi->nominal,
+    //         'kredit'     => null,
+    //         'source'     => 'donasi',
+    //         'source_id'  => $donasi->id,
+    //         'bulan'      => $donasi->bulan,
+    //         'tahun'      => $donasi->tahun,
+    //         'created_by' => $donasi->created_by,
+    //     ]);
+    // }
+
+    public static function hapusPostingDonasi(int $donasiId): void
+    {
+        static::where('source', 'donasi')
+              ->where('source_id', $donasiId)
+              ->delete();
+    }
+
+    // ─── Posting dari pembelian token listrik ─────────────────────────────────
+    // akun_id = 9  |  sub_kategori = "TOKEN & PULSA"  |  sisi KREDIT (pengeluaran)
+
+    public static function postingDariToken(TokenPembelian $pembelian): void
+    {
+        // Cegah duplikasi
+        if (static::where('source', 'token')->where('source_id', $pembelian->id)->exists()) {
+            return;
+        }
+
+        $ruangan = $pembelian->tokenListrik?->nama_ruangan ?? 'Token Listrik';
+        $nomorToken = $pembelian->nomor_token ?? '';
+        $uraian  = 'TOKEN ' . strtoupper($ruangan)
+                 . ($nomorToken ? " ({$nomorToken})" : '');
+
+        static::create([
+            'tanggal'      => $pembelian->tanggal,
+            'uraian'       => $uraian,
+            'sub_kategori' => 'TOKEN & PULSA',
+            'akun_id'      => 9,
+            'debit'        => null,
+            'kredit'       => $pembelian->nominal,
+            'source'       => 'token',
+            'source_id'    => $pembelian->id,
+            'bulan'        => $pembelian->bulan,
+            'tahun'        => $pembelian->tahun,
+            'created_by'   => $pembelian->created_by,
+        ]);
+    }
+
+    public static function hapusPostingToken(int $pembelianId): void
+    {
+        static::where('source', 'token')
+              ->where('source_id', $pembelianId)
               ->delete();
     }
 }
