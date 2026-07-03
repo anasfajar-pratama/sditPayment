@@ -41,7 +41,7 @@ class KasHarianPrintController extends Controller
                 break;
 
             default: // bulanan
-                $query->where('tahun', $tahun)->where('bulan', $bulan);
+                $query->whereYear('tanggal', $tahun)->whereMonth('tanggal', (int) $bulan);
                 break;
         }
 
@@ -63,8 +63,8 @@ class KasHarianPrintController extends Controller
             $saldoAwal = SaldoAwalBulan::getSaldo($start->format('m'), $start->format('Y'));
 
             // Akumulasi transaksi sebelum start date di bulan yang sama
-            $before    = KasHarian::where('tahun', $start->format('Y'))
-                                   ->where('bulan', $start->format('m'))
+            $before    = KasHarian::whereYear('tanggal', $start->format('Y'))
+                                   ->whereMonth('tanggal', $start->format('m'))
                                    ->whereDate('tanggal', '<', $startDate);
 
             $saldoAwal += (float) (clone $before)->sum('debit');
@@ -97,6 +97,13 @@ class KasHarianPrintController extends Controller
 
         $saldoAkhir = $saldoAwal + $totalDebit - $totalKredit;
 
+        // ─── Kas hari ini ──────────────────────────────────────────────────────
+
+        $today       = now()->toDateString();
+        $todayDebit  = (float) KasHarian::whereDate('tanggal', $today)->sum('debit');
+        $todayKredit = (float) KasHarian::whereDate('tanggal', $today)->sum('kredit');
+        $kasHariIni  = $todayDebit - $todayKredit;
+
         // ─── Judul periode ────────────────────────────────────────────────────
 
         $bulanLabels = [
@@ -124,7 +131,10 @@ class KasHarianPrintController extends Controller
             'totalKredit',
             'saldoAkhir',
             'judulPeriode',
-            'mode'
+            'mode',
+            'todayDebit',
+            'todayKredit',
+            'kasHariIni',
         ));
     }
 }

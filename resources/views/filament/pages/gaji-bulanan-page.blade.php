@@ -136,8 +136,11 @@
                                            font-weight:600;letter-spacing:0.05em;text-transform:uppercase;">
                                     Nominal Gaji (Rp)</th>
                                 <th style="padding:0.75rem 1rem;text-align:center;font-size:0.7rem;
-                                           font-weight:600;letter-spacing:0.05em;text-transform:uppercase;
-                                           width:7rem;">Status</th>
+                                            font-weight:600;letter-spacing:0.05em;text-transform:uppercase;
+                                            width:7rem;">Status</th>
+                                <th style="padding:0.75rem 1rem;text-align:center;font-size:0.7rem;
+                                            font-weight:600;letter-spacing:0.05em;text-transform:uppercase;
+                                            width:7rem;">Aksi</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -212,6 +215,30 @@
                                             </span>
                                         @endif
                                     </td>
+
+                                    {{-- Aksi: Slip PDF + WA (hanya jika sudah dibayar) --}}
+                                    <td style="padding:0.5rem 1rem;text-align:center;">
+                                        @if ($statusBayar === 'sudah')
+                                            <div style="display:flex;align-items:center;justify-content:center;gap:0.35rem;">
+                                                <a href="{{ $this->urlSlipGajiPerKaryawan($karyawanId) }}" target="_blank"
+                                                    title="Slip Gaji"
+                                                    style="display:inline-flex;padding:0.35rem;border-radius:0.4rem;
+                                                           border:1px solid #bfdbfe;background:#eff6ff;color:#1d4ed8;
+                                                           cursor:text;text-decoration:none;">
+                                                    <x-heroicon-o-document-text style="width:0.85rem;height:0.85rem;" />
+                                                </a>
+                                                <a href="{{ $this->getWhatsappUrlGaji($karyawanId) }}" target="_blank"
+                                                    title="Bagikan via WhatsApp"
+                                                    style="display:inline-flex;padding:0.35rem;border-radius:0.4rem;
+                                                           border:1px solid #a7f3d0;background:#ecfdf5;color:#047857;
+                                                           cursor:text;text-decoration:none;">
+                                                    <x-heroicon-o-chat-bubble-left-right style="width:0.85rem;height:0.85rem;" />
+                                                </a>
+                                            </div>
+                                        @else
+                                            <span style="color:#d1d5db;font-size:0.7rem;">—</span>
+                                        @endif
+                                    </td>
                                 </tr>
                             @endforeach
                         </tbody>
@@ -226,6 +253,7 @@
                                 <td style="padding:0.875rem 1rem;font-size:0.875rem;font-weight:800;color:#1e3a8a;">
                                     Rp {{ number_format($this->totalGaji(), 0, ',', '.') }}
                                 </td>
+                                <td></td>
                                 <td></td>
                             </tr>
                         </tfoot>
@@ -298,7 +326,7 @@
             </button>
         </div>
 
-        <div style="padding:1.5rem;display:flex;flex-direction:column;gap:1rem;">
+        <div style="padding:1.5rem;display:flex;flex-direction:column;gap:1rem;overflow-y:auto;max-height:55vh;">
 
             <div style="font-size:0.75rem;font-weight:600;color:#059669;text-transform:uppercase;
                         letter-spacing:0.05em;margin-bottom:0.25rem;">Pemasukan</div>

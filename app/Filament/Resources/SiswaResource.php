@@ -117,14 +117,18 @@ class SiswaResource extends Resource
                 Section::make()
                     ->schema([
                         Toggle::make('is_calon')
-                            ->label('Calon Siswa')
-                            ->helperText('Aktifkan jika ini adalah calon siswa (pendaftar baru)')
+                            ->label(fn (Get $get) => $get('is_calon') ? 'Form Input Tambah Calon Siswa' : 'Form Input Tambah Siswa')
+                            ->helperText(fn (Get $get) => $get('is_calon') ? 'Aktif: mengisi data calon siswa baru' : 'Nonaktif: mengisi data siswa yang sudah terdaftar')
                             ->default(false)
                             ->live()
-                            ->onColor('warning')
-                            ->offColor('primary'),
+                            ->onColor('warning'),
                     ])
-                    ->compact(),
+                    ->compact()
+                    ->extraAttributes(fn (Get $get) => [
+                        'style' => $get('is_calon')
+                            ? 'background:#fffbeb;border:1px solid #fde68a;border-radius:0.5rem;'
+                            : 'background:#f0fdf4;border:1px solid #bbf7d0;border-radius:0.5rem;',
+                    ]),
 
                 Section::make('Data Siswa')
                     ->description('Isi data siswa yang sudah terdaftar')

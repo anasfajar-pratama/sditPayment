@@ -14,6 +14,7 @@ class Donasi extends Model
         'donatur_id',
         'tanggal',
         'nominal',
+        'bukti_transfer',
         'note',
         'bulan',
         'tahun',
@@ -39,9 +40,9 @@ class Donasi extends Model
 
     protected static function booted(): void
     {
-        // static::created(function (Donasi $donasi) {
-        //     KasHarian::postingDariDonasi($donasi);
-        // });
+        static::created(function (Donasi $donasi) {
+            KasHarian::postingDariDonasi($donasi);
+        });
 
         static::deleted(function (Donasi $donasi) {
             KasHarian::hapusPostingDonasi($donasi->id);

@@ -246,6 +246,31 @@
         </div>
     </div>
 
+    {{-- Kas Hari Ini --}}
+    @php $kasPositif = $kasHariIni >= 0; @endphp
+    <div style="display:flex;align-items:center;gap:0.75rem;padding:0.75rem 1rem;margin-bottom:16px;
+                border-radius:8px;border:1px solid {{ $kasPositif ? '#bbf7d0' : '#fecaca' }};
+                background:{{ $kasPositif ? '#f0fdf4' : '#fff1f2' }};">
+        <div style="display:flex;align-items:center;justify-content:center;width:2rem;height:2rem;
+                    border-radius:6px;background:{{ $kasPositif ? '#dcfce7' : '#fee2e2' }};flex-shrink:0;">
+            <span style="font-size:1rem;font-weight:800;color:{{ $kasPositif ? '#16a34a' : '#dc2626' }};">Rp</span>
+        </div>
+        <div>
+            <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;
+                        color:{{ $kasPositif ? '#15803d' : '#b91c1c' }};margin-bottom:2px;">
+                Kas Hari Ini — {{ now()->format('d M Y') }}
+            </div>
+            <div style="display:flex;gap:1.25rem;align-items:center;">
+                <span style="font-size:10px;color:#6b7280;">Debit: <strong style="color:#15803d;">Rp {{ number_format($todayDebit, 0, ',', '.') }}</strong></span>
+                <span style="font-size:10px;color:#6b7280;">Kredit: <strong style="color:#dc2626;">Rp {{ number_format($todayKredit, 0, ',', '.') }}</strong></span>
+                <span style="font-size:11px;font-weight:800;font-variant-numeric:tabular-nums;
+                        color:{{ $kasPositif ? '#15803d' : '#b91c1c' }};">
+                    {{ $kasPositif ? '+' : '−' }} Rp {{ number_format(abs($kasHariIni), 0, ',', '.') }}
+                </span>
+            </div>
+        </div>
+    </div>
+
     {{-- Tabel --}}
     @if (count($entries) === 0)
         <p style="text-align:center;color:#9ca3af;padding:40px 0;">
