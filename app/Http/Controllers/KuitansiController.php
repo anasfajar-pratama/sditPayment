@@ -119,8 +119,8 @@ class KuitansiController extends Controller
 
         return [
             'pembayaran'     => $pembayaran,
-            'ttdBendahara'   => $this->loadTtd('bendahara'),
-            'ttdKepsek'      => $this->loadTtd('kepalasekolah'),
+            'ttdBendahara'   => $this->loadTtd('ttd_bendahara'),
+            'ttdKepsek'      => '',
             'isSpp'          => $isSpp,
             'historiCicilan' => $historiCicilan,
             'totalTerbayar'  => $totalTerbayar,

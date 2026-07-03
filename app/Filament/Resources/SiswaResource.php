@@ -282,10 +282,10 @@ class SiswaResource extends Resource
                     ->sortable()
                     ->placeholder('-'),
 
-                // TextColumn::make('tahun_ajaran')
-                //     ->label('Tahun Ajaran')
-                //     ->sortable()
-                //     ->placeholder('-'),
+                TextColumn::make('tahun_ajaran')
+                    ->label('Tahun Ajaran')
+                    ->sortable()
+                    ->placeholder('-'),
 
                 // TextColumn::make('calon_jenis')
                 //     ->label('Calon Jenjang')

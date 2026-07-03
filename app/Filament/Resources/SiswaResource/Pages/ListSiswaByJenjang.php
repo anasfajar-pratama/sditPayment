@@ -20,27 +20,69 @@ class ListSiswaByJenjang extends Page
     // Parameter dari URL: /admin/siswas/jenjang/{jenjang}
     public string $jenjang = '';
 
+    // Filter tahun ajaran
+    public string $filterTahunAjaran = '';
+
     // Data kelas yang akan dikirim ke view
     public array $kelasData = [];
 
     public function mount(string $jenjang): void
     {
         $this->jenjang = strtoupper($jenjang);
+        $this->filterTahunAjaran = $this->defaultTahunAjaran();
         $this->kelasData = $this->loadKelasData();
+    }
+
+    public function updatedFilterTahunAjaran(): void
+    {
+        $this->kelasData = $this->loadKelasData();
+    }
+
+    // ─── Default tahun ajaran (terbaru dari DB, atau hitung dari tanggal) ────
+
+    public function defaultTahunAjaran(): string
+    {
+        $latest = Siswa::where('jenis_sekolah', $this->jenjang)
+            ->whereNotNull('tahun_ajaran')
+            ->orderByDesc('tahun_ajaran')
+            ->value('tahun_ajaran');
+
+        if ($latest) return $latest;
+
+        $now   = now();
+        $start = $now->month >= 7 ? $now->year : $now->year - 1;
+        return "{$start}/" . ($start + 1);
+    }
+
+    // ─── Daftar tahun ajaran yang tersedia ──────────────────────────────────
+
+    public function tahunAjaranList(): array
+    {
+        return Siswa::where('jenis_sekolah', $this->jenjang)
+            ->whereNotNull('tahun_ajaran')
+            ->distinct()
+            ->orderByDesc('tahun_ajaran')
+            ->pluck('tahun_ajaran')
+            ->toArray();
     }
 
     // ─── Muat data kelas dari DB ──────────────────────────────────────────────
 
     protected function loadKelasData(): array
     {
-        // Ambil semua kelas unik beserta jumlah siswa, diurutkan
-        $rows = Siswa::query()
+        $query = Siswa::query()
             ->where('jenis_sekolah', $this->jenjang)
             ->where('is_calon', 0)
-            ->whereNotNull('kelas')
+            ->whereNotNull('kelas');
+
+        if ($this->filterTahunAjaran) {
+            $query->where('tahun_ajaran', $this->filterTahunAjaran);
+        }
+
+        $rows = $query
             ->selectRaw('kelas, COUNT(*) as jumlah')
             ->groupBy('kelas')
-            ->orderByRaw('LENGTH(kelas), kelas') // urut: 1A, 1B, 2A, ...
+            ->orderByRaw('LENGTH(kelas), kelas')
             ->get();
 
         return $rows->map(fn ($row) => [

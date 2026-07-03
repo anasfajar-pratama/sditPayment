@@ -6,6 +6,7 @@
 
 namespace App\Filament\Pages;
 
+use App\Filament\Traits\ConvertsToWebp;
 use App\Models\Akun;
 use App\Models\KasHarian;
 use App\Models\KasHarianLog;
@@ -13,6 +14,7 @@ use App\Models\SaldoAwalBulan;
 use Carbon\Carbon;
 use Filament\Actions\Action;
 use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Radio;
 use Filament\Forms\Components\Select;
@@ -28,6 +30,8 @@ use Livewire\Attributes\Url;
 
 class KasHarianPage extends Page
 {
+    use ConvertsToWebp;
+
     protected static ?string $navigationIcon  = 'heroicon-o-book-open';
     protected static ?string $navigationGroup = 'Keuangan';
     protected static ?string $navigationLabel = 'Kas Harian';
@@ -154,6 +158,8 @@ class KasHarianPage extends Page
                 'kredit'       => $row->kredit,
                 'saldo'        => $saldo,
                 'source'       => $row->source,
+                'bukti'        => $row->bukti,
+                'bukti_url'    => $row->bukti_url,
             ];
         }
 
@@ -325,6 +331,7 @@ class KasHarianPage extends Page
                     'uraian'       => $entry->uraian,
                     'tipe'         => $entry->debit ? 'debit' : 'kredit',
                     'nominal'      => (float) ($entry->debit ?? $entry->kredit),
+                    'bukti'        => $entry->bukti,
                 ];
             })
             ->form([
@@ -335,6 +342,8 @@ class KasHarianPage extends Page
                     ->label('Akun')
                     ->options(fn () => Akun::where('is_active', true)
                         ->whereNotIn('kelompok', ['Aset'])
+                        ->whereNotIn('kode_akun', ['4103', '4104'])
+                        ->orderByRaw("CASE WHEN kelompok = 'Beban' THEN 0 ELSE 1 END")
                         ->orderBy('kode_akun')
                         ->get()
                         ->groupBy('kelompok')
@@ -344,6 +353,13 @@ class KasHarianPage extends Page
                     ->live()
                     ->afterStateUpdated(fn (Set $set) => $set('sub_kategori', null))
                     ->required()->searchable()->preload(),
+
+                FileUpload::make('bukti')
+                    ->label('Bukti Transaksi')
+                    ->image()
+                    ->directory('bukti-kas')
+                    ->maxSize(2048)
+                    ->columnSpanFull(),
 
                 Select::make('sub_kategori')
                     ->label('Sub Kategori Pengeluaran')
@@ -383,6 +399,8 @@ class KasHarianPage extends Page
                 $sebelum = $entry->toArray();
 
                 $tanggal = Carbon::parse($data['tanggal']);
+                $buktibaru = $this->convertToWebp($data['bukti'] ?? null);
+
                 $entry->update([
                     'tanggal'      => $data['tanggal'],
                     'uraian'       => $data['uraian'],
@@ -390,6 +408,7 @@ class KasHarianPage extends Page
                     'sub_kategori' => $data['sub_kategori'] ?? null,
                     'debit'        => $data['tipe'] === 'debit'  ? $data['nominal'] : null,
                     'kredit'       => $data['tipe'] === 'kredit' ? $data['nominal'] : null,
+                    'bukti'        => $buktibaru ?? $entry->bukti,
                     'bulan'        => $tanggal->format('m'),
                     'tahun'        => $tanggal->format('Y'),
                 ]);
@@ -521,6 +540,8 @@ class KasHarianPage extends Page
                         ->options(function () {
                             return Akun::where('is_active', true)
                                 ->whereNotIn('kelompok', ['Aset'])
+                                ->whereNotIn('kode_akun', ['4103', '4104'])
+                                ->orderByRaw("CASE WHEN kelompok = 'Beban' THEN 0 ELSE 1 END")
                                 ->orderBy('kode_akun')
                                 ->get()
                                 ->groupBy('kelompok')
@@ -535,6 +556,13 @@ class KasHarianPage extends Page
                             $set('sub_kategori', null);
                         })
                         ->required()->searchable()->preload(),
+
+                    FileUpload::make('bukti')
+                        ->label('Bukti Transaksi')
+                        ->image()
+                        ->directory('bukti-kas')
+                        ->maxSize(2048)
+                        ->columnSpanFull(),
 
                     Select::make('sub_kategori')
                         ->label('Sub Kategori Pengeluaran')
@@ -572,6 +600,7 @@ class KasHarianPage extends Page
                         'sub_kategori' => $data['sub_kategori'] ?? null,
                         'debit'        => $data['tipe'] === 'debit'  ? $data['nominal'] : null,
                         'kredit'       => $data['tipe'] === 'kredit' ? $data['nominal'] : null,
+                        'bukti'        => $this->convertToWebp($data['bukti'] ?? null),
                         'source'       => 'manual',
                         'bulan'        => $tanggal->format('m'),
                         'tahun'        => $tanggal->format('Y'),

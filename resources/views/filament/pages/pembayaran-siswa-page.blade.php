@@ -281,13 +281,19 @@
                                                 <span class="text-xs text-gray-400 italic">—</span>
                                             @endif
                                             @if ($bayar->bukti_bayar)
-                                                <a href="{{ Storage::url($bayar->bukti_bayar) }}" target="_blank"
+                                                <button type="button"
+                                                    x-data
+                                                    x-on:click="
+                                                        $nextTick(() => {
+                                                            $dispatch('open-bukti-bayar', { url: '{{ Storage::url($bayar->bukti_bayar) }}' });
+                                                        });
+                                                    "
                                                     class="inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-medium
-                                                           bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 transition"
+                                                           bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 transition cursor-pointer"
                                                     title="Lihat Bukti Bayar">
-                                                    <x-heroicon-o-photo class="w-3.5 h-3.5" />
+                                                    <x-heroicon-o-eye class="w-3.5 h-3.5" />
                                                     Bukti
-                                                </a>
+                                                </button>
                                             @endif
                                         </div>
                                     </td>
@@ -577,4 +583,25 @@
         @endif {{-- viewMode kelas --}}
 
     </div>
+
+{{-- Popup preview bukti bayar --}}
+<div
+    x-data="{ open: false, url: '' }"
+    x-on:open-bukti-bayar.window="url = $event.detail.url; open = true"
+    x-show="open"
+    x-cloak
+    class="fixed inset-0 z-[999] flex items-center justify-center bg-black/60 p-4"
+    x-on:click.self="open = false"
+>
+    <div class="relative w-full max-w-2xl max-h-[80vh] bg-white rounded-xl shadow-2xl overflow-auto">
+        <button type="button"
+            x-on:click="open = false"
+            class="sticky top-2 z-10 ml-auto mr-2 block w-8 h-8 flex items-center justify-center rounded-full bg-black/40 text-white hover:bg-black/60 transition">
+            <x-heroicon-o-x-mark class="w-5 h-5" />
+        </button>
+        <div class="p-4 pt-0 flex items-start justify-center">
+            <img :src="url" alt="Bukti Bayar" class="max-w-full h-auto rounded">
+        </div>
+    </div>
+</div>
 </x-filament-panels::page>

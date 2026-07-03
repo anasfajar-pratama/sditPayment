@@ -14,6 +14,7 @@ class TokenPembelian extends Model
         'token_listrik_id',
         'tanggal',
         'nominal',
+        'bukti',
         'nomor_token',
         'kwh',
         'note',
@@ -27,6 +28,18 @@ class TokenPembelian extends Model
         'nominal' => 'decimal:2',
         'kwh'     => 'decimal:2',
     ];
+
+    protected $appends = [
+        'bukti_url',
+    ];
+
+    public function getBuktiUrlAttribute(): ?string
+    {
+        if (!$this->bukti) {
+            return null;
+        }
+        return \Illuminate\Support\Facades\Storage::url($this->bukti);
+    }
 
     public function tokenListrik(): BelongsTo
     {
