@@ -87,6 +87,13 @@ Route::get('/tagihan/share/{token}', [TagihanPublicController::class, 'show'])
 Route::middleware(['auth'])->group(function () {
     Route::get('/tagihan/export', [TagihanPublicController::class, 'exportCsv'])
         ->name('tagihan.export.csv');
+
+    Route::get('/calon-siswa/template', function () {
+        return \Maatwebsite\Excel\Facades\Excel::download(
+            new \App\Exports\CalonSiswaTemplateExport(),
+            'template-import-calon-siswa.xlsx'
+        );
+    })->name('calon-siswa.template');
 });
 
 require __DIR__.'/auth.php';

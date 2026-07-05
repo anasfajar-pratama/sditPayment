@@ -59,7 +59,13 @@
                                         {{ $siswa->nis }}
                                     </span>
                                     <span class="font-medium text-gray-800 dark:text-gray-100">{{ $siswa->nama }}</span>
-                                    <span class="ml-auto text-xs text-gray-400">Kelas {{ $siswa->kelasSaatIni?->kelas ?? '-' }}</span>
+                                    <span class="ml-auto text-xs text-gray-400">
+                                        @if ($siswa->is_calon)
+                                            {{ strtoupper($siswa->calon_jenis ?? '') }} - {{ \App\Filament\Pages\PembayaranSiswaPage::formatCalonTingkat($siswa->calon_tingkat, $siswa->calon_jenis) }}
+                                        @else
+                                            Kelas {{ $siswa->kelasSaatIni?->kelas ?? '-' }}
+                                        @endif
+                                    </span>
                                 </button>
                             @empty
                                 <div class="px-4 py-3 text-sm text-gray-400 text-center">Siswa tidak ditemukan.</div>
@@ -80,12 +86,17 @@
                     <h3 class="text-xs font-semibold uppercase tracking-wider text-gray-400 pb-1
                             border-b border-gray-100 dark:border-gray-700">Data Siswa</h3>
                                         <dl class="space-y-2 text-sm">
-                        @php $current = $selectedSiswa->kelasSaatIni; @endphp
+                        @php
+                            $current = $selectedSiswa->kelasSaatIni;
+                            $isCalon = $selectedSiswa->is_calon;
+                        @endphp
                         @foreach ([
                             'NIS'           => $selectedSiswa->nis,
                             'Nama'          => $selectedSiswa->nama,
                             'Kelas'         => $current?->kelas,
-                            'Tingkat'       => $current?->tingkat,
+                            'Tingkat'       => $isCalon
+                                ? \App\Filament\Pages\PembayaranSiswaPage::formatCalonTingkat($selectedSiswa->calon_tingkat, $selectedSiswa->calon_jenis)
+                                : $current?->tingkat,
                             'Tahun Ajaran'  => $current?->tahun_ajaran,
                         ] as $label => $val)
                             <div class="flex gap-2">
@@ -96,11 +107,13 @@
                         <div class="flex gap-2">
                             <dt class="w-32 shrink-0 text-gray-500">Jenis Sekolah</dt>
                             <dd>
-                                @if ($current?->jenis_sekolah)
+                                @if ($isCalon)
+                                    <span class="rounded-full bg-primary-100 text-primary-700 text-xs font-semibold px-2.5 py-0.5">
+                                        {{ strtoupper($selectedSiswa->calon_jenis ?? '') }}
+                                    </span>
+                                @elseif ($current?->jenis_sekolah)
                                     <span class="rounded-full bg-primary-100 text-primary-700 text-xs font-semibold px-2.5 py-0.5">
                                         {{ $current->jenis_sekolah }}
-
-
                                     </span>
                                 @else
                                     <span class="text-gray-400">—</span>

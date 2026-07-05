@@ -395,7 +395,9 @@ class PembayaranSiswaPage extends Page
                 DatePicker::make('tgl_bayar_struk')
                     ->label('Tanggal Bayar di Struk')
                     ->required()
-                    ->default(now()),
+                    ->default(now())
+                    ->maxDate(now())
+                    ->helperText('Tidak boleh lebih dari hari ini'),
 
                 FileUpload::make('bukti_bayar')
                     ->label('Bukti Bayar (Foto / Struk)')
@@ -532,6 +534,24 @@ class PembayaranSiswaPage extends Page
             '07' => 'Jul', '08' => 'Agu', '09' => 'Sep',
             '10' => 'Okt', '11' => 'Nov', '12' => 'Des',
         ][$bulan] ?? $bulan;
+    }
+
+    public static function formatCalonTingkat(?int $tingkat, ?string $jenjang): string
+    {
+        if ($tingkat === null) return '—';
+        return match ($jenjang) {
+            'sd'   => "Kelas {$tingkat}",
+            'smp'  => "Kelas {$tingkat}",
+            'dta'  => "Tingkat {$tingkat}",
+            'paud' => $tingkat === 1 ? 'TK-A' : ($tingkat === 2 ? 'TK-B' : 'Kelompok Bermain'),
+            'tk'   => $tingkat === 1 ? 'TK-A' : 'TK-B',
+            'SD'   => "Kelas {$tingkat}",
+            'SMP'  => "Kelas {$tingkat}",
+            'DTA'  => "Tingkat {$tingkat}",
+            'PAUD' => $tingkat === 1 ? 'TK-A' : ($tingkat === 2 ? 'TK-B' : 'Kelompok Bermain'),
+            'TK'   => $tingkat === 1 ? 'TK-A' : 'TK-B',
+            default => (string) $tingkat,
+        };
     }
 
     public function getWhatsappUrl($bayar): string

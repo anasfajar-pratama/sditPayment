@@ -2,12 +2,15 @@
 
 namespace App\Filament\Resources\SiswaResource\Pages;
 
+use App\Exports\CalonSiswaTemplateExport;
 use App\Filament\Resources\SiswaResource;
+use App\Imports\CalonSiswaImport;
 use App\Models\Siswa;
 use App\Models\SiswaKelasHistory;
 use App\Models\Tagihan;
 use Filament\Actions\Action;
 use Filament\Actions\CreateAction;
+use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
@@ -20,6 +23,8 @@ use Filament\Resources\Pages\ListRecords;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\Storage;
+use Maatwebsite\Excel\Facades\Excel;
 
 class ListCalonSiswa extends ListRecords
 {
@@ -42,7 +47,7 @@ class ListCalonSiswa extends ListRecords
                 TextColumn::make('calon_jenis')
                     ->label('Jenjang Pendidikan')
                     ->badge()
-                    ->color(fn ($state) => match ($state) {
+                    ->color(fn ($state) => match (strtolower($state ?? '')) {
                         'sd'   => 'success',
                         'smp'  => 'info',
                         'dta'  => 'warning',
@@ -107,6 +112,38 @@ class ListCalonSiswa extends ListRecords
     protected function getHeaderActions(): array
     {
         return [
+            // Action::make('download_template')
+            //     ->label('Download Template')
+            //     ->color('gray')
+            //     ->icon('heroicon-o-arrow-down-tray')
+            //     ->url(route('calon-siswa.template'))
+            //     ->openUrlInNewTab(),
+
+            Action::make('import_excel')
+                ->label('Import Excel')
+                ->color('info')
+                ->icon('heroicon-o-document-arrow-up')
+                ->modalHeading('Import Calon Siswa dari Excel')
+                ->modalWidth('xl')
+                ->form([
+                    \Filament\Forms\Components\View::make('filament.components.import-notes'),
+                    FileUpload::make('file')
+                        ->label('Pilih File Excel')
+                        ->acceptedFileTypes([
+                            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                            'application/vnd.ms-excel',
+                            'text/csv',
+                            'application/csv',
+                        ])
+                        ->maxSize(5120)
+                        ->storeFiles(false)
+                        ->required()
+                        ->helperText('Format: .xlsx, .xls, .csv — Maks 5MB | Maks 500 baris data'),
+                ])
+                ->action(function (array $data): void {
+                    $this->processImport($data['file']);
+                }),
+
             Action::make('proses_masuk_kelas')
                 ->label('Proses Masuk Kelas')
                 ->color('success')
@@ -248,6 +285,56 @@ class ListCalonSiswa extends ListRecords
         $now   = now();
         $start = $now->month >= 7 ? $now->year : $now->year - 1;
         return "{$start}/" . ($start + 1);
+    }
+
+    protected function processImport($file): void
+    {
+        $tmpPath = $file->store('tmp-imports');
+        $fullPath = Storage::path($tmpPath);
+
+        $import = new CalonSiswaImport();
+        try {
+            Excel::import($import, $fullPath);
+
+            if (! empty($import->errors)) {
+                foreach ($import->errors as $error) {
+                    Notification::make()
+                        ->title('Gagal')
+                        ->body($error)
+                        ->danger()
+                        ->send();
+                }
+                return;
+            }
+
+            Notification::make()
+                ->title("Berhasil! {$import->imported} calon siswa berhasil diimport.")
+                ->success()
+                ->send();
+
+            $this->resetTable();
+        } catch (\Maatwebsite\Excel\Validators\ValidationException $e) {
+            $failures = $e->failures();
+            foreach ($failures as $failure) {
+                $row = $failure->row();
+                $errors = implode(', ', $failure->errors());
+                Notification::make()
+                    ->title("Baris {$row}")
+                    ->body($errors)
+                    ->danger()
+                    ->send();
+            }
+        } catch (\Throwable $e) {
+            Notification::make()
+                ->title('Gagal mengimport file')
+                ->body($e->getMessage())
+                ->danger()
+                ->send();
+        } finally {
+            if (isset($tmpPath) && Storage::exists($tmpPath)) {
+                Storage::delete($tmpPath);
+            }
+        }
     }
 
     // ─── Tab per jenjang ─────────────────────────────────────────────────────
