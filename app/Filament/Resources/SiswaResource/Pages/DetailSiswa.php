@@ -1,5 +1,4 @@
 <?php
-// File: app/Filament/Resources/SiswaResource/Pages/DetailSiswa.php
 
 namespace App\Filament\Resources\SiswaResource\Pages;
 
@@ -15,18 +14,12 @@ class DetailSiswa extends Page
     protected static string $resource = SiswaResource::class;
     protected static string $view     = 'filament.resources.siswa-resource.pages.detail-siswa';
 
-    // ── Record ────────────────────────────────────────────────────────────────
     public Siswa $siswa;
-
-    // ─── Mount ────────────────────────────────────────────────────────────────
 
     public function mount(int|string $record): void
     {
-        // Tidak perlu eager load tagihans lagi — data diambil dari tabel pembayaran
-        $this->siswa = Siswa::findOrFail($record);
+        $this->siswa = Siswa::with('kelasSaatIni')->findOrFail($record);
     }
-
-    // ─── History Pembayaran ───────────────────────────────────────────────────
 
     public function getHistoryTagihanProperty(): Collection
     {
@@ -37,8 +30,6 @@ class DetailSiswa extends Page
             ->orderByDesc('id')
             ->get();
     }
-
-    // ─── Header actions ───────────────────────────────────────────────────────
 
     protected function getHeaderActions(): array
     {
@@ -51,14 +42,27 @@ class DetailSiswa extends Page
             Action::make('kembali')
                 ->label('← Kembali ke Kelas')
                 ->color('gray')
-                ->url(SiswaResource::getUrl('kelas', [
-                    'jenjang' => $this->siswa->jenis_sekolah,
-                    'kelas'   => $this->siswa->kelas,
-                ])),
+                ->url(fn () => $this->kembaliUrl()),
         ];
     }
 
-    // ─── Title & Breadcrumb ───────────────────────────────────────────────────
+    protected function kembaliUrl(): string
+    {
+        $current = $this->siswa->kelasSaatIni;
+        if ($current) {
+            return SiswaResource::getUrl('kelas', [
+                'jenjang' => $current->jenis_sekolah,
+                'kelas'   => $current->kelas,
+            ]);
+        }
+
+        $calonJenis = $this->siswa->calon_jenis;
+        if ($calonJenis) {
+            return SiswaResource::getUrl('jenjang', ['jenjang' => strtoupper($calonJenis)]);
+        }
+
+        return SiswaResource::getUrl('index');
+    }
 
     public function getTitle(): string
     {
@@ -67,8 +71,13 @@ class DetailSiswa extends Page
 
     public function getBreadcrumbs(): array
     {
-        $jenjang = $this->siswa->jenis_sekolah;
-        $kelas   = $this->siswa->kelas;
+        $current = $this->siswa->kelasSaatIni;
+        $jenjang = $current?->jenis_sekolah;
+        $kelas   = $current?->kelas;
+
+        if (! $jenjang) {
+            return ['#' => $this->siswa->nama];
+        }
 
         return [
             SiswaResource::getUrl('jenjang', ['jenjang' => $jenjang]) => 'Siswa ' . $jenjang,

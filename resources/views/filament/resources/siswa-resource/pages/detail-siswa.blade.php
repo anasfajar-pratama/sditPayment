@@ -17,10 +17,13 @@
             <p class="text-lg font-semibold text-gray-900 dark:text-white truncate">{{ $siswa->nama }}</p>
             <p class="text-sm text-gray-500 dark:text-gray-400">
                 NIS: {{ $siswa->nis ?? '-' }}
-                &middot; Kelas {{ $siswa->kelas ?? '-' }}
-                &middot; {{ $siswa->jenis_sekolah ?? '-' }}
-                @if($siswa->tahun_ajaran)
-                    &middot; {{ $siswa->tahun_ajaran }}
+                @if($siswa->kelasSaatIni)
+                    &middot; Kelas {{ $siswa->kelasSaatIni->kelas ?? '-' }}
+                    &middot; {{ $siswa->kelasSaatIni->jenis_sekolah ?? '-' }}
+                    &middot; {{ $siswa->kelasSaatIni->tahun_ajaran ?? '-' }}
+                @endif
+                @if($siswa->angkatan)
+                    &middot; Angkatan {{ $siswa->angkatan }}
                 @endif
             </p>
             @if($siswa->nama_orang_tua)

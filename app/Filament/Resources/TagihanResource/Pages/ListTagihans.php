@@ -115,8 +115,8 @@ class ListTagihans extends ListRecords
                     Select::make('kelas')
                         ->label('Kelas')
                         ->options(
-                            Siswa::query()
-                                ->whereNotNull('kelas')
+                            \App\Models\SiswaKelasHistory::query()
+                                ->where('is_current', true)
                                 ->distinct()
                                 ->orderBy('kelas')
                                 ->pluck('kelas', 'kelas')
@@ -200,7 +200,7 @@ class ListTagihans extends ListRecords
                     } else {
                         // Logika kelas biasa (siswa reguler)
                         if ($data['filter_kelas'] === 'pilih' && filled($data['kelas'] ?? null)) {
-                            $query->where('kelas', $data['kelas']);
+                            $query->whereHas('kelasSaatIni', fn($q) => $q->where('kelas', $data['kelas']));
                         }
                     }
 

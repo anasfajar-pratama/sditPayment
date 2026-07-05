@@ -8,6 +8,7 @@ use App\Http\Controllers\TagihanPublicController;
 use App\Http\Controllers\KasHarianPrintController;
 use App\Http\Controllers\KaryawanPdfController;
 use App\Http\Controllers\SlipGajiController;
+use App\Http\Controllers\OperasionalController;
 
 
 Route::get('/', function () {
@@ -36,6 +37,15 @@ Route::middleware('auth')->group(function () {
 
     Route::get('/slip-gaji/pdf', [SlipGajiController::class, 'cetak'])
         ->name('slip-gaji.pdf');
+
+    Route::get('/operasional/pdf', [OperasionalController::class, 'cetakPdf'])
+        ->name('operasional.pdf');
+
+    Route::get('/sosial/pdf', [OperasionalController::class, 'sosialPdf'])
+        ->name('sosial.pdf');
+
+    Route::get('/upah/pdf', [OperasionalController::class, 'upahPdf'])
+        ->name('upah.pdf');
 });
 
 Route::get('/slip-gaji/share/{karyawanId}/{bulan}/{tahun}', [SlipGajiController::class, 'share'])

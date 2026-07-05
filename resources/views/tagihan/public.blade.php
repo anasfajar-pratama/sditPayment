@@ -86,11 +86,11 @@
                 </div>
                 @endif
 
-                @if (!empty($tagihan->siswa->kelas))
+                @if (optional($tagihan->siswa->kelasSaatIni)->kelas)
                 <div class="flex justify-between items-start gap-4">
                     <span class="text-sm text-gray-500 min-w-fit">Kelas</span>
                     <span class="text-sm font-medium text-gray-700 text-right">
-                        {{ $tagihan->siswa->kelas }}
+                        {{ $tagihan->siswa->kelasSaatIni->kelas }}
                     </span>
                 </div>
                 @endif

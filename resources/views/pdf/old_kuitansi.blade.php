@@ -269,7 +269,7 @@
         <tr>
             <td class="label">Kelas</td>
             <td class="sep">:</td>
-            <td class="value">{{ $pembayaran->siswa->kelas }}</td>
+            <td class="value">{{ $pembayaran->siswa->kelasSaatIni?->kelas ?? '—' }}</td>
         </tr>
     </table>
 

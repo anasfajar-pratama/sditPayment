@@ -5,6 +5,8 @@ namespace App\Filament\Pages;
 use App\Models\Siswa;
 use App\Models\SiswaKelasHistory;
 use Filament\Actions\Action;
+use Illuminate\Database\QueryException;
+use Illuminate\Support\Facades\DB;
 use Filament\Forms\Components\Placeholder;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
@@ -25,6 +27,9 @@ class KenaikanKelasPage extends Page
 
     public array $kelasMapping = [];
 
+    public bool $canUndo = false;
+    public ?array $lastRunData = null;
+
     public function mount(): void
     {
         $this->targetTahunAjaran = $this->defaultTargetTahunAjaran();
@@ -41,9 +46,9 @@ class KenaikanKelasPage extends Page
 
         if (! $this->filterJenisSekolah) return;
 
-        $classes = Siswa::where('jenis_sekolah', $this->filterJenisSekolah)
-            ->where('status_aktif', true)
-            ->whereNotNull('kelas')
+        $classes = SiswaKelasHistory::where('jenis_sekolah', $this->filterJenisSekolah)
+            ->where('tahun_ajaran', $this->getTahunAjaranBerjalan())
+            ->where('is_current', true)
             ->distinct()
             ->orderByRaw('LENGTH(kelas), kelas')
             ->pluck('kelas');
@@ -56,7 +61,8 @@ class KenaikanKelasPage extends Page
     #[Computed]
     public function jenisSekolahList(): array
     {
-        return Siswa::where('status_aktif', true)
+        return SiswaKelasHistory::where('tahun_ajaran', $this->getTahunAjaranBerjalan())
+            ->where('is_current', true)
             ->whereNotNull('jenis_sekolah')
             ->distinct()->orderBy('jenis_sekolah')
             ->pluck('jenis_sekolah')
@@ -138,9 +144,9 @@ class KenaikanKelasPage extends Page
     {
         if (! $this->filterJenisSekolah) return [];
 
-        $rows = Siswa::where('jenis_sekolah', $this->filterJenisSekolah)
-            ->where('status_aktif', true)
-            ->whereNotNull('kelas')
+        $rows = SiswaKelasHistory::where('jenis_sekolah', $this->filterJenisSekolah)
+            ->where('tahun_ajaran', $this->getTahunAjaranBerjalan())
+            ->where('is_current', true)
             ->selectRaw('kelas, COUNT(*) as jumlah')
             ->groupBy('kelas')
             ->orderByRaw('LENGTH(kelas), kelas')
@@ -166,7 +172,7 @@ class KenaikanKelasPage extends Page
 
         ksort($options);
 
-        return ['' => '— Pilih —'] + $options;
+        return ['' => '— Pilih —', 'TINGGAL' => '— Tinggal Kelas —'] + $options;
     }
 
     public function prosesKenaikanAction(): Action
@@ -178,7 +184,6 @@ class KenaikanKelasPage extends Page
             ->modalHeading('Simulasi Kenaikan Kelas')
             ->modalWidth('2xl')
             ->modalSubmitActionLabel('Proses Semua Kenaikan')
-            ->modalSubmitAction('proses')
             ->form([
                 Placeholder::make('preview')
                     ->label('')
@@ -200,54 +205,198 @@ class KenaikanKelasPage extends Page
             return;
         }
 
-        $kelasData = $this->kelasData;
-        $taMulai   = $this->getTahunMulai();
-        $count     = 0;
+        $siswaIds = SiswaKelasHistory::where('jenis_sekolah', $this->filterJenisSekolah)
+            ->where('tahun_ajaran', $this->getTahunAjaranBerjalan())
+            ->where('is_current', true)
+            ->pluck('siswa_id');
 
-        foreach ($kelasData as $item) {
-            $targetKelas = $this->kelasMapping[$item['kelas']] ?? '';
-            if (! $targetKelas) continue;
+        $duplicates = SiswaKelasHistory::whereIn('siswa_id', $siswaIds)
+            ->where('tahun_ajaran', $this->targetTahunAjaran)
+            ->with('siswa:id,nama')
+            ->get();
 
-            $students = Siswa::where('jenis_sekolah', $this->filterJenisSekolah)
-                ->where('kelas', $item['kelas'])
-                ->where('status_aktif', true)
-                ->get();
-
-            foreach ($students as $siswa) {
-                SiswaKelasHistory::updateOrCreate(
-                    ['siswa_id' => $siswa->id, 'tahun_ajaran' => $this->targetTahunAjaran],
-                    [
-                        'kelas'         => $siswa->kelas,
-                        'jenis_sekolah' => $siswa->jenis_sekolah,
-                        'tahun_mulai'   => $taMulai,
-                        'catatan'       => "Kenaikan kelas T.A. {$this->targetTahunAjaran}",
-                        'created_by'    => auth()->id(),
-                    ]
-                );
-
-                if ($this->isGraduationValue($targetKelas)) {
-                    $siswa->update(['status_aktif' => false]);
-                } else {
-                    $siswa->update([
-                        'kelas'        => $targetKelas,
-                        'tahun_ajaran' => $this->targetTahunAjaran,
-                    ]);
-                }
-
-                $count++;
-            }
+        if ($duplicates->isNotEmpty()) {
+            $names = $duplicates->take(3)->pluck('siswa.nama')->implode(', ');
+            $more  = $duplicates->count() > 3 ? ' dan ' . ($duplicates->count() - 3) . ' lainnya' : '';
+            Notification::make()
+                ->title($duplicates->count() . ' siswa sudah memiliki data untuk ' . $this->targetTahunAjaran)
+                ->body("Contoh: {$names}{$more}. Record yang sudah ada akan diperbarui.")
+                ->warning()->send();
         }
 
+        $taMulai       = $this->getTahunMulai();
+        $count         = 0;
+        $newIds        = [];
+        $graduatedIds  = [];
+        $skipped       = [];
+
+        try {
+            DB::transaction(function () use ($taMulai, &$count, &$newIds, &$graduatedIds, &$skipped) {
+                $kelasData = $this->kelasData;
+
+                foreach ($kelasData as $item) {
+                    $targetKelas = $this->kelasMapping[$item['kelas']] ?? '';
+                    if (! $targetKelas) {
+                        $skipped[] = $item['kelas'];
+                        continue;
+                    }
+
+                    $histories = SiswaKelasHistory::where('jenis_sekolah', $this->filterJenisSekolah)
+                        ->where('tahun_ajaran', $this->getTahunAjaranBerjalan())
+                        ->where('kelas', $item['kelas'])
+                        ->where('is_current', true)
+                        ->with('siswa')
+                        ->get();
+
+                    foreach ($histories as $history) {
+                        $siswa = $history->siswa;
+                        if (! $siswa || ! $siswa->status_aktif) continue;
+
+                        $history->update(['is_current' => false]);
+
+                        if ($this->isGraduationValue($targetKelas)) {
+                            $siswa->update(['status_aktif' => false]);
+                            $graduatedIds[] = $siswa->id;
+
+                            $new = SiswaKelasHistory::updateOrCreate(
+                                ['siswa_id' => $siswa->id, 'tahun_ajaran' => $this->targetTahunAjaran],
+                                [
+                                    'kelas'         => $targetKelas,
+                                    'tingkat'       => null,
+                                    'jenis_sekolah' => $this->filterJenisSekolah,
+                                    'tahun_mulai'   => $taMulai,
+                                    'mutasi'        => 'lulus',
+                                    'is_current'    => false,
+                                    'created_by'    => auth()->id(),
+                                    'catatan'       => "Lulus T.A. {$this->targetTahunAjaran}",
+                                ]
+                            );
+                            $newIds[] = $new->id;
+                        } elseif ($targetKelas === 'TINGGAL') {
+                            $new = SiswaKelasHistory::updateOrCreate(
+                                ['siswa_id' => $siswa->id, 'tahun_ajaran' => $this->targetTahunAjaran],
+                                [
+                                    'kelas'         => $history->kelas,
+                                    'tingkat'       => $history->tingkat,
+                                    'jenis_sekolah' => $this->filterJenisSekolah,
+                                    'tahun_mulai'   => $taMulai,
+                                    'mutasi'        => 'tinggal',
+                                    'is_current'    => true,
+                                    'created_by'    => auth()->id(),
+                                    'catatan'       => "Tinggal kelas T.A. {$this->targetTahunAjaran}",
+                                ]
+                            );
+                            $newIds[] = $new->id;
+                        } else {
+                            $tingkatBaru = (int) filter_var($targetKelas, FILTER_SANITIZE_NUMBER_INT);
+
+                            $new = SiswaKelasHistory::updateOrCreate(
+                                ['siswa_id' => $siswa->id, 'tahun_ajaran' => $this->targetTahunAjaran],
+                                [
+                                    'kelas'         => $targetKelas,
+                                    'tingkat'       => $tingkatBaru,
+                                    'jenis_sekolah' => $this->filterJenisSekolah,
+                                    'tahun_mulai'   => $taMulai,
+                                    'mutasi'        => 'naik',
+                                    'is_current'    => true,
+                                    'created_by'    => auth()->id(),
+                                    'catatan'       => "Kenaikan kelas T.A. {$this->targetTahunAjaran}",
+                                ]
+                            );
+                            $newIds[] = $new->id;
+                        }
+
+                        $count++;
+                    }
+                }
+            });
+
+            $this->canUndo = true;
+            $this->lastRunData = [
+                'new_history_ids' => $newIds,
+                'graduated_ids'   => $graduatedIds,
+                'target_ta'       => $this->targetTahunAjaran,
+                'jenis_sekolah'   => $this->filterJenisSekolah,
+            ];
+
+            $this->dispatch('$refresh');
+
+            $body = "{$count} siswa diproses ke tahun ajaran {$this->targetTahunAjaran}. Anda bisa undo kenaikan ini.";
+            if ($skipped) {
+                $body .= ' Kelas dilewati (target tidak diisi): ' . implode(', ', $skipped) . '.';
+            }
+
+            Notification::make()
+                ->title('Kenaikan kelas selesai diproses')
+                ->body($body)
+                ->success()->send();
+        } catch (QueryException $e) {
+            Notification::make()
+                ->title('Gagal memproses kenaikan kelas')
+                ->body("Terjadi kesalahan database: {$e->getMessage()}")
+                ->danger()->send();
+        }
+    }
+
+    public function undoKenaikan(): void
+    {
+        if (! $this->canUndo || ! $this->lastRunData) {
+            Notification::make()->title('Tidak ada data kenaikan yang bisa di-undo')->warning()->send();
+            return;
+        }
+
+        $count = 0;
+
+        foreach ($this->lastRunData['new_history_ids'] as $id) {
+            $newRecord = SiswaKelasHistory::find($id);
+            if (! $newRecord) continue;
+
+            $siswaId = $newRecord->siswa_id;
+
+            $previous = SiswaKelasHistory::where('siswa_id', $siswaId)
+                ->where('id', '!=', $id)
+                ->orderByDesc('tahun_mulai')
+                ->first();
+
+            if ($previous) {
+                $previous->update(['is_current' => true]);
+            }
+
+            $newRecord->delete();
+            $count++;
+        }
+
+        if (! empty($this->lastRunData['graduated_ids'])) {
+            Siswa::whereIn('id', $this->lastRunData['graduated_ids'])->update(['status_aktif' => true]);
+        }
+
+        $this->canUndo = false;
+        $this->lastRunData = null;
+
+        $this->dispatch('$refresh');
+
         Notification::make()
-            ->title('Kenaikan kelas selesai diproses')
-            ->body("{$count} siswa diproses ke tahun ajaran {$this->targetTahunAjaran}")
+            ->title('Kenaikan kelas berhasil di-undo')
+            ->body("{$count} siswa dikembalikan ke keadaan sebelumnya")
             ->success()->send();
     }
 
     protected function getHeaderActions(): array
     {
-        return [
-            $this->prosesKenaikanAction(),
-        ];
+        $actions = [$this->prosesKenaikanAction()];
+
+        if ($this->canUndo) {
+            $actions[] = Action::make('undoKenaikan')
+                ->label('↩ Undo Kenaikan Terakhir')
+                ->color('warning')
+                ->icon('heroicon-o-arrow-uturn-left')
+                ->requiresConfirmation()
+                ->modalHeading('Undo Kenaikan Kelas')
+                ->modalDescription('Tindakan ini akan membatalkan kenaikan kelas terakhir. History baru akan dihapus dan siswa dikembalikan ke kelas sebelumnya.')
+                ->modalSubmitActionLabel('Ya, Undo')
+                ->action(fn () => $this->undoKenaikan());
+        }
+
+        return $actions;
     }
 }
