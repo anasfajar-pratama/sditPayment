@@ -185,7 +185,7 @@ class ListTagihans extends ListRecords
                         ->default(true),
                 ])
                 ->action(function (array $data): void {
-                    $query = Siswa::query();
+                    $query = Siswa::query()->where('status_aktif', true);
 
                     $isDaftarMasuk = static::isDaftarMasuk((int) $data['jenis_pembayaran_id']);
 
