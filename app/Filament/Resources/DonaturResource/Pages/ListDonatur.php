@@ -13,13 +13,13 @@ class ListDonatur extends ListRecords
 
     public function getTitle(): string
     {
-        return 'Daftar Donatur';
+        return 'Daftar Orang Tua Asuh';
     }
 
     protected function getHeaderActions(): array
     {
         return [
-            CreateAction::make()->label('Tambah Donatur'),
+            CreateAction::make()->label('Tambah Orang Tua Asuh'),
         ];
     }
 }

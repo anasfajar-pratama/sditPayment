@@ -13,7 +13,7 @@ class EditDonatur extends EditRecord
 
     public function getTitle(): string
     {
-        return 'Edit Donatur: ' . $this->record->nama;
+        return 'Edit Orang Tua Asuh: ' . $this->record->nama;
     }
 
     protected function getHeaderActions(): array
@@ -35,6 +35,6 @@ class EditDonatur extends EditRecord
 
     protected function getSavedNotificationTitle(): ?string
     {
-        return 'Data donatur berhasil diperbarui';
+        return 'Data Orang Tua Asuh berhasil diperbarui';
     }
 }
