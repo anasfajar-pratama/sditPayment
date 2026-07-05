@@ -200,6 +200,9 @@
                                 <th style="padding:0.75rem 1rem;text-align:right;font-size:0.7rem;
                                            font-weight:600;letter-spacing:0.05em;text-transform:uppercase;
                                            width:8rem;">Kredit</th>
+                                <th style="padding:0.75rem 1rem;text-align:center;font-size:0.7rem;
+                                           font-weight:600;letter-spacing:0.05em;text-transform:uppercase;
+                                           width:3rem;">Bukti</th>
                                 <th style="padding:0.75rem 1rem;text-align:right;font-size:0.7rem;
                                            font-weight:600;letter-spacing:0.05em;text-transform:uppercase;
                                            width:9rem;">Saldo</th>
@@ -249,6 +252,22 @@
                                                color:#dc2626;font-variant-numeric:tabular-nums;">
                                         @if ($e['kredit'])
                                             {{ number_format($e['kredit'], 0, ',', '.') }}
+                                        @else
+                                            <span style="color:#d1d5db;">—</span>
+                                        @endif
+                                    </td>
+                                    <td style="padding:0.75rem 1rem;text-align:center;">
+                                        @if ($e['bukti'])
+                                            <button type="button"
+                                                x-data
+                                                x-on:click="
+                                                    $nextTick(() => {
+                                                        $dispatch('open-bukti-kas', { url: '{{ $e['bukti_url'] }}' });
+                                                    });
+                                                "
+                                                class="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 border border-blue-200 transition cursor-pointer">
+                                                <x-heroicon-o-eye class="w-4 h-4" />
+                                            </button>
                                         @else
                                             <span style="color:#d1d5db;">—</span>
                                         @endif
@@ -424,4 +443,25 @@
         </div>
 
     </div>
+
+{{-- Popup preview bukti transaksi --}}
+<div
+    x-data="{ open: false, url: '' }"
+    x-on:open-bukti-kas.window="url = $event.detail.url; open = true"
+    x-show="open"
+    x-cloak
+    class="fixed inset-0 z-[999] flex items-center justify-center bg-black/60 p-4"
+    x-on:click.self="open = false"
+>
+    <div class="relative w-full max-w-2xl max-h-[80vh] bg-white rounded-xl shadow-2xl overflow-auto">
+        <button type="button"
+            x-on:click="open = false"
+            class="sticky top-2 z-10 ml-auto mr-2 block w-8 h-8 flex items-center justify-center rounded-full bg-black/40 text-white hover:bg-black/60 transition">
+            <x-heroicon-o-x-mark class="w-5 h-5" />
+        </button>
+        <div class="p-4 pt-0 flex items-start justify-center">
+            <img :src="url" alt="Bukti Transaksi" class="max-w-full h-auto rounded">
+        </div>
+    </div>
+</div>
 </x-filament-panels::page>

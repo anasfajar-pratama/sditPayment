@@ -5,9 +5,7 @@ namespace App\Filament\Pages;
 use App\Models\Siswa;
 use App\Models\SiswaKelasHistory;
 use Filament\Actions\Action;
-use Filament\Forms\Components\Select;
-use Filament\Forms\Components\Textarea;
-use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Placeholder;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
 use Livewire\Attributes\Computed;
@@ -22,23 +20,38 @@ class KenaikanKelasPage extends Page
 
     protected static string $view = 'filament.pages.kenaikan-kelas-page';
 
-    // ─── Filter state ─────────────────────────────────────────────────────────
-
     public string $filterJenisSekolah = '';
-    public string $filterKelas        = '';
+    public string $targetTahunAjaran  = '';
+
+    public array $kelasMapping = [];
+
+    public function mount(): void
+    {
+        $this->targetTahunAjaran = $this->defaultTargetTahunAjaran();
+    }
 
     public function updatedFilterJenisSekolah(): void
     {
-        $this->filterKelas = '';
-        unset($this->kelasList, $this->siswaDiKelas);
+        $this->initKelasMapping();
     }
 
-    public function updatedFilterKelas(): void
+    protected function initKelasMapping(): void
     {
-        unset($this->siswaDiKelas);
-    }
+        $this->kelasMapping = [];
 
-    // ─── Computed ─────────────────────────────────────────────────────────────
+        if (! $this->filterJenisSekolah) return;
+
+        $classes = Siswa::where('jenis_sekolah', $this->filterJenisSekolah)
+            ->where('status_aktif', true)
+            ->whereNotNull('kelas')
+            ->distinct()
+            ->orderByRaw('LENGTH(kelas), kelas')
+            ->pluck('kelas');
+
+        foreach ($classes as $kelas) {
+            $this->kelasMapping[$kelas] = $this->suggestTargetKelas($kelas, $this->filterJenisSekolah);
+        }
+    }
 
     #[Computed]
     public function jenisSekolahList(): array
@@ -49,55 +62,6 @@ class KenaikanKelasPage extends Page
             ->pluck('jenis_sekolah')
             ->toArray();
     }
-
-    #[Computed]
-    public function kelasList(): array
-    {
-        if (! $this->filterJenisSekolah) return [];
-
-        return Siswa::where('jenis_sekolah', $this->filterJenisSekolah)
-            ->where('status_aktif', true)
-            ->whereNotNull('kelas')
-            ->distinct()->orderBy('kelas')
-            ->pluck('kelas')
-            ->toArray();
-    }
-
-    #[Computed]
-    public function siswaDiKelas(): array
-    {
-        if (! $this->filterJenisSekolah || ! $this->filterKelas) return [];
-
-        $students = Siswa::where('jenis_sekolah', $this->filterJenisSekolah)
-            ->where('kelas', $this->filterKelas)
-            ->where('status_aktif', true)
-            ->orderBy('nama')
-            ->get();
-
-        $kelasHistories = SiswaKelasHistory::whereIn('siswa_id', $students->pluck('id'))
-            ->orderBy('tahun_mulai')
-            ->get()
-            ->groupBy('siswa_id');
-
-        return $students->map(function ($siswa) use ($kelasHistories) {
-            return [
-                'id'           => $siswa->id,
-                'nis'          => $siswa->nis,
-                'nama'         => $siswa->nama,
-                'kelas'        => $siswa->kelas,
-                'jenis_sekolah'=> $siswa->jenis_sekolah,
-                'history'      => ($kelasHistories->get($siswa->id) ?? collect())
-                    ->map(fn ($h) => [
-                        'tahun_ajaran'  => $h->tahun_ajaran,
-                        'kelas'         => $h->kelas,
-                        'jenis_sekolah' => $h->jenis_sekolah,
-                    ])
-                    ->toArray(),
-            ];
-        })->toArray();
-    }
-
-    // ─── Info tahun ajaran berjalan ────────────────────────────────────────────
 
     public function getTahunAjaranBerjalan(): string
     {
@@ -112,166 +76,178 @@ class KenaikanKelasPage extends Page
         return $now->month >= 7 ? $now->year : $now->year - 1;
     }
 
-    // ─── Action: Naik kelas individual ────────────────────────────────────────
-
-    public function naikKelasAction(): Action
+    public function defaultTargetTahunAjaran(): string
     {
-        return Action::make('naikKelas')
-            ->modalHeading('Naik Kelas Siswa')
-            ->modalWidth('md')
-            ->modalSubmitActionLabel('Simpan Kenaikan Kelas')
-            ->fillForm(function (array $arguments): array {
-                $siswa = Siswa::findOrFail($arguments['siswa_id']);
-                return [
-                    'nama_siswa'     => $siswa->nama,
-                    'kelas_lama'     => $siswa->kelas,
-                    'jenis_lama'     => $siswa->jenis_sekolah,
-                    'kelas_baru'     => '',
-                    'jenis_baru'     => $siswa->jenis_sekolah,
-                    'catatan'        => '',
-                ];
-            })
+        $ta    = $this->getTahunAjaranBerjalan();
+        $parts = explode('/', $ta);
+        $start = (int) $parts[0] + 1;
+        return "{$start}/" . ($start + 1);
+    }
+
+    public function getMaxLevel(string $jenisSekolah): ?int
+    {
+        return match ($jenisSekolah) {
+            'SD'   => 6,
+            'SMP'  => 3,
+            'DTA'  => 4,
+            default => null,
+        };
+    }
+
+    public function getGraduationLabel(string $jenisSekolah): string
+    {
+        return match ($jenisSekolah) {
+            'SD'   => 'Lulus SD',
+            'SMP'  => 'Lulus SMP',
+            default => '',
+        };
+    }
+
+    public function isGraduationValue(string $value): bool
+    {
+        return in_array($value, ['Lulus SD', 'Lulus SMP']);
+    }
+
+    public function suggestTargetKelas(string $kelas, string $jenisSekolah): string
+    {
+        if ($jenisSekolah === 'PAUD') {
+            return match ($kelas) {
+                'Kelompok Bermain' => 'TK-A',
+                'TK-A'             => 'TK-B',
+                default            => '',
+            };
+        }
+
+        if (preg_match('/^(\d+)([A-Z]?)$/', $kelas, $m)) {
+            $num    = (int) $m[1];
+            $letter = $m[2];
+            $max    = $this->getMaxLevel($jenisSekolah);
+
+            if ($max !== null && $num >= $max) {
+                return $this->getGraduationLabel($jenisSekolah);
+            }
+
+            return ($num + 1) . $letter;
+        }
+
+        return '';
+    }
+
+    #[Computed]
+    public function kelasData(): array
+    {
+        if (! $this->filterJenisSekolah) return [];
+
+        $rows = Siswa::where('jenis_sekolah', $this->filterJenisSekolah)
+            ->where('status_aktif', true)
+            ->whereNotNull('kelas')
+            ->selectRaw('kelas, COUNT(*) as jumlah')
+            ->groupBy('kelas')
+            ->orderByRaw('LENGTH(kelas), kelas')
+            ->get();
+
+        return $rows->map(fn ($row) => [
+            'kelas'     => $row->kelas,
+            'jumlah'    => $row->jumlah,
+            'target'    => $this->kelasMapping[$row->kelas] ?? '',
+            'status'    => ! empty($this->kelasMapping[$row->kelas]) ? 'siap' : 'perlu_diisi',
+        ])->toArray();
+    }
+
+    public function getTargetOptions(): array
+    {
+        $jenis   = $this->filterJenisSekolah;
+        $options = \App\Filament\Resources\SiswaResource::getKelasOptions($jenis);
+
+        $lulus = $this->getGraduationLabel($jenis);
+        if ($lulus) {
+            $options[$lulus] = $lulus;
+        }
+
+        ksort($options);
+
+        return ['' => '— Pilih —'] + $options;
+    }
+
+    public function prosesKenaikanAction(): Action
+    {
+        return Action::make('prosesKenaikan')
+            ->label('Jalankan Simulasi')
+            ->icon('heroicon-o-play')
+            ->color('success')
+            ->modalHeading('Simulasi Kenaikan Kelas')
+            ->modalWidth('2xl')
+            ->modalSubmitActionLabel('Proses Semua Kenaikan')
+            ->modalSubmitAction('proses')
             ->form([
-                \Filament\Forms\Components\Placeholder::make('info_siswa')
-                    ->label('Siswa')
-                    ->content(fn (\Filament\Forms\Get $get) => "{$get('nama_siswa')} — saat ini Kelas {$get('kelas_lama')} ({$get('jenis_lama')})"),
-
-                \Filament\Forms\Components\Hidden::make('nama_siswa'),
-                \Filament\Forms\Components\Hidden::make('kelas_lama'),
-                \Filament\Forms\Components\Hidden::make('jenis_lama'),
-
-                Select::make('jenis_baru')
-                    ->label('Jenis Sekolah Baru')
-                    ->options(fn () => collect($this->jenisSekolahList)->mapWithKeys(fn ($v) => [$v => $v])->toArray())
-                    ->required(),
-
-                TextInput::make('kelas_baru')
-                    ->label('Kelas Baru')
-                    ->placeholder('Contoh: 2A, 3B, IV')
-                    ->required(),
-
-                Textarea::make('catatan')
-                    ->label('Catatan (opsional)')
-                    ->rows(2)
-                    ->placeholder('Contoh: Naik kelas reguler T.A. 2025/2026'),
+                Placeholder::make('preview')
+                    ->label('')
+                    ->content(fn () => view('filament.pages.kenaikan-kelas-preview', [
+                        'kelasData' => $this->kelasData,
+                        'targetTa'  => $this->targetTahunAjaran,
+                        'taSumber'  => $this->getTahunAjaranBerjalan(),
+                    ])),
             ])
-            ->action(function (array $data, array $arguments): void {
-                $siswa = Siswa::findOrFail($arguments['siswa_id']);
+            ->action(function (): void {
+                $this->prosesSemuaKenaikan();
+            });
+    }
 
-                // Simpan history kelas lama
+    protected function prosesSemuaKenaikan(): void
+    {
+        if (! $this->filterJenisSekolah || ! $this->targetTahunAjaran) {
+            Notification::make()->title('Pilih jenis sekolah dan tahun ajaran target terlebih dahulu')->warning()->send();
+            return;
+        }
+
+        $kelasData = $this->kelasData;
+        $taMulai   = $this->getTahunMulai();
+        $count     = 0;
+
+        foreach ($kelasData as $item) {
+            $targetKelas = $this->kelasMapping[$item['kelas']] ?? '';
+            if (! $targetKelas) continue;
+
+            $students = Siswa::where('jenis_sekolah', $this->filterJenisSekolah)
+                ->where('kelas', $item['kelas'])
+                ->where('status_aktif', true)
+                ->get();
+
+            foreach ($students as $siswa) {
                 SiswaKelasHistory::updateOrCreate(
-                    ['siswa_id' => $siswa->id, 'tahun_ajaran' => $this->getTahunAjaranBerjalan()],
+                    ['siswa_id' => $siswa->id, 'tahun_ajaran' => $this->targetTahunAjaran],
                     [
-                        'kelas'         => $data['kelas_lama'],
-                        'jenis_sekolah' => $data['jenis_lama'],
-                        'tahun_mulai'   => $this->getTahunMulai(),
-                        'catatan'       => $data['catatan'] ?: null,
+                        'kelas'         => $siswa->kelas,
+                        'jenis_sekolah' => $siswa->jenis_sekolah,
+                        'tahun_mulai'   => $taMulai,
+                        'catatan'       => "Kenaikan kelas T.A. {$this->targetTahunAjaran}",
                         'created_by'    => auth()->id(),
                     ]
                 );
 
-                // Update siswa ke kelas baru
-                $siswa->update([
-                    'kelas'         => $data['kelas_baru'],
-                    'jenis_sekolah' => $data['jenis_baru'],
-                ]);
-
-                unset($this->siswaDiKelas);
-
-                Notification::make()
-                    ->title("Kenaikan kelas disimpan")
-                    ->body("{$siswa->nama}: {$data['kelas_lama']} → {$data['kelas_baru']}")
-                    ->success()->send();
-            });
-    }
-
-    // ─── Action: Proses kenaikan kelas semua siswa di kelas ini ───────────────
-
-    public function prosesBatchNaikKelasAction(): Action
-    {
-        return Action::make('prosesBatchNaikKelas')
-            ->label('Proses Kenaikan Kelas (Semua)')
-            ->icon('heroicon-o-arrow-up-circle')
-            ->color('warning')
-            ->modalHeading("Kenaikan Kelas — {$this->filterJenisSekolah} Kelas {$this->filterKelas}")
-            ->modalDescription('Semua siswa aktif di kelas ini akan dipindah ke kelas baru. Kelas lama akan tersimpan sebagai riwayat.')
-            ->modalWidth('md')
-            ->modalSubmitActionLabel('Proses Kenaikan')
-            ->form([
-                TextInput::make('kelas_baru')
-                    ->label('Kelas Baru')
-                    ->placeholder('Contoh: 2A, 3B, IV')
-                    ->required(),
-
-                Select::make('jenis_baru')
-                    ->label('Jenis Sekolah Baru')
-                    ->options(fn () => collect($this->jenisSekolahList)->mapWithKeys(fn ($v) => [$v => $v])->toArray())
-                    ->default($this->filterJenisSekolah)
-                    ->required(),
-
-                Textarea::make('catatan')
-                    ->label('Catatan (opsional)')
-                    ->rows(2)
-                    ->placeholder("Naik kelas dari {$this->filterKelas} ke kelas baru"),
-            ])
-            ->action(function (array $data): void {
-                if (! $this->filterJenisSekolah || ! $this->filterKelas) {
-                    Notification::make()->title('Pilih jenis sekolah dan kelas terlebih dahulu')->warning()->send();
-                    return;
-                }
-
-                $students = Siswa::where('jenis_sekolah', $this->filterJenisSekolah)
-                    ->where('kelas', $this->filterKelas)
-                    ->where('status_aktif', true)
-                    ->get();
-
-                if ($students->isEmpty()) {
-                    Notification::make()->title('Tidak ada siswa aktif di kelas ini')->warning()->send();
-                    return;
-                }
-
-                $ta       = $this->getTahunAjaranBerjalan();
-                $taMulai  = $this->getTahunMulai();
-                $catatan  = $data['catatan'] ?: null;
-                $count    = 0;
-
-                foreach ($students as $siswa) {
-                    SiswaKelasHistory::updateOrCreate(
-                        ['siswa_id' => $siswa->id, 'tahun_ajaran' => $ta],
-                        [
-                            'kelas'         => $siswa->kelas,
-                            'jenis_sekolah' => $siswa->jenis_sekolah,
-                            'tahun_mulai'   => $taMulai,
-                            'catatan'       => $catatan,
-                            'created_by'    => auth()->id(),
-                        ]
-                    );
-
+                if ($this->isGraduationValue($targetKelas)) {
+                    $siswa->update(['status_aktif' => false]);
+                } else {
                     $siswa->update([
-                        'kelas'         => $data['kelas_baru'],
-                        'jenis_sekolah' => $data['jenis_baru'],
+                        'kelas'        => $targetKelas,
+                        'tahun_ajaran' => $this->targetTahunAjaran,
                     ]);
-                    $count++;
                 }
 
-                unset($this->siswaDiKelas);
-                $this->filterKelas = $data['kelas_baru'];
-                if ($this->filterJenisSekolah !== $data['jenis_baru']) {
-                    $this->filterJenisSekolah = $data['jenis_baru'];
-                }
-                unset($this->kelasList);
+                $count++;
+            }
+        }
 
-                Notification::make()
-                    ->title("Kenaikan kelas selesai")
-                    ->body("{$count} siswa dipindah dari Kelas {$this->filterKelas} ke {$data['kelas_baru']}")
-                    ->success()->send();
-            });
+        Notification::make()
+            ->title('Kenaikan kelas selesai diproses')
+            ->body("{$count} siswa diproses ke tahun ajaran {$this->targetTahunAjaran}")
+            ->success()->send();
     }
 
     protected function getHeaderActions(): array
     {
         return [
-            $this->prosesBatchNaikKelasAction(),
+            $this->prosesKenaikanAction(),
         ];
     }
 }

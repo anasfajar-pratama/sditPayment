@@ -214,12 +214,12 @@
         /* ── BOTTOM TABLE ── */
         .bottom-table { width: 100%; border-collapse: collapse; margin-top: 8px; }
         .bottom-table td { vertical-align: bottom; padding: 0 6px; }
-        .bottom-table td.ttd-cell { width: 150px; text-align: center; }
+        .bottom-table td.ttd-cell { width: 280px; text-align: center; }
         .bottom-table td.stamp-cell { text-align: center; }
         .bottom-table td.qr-cell { width: 125px; text-align: center; }
-        .ttd-space { height: 46px; }
-        .ttd-img { max-height: 55px; max-width: 140px; margin-bottom: 2px; }
-        .garis-ttd { border-top: 1px solid #333; padding-top: 3px; font-weight: bold; font-size: 9px; }
+        .ttd-space { height: 96px; display: flex; align-items: flex-end; justify-content: center; }
+        .ttd-img { max-height: 94px; max-width: 247px; }
+        .garis-ttd { border-top: 1px solid #333; padding: 1px 20px 0; font-weight: bold; font-size: 9px; display: inline-block; }
         .stamp {
             display: inline-block;
             border: 2.5px solid #059669;
@@ -371,7 +371,7 @@
             <tr>
                 {{-- TTD Bendahara --}}
                 <td class="ttd-cell">
-                    <div style="font-size:9px; margin-bottom:2px;">Karawang, 
+                    <div style="font-size:9px;">Karawang, 
                         {{ \Carbon\Carbon::parse($pembayaran->tanggal_bayar)->format('d M Y') }}
                     </div>
                     <div class="ttd-space">
@@ -382,18 +382,7 @@
                     <div class="garis-ttd">Rita Erninda S.M<br>Bendahara</div>
                 </td>
 
-                {{-- Kepsek --}}
-                <td class="ttd-cell">
-                    <div style="font-size:9px; margin-bottom:2px;"></div>
-                    <div class="ttd-space">
-                        @if ($ttdKepsek)
-                            <img class="ttd-img" src="{{ $ttdKepsek }}" alt="TTD Kepala Sekolah">
-                        @endif
-                    </div>
-                    <div class="garis-ttd">Hj. Suci Andari S. S. , M. Hum<br>
-                    Kepala Sekolah</div>
-                </td>
-<td class="stamp-cell"></td>
+                <td class="stamp-cell"></td>
                 {{-- QR Code --}}
                 <td class="qr-cell">
                     <img class="qr-img"

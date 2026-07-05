@@ -6,6 +6,7 @@ namespace App\Filament\Resources\DonaturResource\Pages;
 use App\Filament\Resources\DonaturResource;
 use App\Models\Donasi;
 use App\Models\Donatur;
+use App\Filament\Traits\ConvertsToWebp;
 use Filament\Actions\Action;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\FileUpload;
@@ -21,7 +22,7 @@ use Illuminate\Support\Collection;
 
 class DetailDonatur extends Page implements HasForms
 {
-    use InteractsWithForms;
+    use InteractsWithForms, ConvertsToWebp;
 
     protected static string $resource = DonaturResource::class;
     protected static string $view     = 'filament.resources.donatur-resource.pages.detail-donatur';
@@ -101,7 +102,7 @@ class DetailDonatur extends Page implements HasForms
             'donatur_id'     => $this->donatur->id,
             'tanggal'        => $tanggal->toDateString(),
             'nominal'        => $data['nominal'],
-            'bukti_transfer' => $data['bukti_transfer'] ?? null,
+            'bukti_transfer' => $this->convertToWebp($data['bukti_transfer'] ?? null),
             'note'           => $data['note'] ?? null,
             'bulan'          => $tanggal->format('m'),
             'tahun'          => $tanggal->format('Y'),

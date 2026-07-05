@@ -3,11 +3,13 @@
 
 namespace App\Filament\Resources\TokenListrikResource\Pages;
 
+use App\Filament\Traits\ConvertsToWebp;
 use App\Filament\Resources\TokenListrikResource;
 use App\Models\TokenListrik;
 use App\Models\TokenPembelian;
 use Filament\Actions\Action;
 use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Grid;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
@@ -20,7 +22,7 @@ use Illuminate\Support\Collection;
 
 class DetailTokenListrik extends Page implements HasForms
 {
-    use InteractsWithForms;
+    use InteractsWithForms, ConvertsToWebp;
 
     protected static string $resource = TokenListrikResource::class;
     protected static string $view     = 'filament.resources.token-listrik-resource.pages.detail-token-listrik';
@@ -74,6 +76,13 @@ class DetailTokenListrik extends Page implements HasForms
                         ->required()
                         ->placeholder('Contoh: 100000'),
 
+                    FileUpload::make('bukti')
+                        ->label('Bukti Transaksi (foto struk)')
+                        ->image()
+                        ->directory('bukti-token')
+                        ->maxSize(2048)
+                        ->columnSpanFull(),
+
                     TextInput::make('nomor_token')
                         ->label('Nomor Token (pada struk)')
                         ->required()
@@ -108,6 +117,7 @@ class DetailTokenListrik extends Page implements HasForms
             'token_listrik_id' => $this->token->id,
             'tanggal'          => $tanggal->toDateString(),
             'nominal'          => $data['nominal'],
+            'bukti'            => $this->convertToWebp($data['bukti'] ?? null),
             'nomor_token'      => $data['nomor_token'] ?? null,
             'kwh'              => $data['kwh'] ?? null,
             'note'             => $data['note'] ?? null,
@@ -121,6 +131,7 @@ class DetailTokenListrik extends Page implements HasForms
         $this->pembelianForm->fill([
             'tanggal'     => now()->toDateString(),
             'nominal'     => null,
+            'bukti'       => null,
             'nomor_token' => null,
             'kwh'         => null,
             'note'        => null,

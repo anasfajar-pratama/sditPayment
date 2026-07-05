@@ -7,7 +7,7 @@
 <x-filament-panels::page>
 
     {{-- ── Header info jenjang ──────────────────────────────────────────────── --}}
-    <div class="mb-6 flex items-center gap-3">
+    <div class="mb-4 flex flex-wrap items-center gap-3">
         <span class="inline-flex items-center px-4 py-1.5 rounded-full text-sm font-semibold {{ $this->getJenjangColor() }}">
             {{ $jenjang }}
         </span>
@@ -15,6 +15,25 @@
             {{ count($kelasData) }} kelas tersedia ·
             {{ collect($kelasData)->sum('jumlah') }} siswa aktif
         </span>
+
+        {{-- ── Filter tahun ajaran ──────────────────────────────────────────── --}}
+        @php
+            $taList = $this->tahunAjaranList();
+        @endphp
+        @if (count($taList) > 0)
+            <div class="ml-auto flex items-center gap-2">
+                <label for="filter_ta" class="text-xs text-gray-500 font-medium">Tahun Ajaran</label>
+                <select id="filter_ta" wire:model.live="filterTahunAjaran"
+                    class="rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm text-gray-700
+                           shadow-sm focus:border-primary-500 focus:ring-1 focus:ring-primary-500
+                           dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200">
+                    <option value="">Semua Tahun Ajaran</option>
+                    @foreach ($taList as $ta)
+                        <option value="{{ $ta }}" @selected($filterTahunAjaran === $ta)>{{ $ta }}</option>
+                    @endforeach
+                </select>
+            </div>
+        @endif
     </div>
 
     {{-- ── Grid kartu kelas ─────────────────────────────────────────────────── --}}

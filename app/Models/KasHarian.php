@@ -14,7 +14,7 @@ class KasHarian extends Model
     protected $table = 'kas_harians';
     protected $fillable = [
         'tanggal', 'uraian', 'sub_kategori', 'akun_id',
-        'debit', 'kredit',
+        'debit', 'kredit', 'bukti',
         'source', 'source_id',
         'bulan', 'tahun',
         'created_by',
@@ -25,6 +25,18 @@ class KasHarian extends Model
         'debit'   => 'decimal:2',
         'kredit'  => 'decimal:2',
     ];
+
+    protected $appends = [
+        'bukti_url',
+    ];
+
+    public function getBuktiUrlAttribute(): ?string
+    {
+        if (!$this->bukti) {
+            return null;
+        }
+        return \Illuminate\Support\Facades\Storage::url($this->bukti);
+    }
 
     public function akun(): BelongsTo
     {
