@@ -97,30 +97,30 @@ class KasHarian extends Model
     // ─── Posting dari donasi donatur ─────────────────────────────────────────
     // Akun 7 = Pendapatan Donasi (4104)
 
-    // public static function postingDariDonasi(Donasi $donasi): void
-    // {
-    //     // Cegah duplikasi
-    //     if (static::where('source', 'donasi')->where('source_id', $donasi->id)->exists()) {
-    //         return;
-    //     }
+    public static function postingDariDonasi(Donasi $donasi): void
+    {
+        // Cegah duplikasi
+        if (static::where('source', 'donasi')->where('source_id', $donasi->id)->exists()) {
+            return;
+        }
 
-    //     $donatur = $donasi->donatur;
-    //     $uraian  = "Donasi — {$donatur->nama}"
-    //              . ($donasi->note ? " ({$donasi->note})" : '');
+        $donatur = $donasi->donatur;
+        $uraian  = "Donasi — {$donatur->nama}"
+                 . ($donasi->note ? " ({$donasi->note})" : '');
 
-    //     static::create([
-    //         'tanggal'    => $donasi->tanggal,
-    //         'uraian'     => $uraian,
-    //         'akun_id'    => 7,          // Pendapatan Donasi (4104)
-    //         'debit'      => $donasi->nominal,
-    //         'kredit'     => null,
-    //         'source'     => 'donasi',
-    //         'source_id'  => $donasi->id,
-    //         'bulan'      => $donasi->bulan,
-    //         'tahun'      => $donasi->tahun,
-    //         'created_by' => $donasi->created_by,
-    //     ]);
-    // }
+        static::create([
+            'tanggal'    => $donasi->tanggal,
+            'uraian'     => $uraian,
+            'akun_id'    => 7,          // Pendapatan Donasi (4104)
+            'debit'      => $donasi->nominal,
+            'kredit'     => null,
+            'source'     => 'donasi',
+            'source_id'  => $donasi->id,
+            'bulan'      => $donasi->bulan,
+            'tahun'      => $donasi->tahun,
+            'created_by' => $donasi->created_by,
+        ]);
+    }
 
     public static function hapusPostingDonasi(int $donasiId): void
     {

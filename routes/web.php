@@ -36,8 +36,10 @@ Route::middleware('auth')->group(function () {
 
     Route::get('/slip-gaji/pdf', [SlipGajiController::class, 'cetak'])
         ->name('slip-gaji.pdf');
-    
 });
+
+Route::get('/slip-gaji/share/{karyawanId}/{bulan}/{tahun}', [SlipGajiController::class, 'share'])
+    ->name('slip-gaji.share');
 
 Route::get('/kuitansi/{pembayaran}/pdf', [KuitansiController::class, 'pdf'])
      ->name('kuitansi.pdf');

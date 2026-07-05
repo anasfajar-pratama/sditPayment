@@ -7,8 +7,9 @@ use App\Models\GajiBulanan;
 use App\Models\Karyawan;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
+use Illuminate\Support\Facades\URL;
 use Livewire\Attributes\Computed;
-use Livewire\Attributes\Url;
+use Livewire\Attributes\Url as LivewireUrl;
 
 class GajiBulananPage extends Page
 {
@@ -20,8 +21,8 @@ class GajiBulananPage extends Page
 
     protected static string $view = 'filament.pages.gaji-bulanan-page';
 
-    #[Url] public string $filterBulan;
-    #[Url] public string $filterTahun;
+    #[LivewireUrl] public string $filterBulan;
+    #[LivewireUrl] public string $filterTahun;
 
     /**
      * Array form: [karyawan_id => [...fields]]
@@ -226,5 +227,59 @@ class GajiBulananPage extends Page
             'bulan' => $this->filterBulan,
             'tahun' => $this->filterTahun,
         ]);
+    }
+
+    /** URL signed (30 hari) untuk slip gaji per karyawan */
+    public function urlSlipGajiPerKaryawan(int $karyawanId): string
+    {
+        return URL::temporarySignedRoute('slip-gaji.share', now()->addDays(30), [
+            'karyawanId' => $karyawanId,
+            'bulan'      => $this->filterBulan,
+            'tahun'      => $this->filterTahun,
+        ]);
+    }
+
+    /** URL WhatsApp untuk share slip gaji per karyawan */
+    public function getWhatsappUrlGaji(int $karyawanId): string
+    {
+        $data     = $this->gajiForm[$karyawanId] ?? [];
+        $linkUrl  = $this->urlSlipGajiPerKaryawan($karyawanId);
+        $bulanLbl = $this->getBulanLabel($this->filterBulan);
+
+        $gajiPokok = (int) preg_replace('/[^0-9]/', '', $data['gaji_pokok'] ?? '0');
+        $tunjangan = (int) preg_replace('/[^0-9]/', '', $data['tunjangan'] ?? '0');
+        $transport = (int) preg_replace('/[^0-9]/', '', $data['transport'] ?? '0');
+        $thr       = (int) preg_replace('/[^0-9]/', '', $data['thr'] ?? '0');
+        $potongan  = (int) preg_replace('/[^0-9]/', '', $data['potongan'] ?? '0');
+        $bersih    = $gajiPokok + $tunjangan + $transport + $thr - $potongan;
+
+        $fmt = fn($n) => number_format($n, 0, ',', '.');
+
+        $pesan = implode("\n", [
+            'Assalamualaikum,',
+            '',
+            'Berikut kami sampaikan slip gaji:',
+            '',
+            "Nama       : {$data['nama']}",
+            "Jabatan    : {$data['jabatan']}",
+            "Periode    : {$bulanLbl} {$this->filterTahun}",
+            "Hari Masuk : {$data['hari_masuk']} hari",
+            '',
+            'Rincian Gaji:',
+            "Gaji Pokok : Rp {$fmt($gajiPokok)}",
+            "Tunjangan  : Rp {$fmt($tunjangan)}",
+            "Transport  : Rp {$fmt($transport)}",
+            "THR        : Rp {$fmt($thr)}",
+            "Potongan   : Rp {$fmt($potongan)}",
+            "Total      : Rp {$fmt($bersih)}",
+            '',
+            'Silakan lihat slip gaji di tautan berikut:',
+            $linkUrl,
+            '',
+            'Terima kasih.',
+        ]);
+
+        $teks = rawurlencode($pesan);
+        return "https://wa.me/?text={$teks}";
     }
 }

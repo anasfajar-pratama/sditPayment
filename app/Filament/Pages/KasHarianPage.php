@@ -95,8 +95,8 @@ class KasHarianPage extends Page
                 break;
 
             default: // bulanan
-                $q->where('tahun', $this->filterTahun)
-                  ->where('bulan', $this->filterBulan);
+                $q->whereYear('tanggal', $this->filterTahun)
+                  ->whereMonth('tanggal', $this->filterBulan);
                 break;
         }
 
@@ -121,8 +121,8 @@ class KasHarianPage extends Page
         $tahun = $start->format('Y');
         $saldo = SaldoAwalBulan::getSaldo($bulan, $tahun);
 
-        $before = KasHarian::where('tahun', $tahun)
-                            ->where('bulan', $bulan)
+        $before = KasHarian::whereYear('tanggal', $tahun)
+                            ->whereMonth('tanggal', $bulan)
                             ->whereDate('tanggal', '<', $startDate);
 
         $saldo += (float) (clone $before)->sum('debit');

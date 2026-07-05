@@ -8,6 +8,7 @@ use App\Models\Donasi;
 use App\Models\Donatur;
 use Filament\Actions\Action;
 use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Grid;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
@@ -72,6 +73,13 @@ class DetailDonatur extends Page implements HasForms
                         ->required()
                         ->placeholder('Contoh: 500000'),
 
+                    FileUpload::make('bukti_transfer')
+                        ->label('Bukti Transfer')
+                        ->image()
+                        ->directory('bukti-transfer')
+                        ->maxSize(2048)
+                        ->columnSpanFull(),
+
                     Textarea::make('note')
                         ->label('Catatan / Keterangan')
                         ->rows(2)
@@ -90,21 +98,23 @@ class DetailDonatur extends Page implements HasForms
         $tanggal = \Illuminate\Support\Carbon::parse($data['tanggal']);
 
         Donasi::create([
-            'donatur_id' => $this->donatur->id,
-            'tanggal'    => $tanggal->toDateString(),
-            'nominal'    => $data['nominal'],
-            'note'       => $data['note'] ?? null,
-            'bulan'      => $tanggal->format('m'),
-            'tahun'      => $tanggal->format('Y'),
-            'created_by' => auth()->id(),
+            'donatur_id'     => $this->donatur->id,
+            'tanggal'        => $tanggal->toDateString(),
+            'nominal'        => $data['nominal'],
+            'bukti_transfer' => $data['bukti_transfer'] ?? null,
+            'note'           => $data['note'] ?? null,
+            'bulan'          => $tanggal->format('m'),
+            'tahun'          => $tanggal->format('Y'),
+            'created_by'     => auth()->id(),
         ]);
 
         $this->donatur->refresh();
 
         $this->donasiForm->fill([
-            'tanggal' => now()->toDateString(),
-            'nominal' => null,
-            'note'    => null,
+            'tanggal'        => now()->toDateString(),
+            'nominal'        => null,
+            'bukti_transfer' => null,
+            'note'           => null,
         ]);
 
         Notification::make()
