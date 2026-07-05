@@ -179,7 +179,7 @@
                     <li>Setelah yakin, klik <strong>Proses Semua Kenaikan</strong> untuk menjalankan</li>
                     <li>Kelas lama otomatis tersimpan sebagai <strong>riwayat</strong> dengan tahun ajaran {{ $targetTahunAjaran }}</li>
                     <li>Siswa lulus akan dinonaktifkan (<em>status_aktif = false</em>)</li>
-                    <li>Siswa naik kelas akan diperbarui <strong>kelas</strong> dan <strong>tahun_ajaran</strong>-nya</li>
+                    <li>Siswa naik kelas akan mendapat <strong>history kelas baru</strong> dengan status current</li>
                 </ul>
             </div>
         </div>

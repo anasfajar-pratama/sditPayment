@@ -1,6 +1,4 @@
 <?php
-// File: app/Filament/Resources/SiswaResource/Pages/ListSiswaByKelas.php
-// Perubahan v2: klik baris → halaman detail siswa (bukan edit)
 
 namespace App\Filament\Resources\SiswaResource\Pages;
 
@@ -17,17 +15,15 @@ class ListSiswaByKelas extends ListRecords
 
     public string $jenjang = '';
     public string $kelas   = '';
+    public string $tahunAjaran = '';
 
     public function mount(): void
     {
-        $this->jenjang = strtoupper(request()->route('jenjang') ?? '');
-        $this->kelas   = strtoupper(request()->route('kelas') ?? '');
-
+        $this->jenjang    = strtoupper(request()->route('jenjang') ?? '');
+        $this->kelas      = strtoupper(request()->route('kelas') ?? '');
+        $this->tahunAjaran = request()->query('tahun_ajaran', '');
         parent::mount();
     }
-
-    // ─── Override recordUrl → halaman detail, bukan edit ──────────────────────
-    // Cara Filament v4: override table() dan set ->recordUrl() di sini
 
     public function table(Table $table): Table
     {
@@ -38,45 +34,63 @@ class ListSiswaByKelas extends ListRecords
             );
     }
 
-    // ─── Filter query ─────────────────────────────────────────────────────────
-
     protected function getTableQuery(): Builder
     {
-        return Siswa::query()
-            ->where('jenis_sekolah', $this->jenjang)
-            ->where('kelas', $this->kelas)
-            ->where('is_calon', 0);
-    }
+        $query = Siswa::query()->where('is_calon', 0);
 
-    // ─── Breadcrumb ───────────────────────────────────────────────────────────
+        if ($this->tahunAjaran) {
+            $query->whereHas('kelasHistories', function ($q) {
+                $q->where('jenis_sekolah', $this->jenjang)
+                  ->where('kelas', $this->kelas)
+                  ->where('tahun_ajaran', $this->tahunAjaran);
+            });
+        } else {
+            $query->whereHas('kelasSaatIni', function ($q) {
+                $q->where('jenis_sekolah', $this->jenjang)
+                  ->where('kelas', $this->kelas);
+            });
+        }
+
+        return $query;
+    }
 
     public function getBreadcrumbs(): array
     {
+        $jenjangUrl = SiswaResource::getUrl('jenjang', ['jenjang' => $this->jenjang]);
+        if ($this->tahunAjaran) {
+            $jenjangUrl .= '?tahun_ajaran=' . urlencode($this->tahunAjaran);
+        }
+
+        $kelasLabel = $this->tahunAjaran
+            ? "Kelas {$this->kelas} ({$this->tahunAjaran})"
+            : "Kelas {$this->kelas}";
+
         return [
-            SiswaResource::getUrl('jenjang', ['jenjang' => $this->jenjang])
-                => 'Siswa ' . $this->jenjang,
-            SiswaResource::getUrl('kelas', ['jenjang' => $this->jenjang, 'kelas' => $this->kelas])
-                => 'Kelas ' . $this->kelas,
+            $jenjangUrl => 'Siswa ' . $this->jenjang,
+            '#' => $kelasLabel,
         ];
     }
 
-    // ─── Title ────────────────────────────────────────────────────────────────
-
     public function getTitle(): string
     {
+        if ($this->tahunAjaran) {
+            return "Kelas {$this->kelas} — {$this->jenjang} ({$this->tahunAjaran})";
+        }
         return 'Kelas ' . $this->kelas . ' — ' . $this->jenjang;
     }
 
-    // ─── Header actions ───────────────────────────────────────────────────────
-
     protected function getHeaderActions(): array
     {
+        $kembaliUrl = SiswaResource::getUrl('jenjang', ['jenjang' => $this->jenjang]);
+        if ($this->tahunAjaran) {
+            $kembaliUrl .= '?tahun_ajaran=' . urlencode($this->tahunAjaran);
+        }
+
         return [
             Action::make('kembali')
                 ->label('← Kembali ke ' . $this->jenjang)
                 ->color('gray')
-                ->url(SiswaResource::getUrl('jenjang', ['jenjang' => $this->jenjang])),
-
+                ->url($kembaliUrl),
             Action::make('tambah_siswa')
                 ->label('Tambah Siswa')
                 ->icon('heroicon-o-plus')

@@ -79,7 +79,7 @@ class KasHarian extends Model
 
         $siswa      = $pembayaran->siswa;
         $bulanLabel = $bulanLabels[$pembayaran->bulan] ?? '';
-        $uraian     = "{$siswa->nama} Kls {$siswa->kelas}"
+        $uraian     = "{$siswa->nama} Kls " . ($siswa->kelasSaatIni?->kelas ?? '-')
                     . " — {$pembayaran->jenisPembayaran->nama}"
                     . ($bulanLabel ? " {$bulanLabel}" : '')
                     . " {$pembayaran->tahun}";

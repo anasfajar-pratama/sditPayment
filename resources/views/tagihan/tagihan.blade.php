@@ -299,15 +299,15 @@
             @if ($tagihan->siswa->is_calon)
                 Calon Siswa {{ $tagihan->siswa->calon_jenis }}
             @else
-                {{ $tagihan->siswa->kelas ?: '—' }}
+                {{ $tagihan->siswa->kelasSaatIni?->kelas ?? '—' }}
             @endif
         </td>
     </tr>
-    @if ($tagihan->siswa->jenis_sekolah && ! $tagihan->siswa->is_calon)
+    @if (optional($tagihan->siswa->kelasSaatIni)->jenis_sekolah && ! $tagihan->siswa->is_calon)
     <tr>
         <td class="label">Jenis Sekolah</td>
         <td class="sep">:</td>
-        <td class="value">{{ $tagihan->siswa->jenis_sekolah }}</td>
+        <td class="value">{{ $tagihan->siswa->kelasSaatIni->jenis_sekolah }}</td>
     </tr>
     @endif
     <tr>

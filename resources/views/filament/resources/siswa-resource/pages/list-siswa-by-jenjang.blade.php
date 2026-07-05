@@ -13,7 +13,7 @@
         </span>
         <span class="text-gray-500 text-sm">
             {{ count($kelasData) }} kelas tersedia ·
-            {{ collect($kelasData)->sum('jumlah') }} siswa aktif
+            {{ collect($kelasData)->sum('jumlah') }} siswa{{ $filterTahunAjaran ? '' : ' aktif' }}
         </span>
 
         {{-- ── Filter tahun ajaran ──────────────────────────────────────────── --}}

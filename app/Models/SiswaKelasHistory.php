@@ -12,15 +12,19 @@ class SiswaKelasHistory extends Model
     protected $fillable = [
         'siswa_id',
         'kelas',
+        'tingkat',
         'jenis_sekolah',
         'tahun_ajaran',
         'tahun_mulai',
+        'mutasi',
+        'is_current',
         'catatan',
         'created_by',
     ];
 
     protected $casts = [
         'tahun_mulai' => 'integer',
+        'is_current'  => 'boolean',
     ];
 
     public function siswa(): BelongsTo
@@ -37,16 +41,16 @@ class SiswaKelasHistory extends Model
      * Simpan history kelas siswa untuk tahun ajaran berjalan.
      * Tidak akan duplikat (updateOrCreate).
      */
-    public static function simpan(Siswa $siswa, string $tahunAjaran, int $tahunMulai): self
+    public static function simpan(Siswa $siswa, string $tahunAjaran, int $tahunMulai, array $data = []): self
     {
         return static::updateOrCreate(
             ['siswa_id' => $siswa->id, 'tahun_ajaran' => $tahunAjaran],
-            [
-                'kelas'        => $siswa->kelas,
-                'jenis_sekolah'=> $siswa->jenis_sekolah,
-                'tahun_mulai'  => $tahunMulai,
-                'created_by'   => auth()->id(),
-            ]
+            array_merge([
+                'tahun_mulai' => $tahunMulai,
+                'mutasi'      => 'naik',
+                'is_current'  => true,
+                'created_by'  => auth()->id(),
+            ], $data)
         );
     }
 }

@@ -36,10 +36,13 @@
                     <td style="padding:0.4rem 0.75rem;text-align:center;">{{ $item['jumlah'] }}</td>
                     <td style="padding:0.4rem 0.75rem;">
                         @php
-                            $isLulus = in_array($item['target'], ['Lulus SD', 'Lulus SMP']);
+                            $isLulus   = in_array($item['target'], ['Lulus SD', 'Lulus SMP']);
+                            $isTinggal = $item['target'] === 'TINGGAL';
                         @endphp
                         @if ($isLulus)
                             <span style="color:#b91c1c;font-weight:600;">{{ $item['target'] }}</span>
+                        @elseif ($isTinggal)
+                            <span style="color:#d97706;font-weight:600;">Tinggal Kelas</span>
                         @else
                             <span style="color:#1d4ed8;font-weight:600;">{{ $item['target'] }}</span>
                         @endif
@@ -50,6 +53,12 @@
                                          color:#b91c1c;border-radius:0.25rem;padding:0.15rem 0.4rem;font-size:0.7rem;font-weight:600;">
                                 <x-heroicon-o-academic-cap style="width:0.7rem;height:0.7rem;" />
                                 Lulus
+                            </span>
+                        @elseif ($isTinggal)
+                            <span style="display:inline-flex;align-items:center;gap:0.2rem;background:#fffbeb;
+                                         color:#d97706;border-radius:0.25rem;padding:0.15rem 0.4rem;font-size:0.7rem;font-weight:600;">
+                                <x-heroicon-o-arrow-uturn-left style="width:0.7rem;height:0.7rem;" />
+                                Tinggal
                             </span>
                         @else
                             <span style="display:inline-flex;align-items:center;gap:0.2rem;background:#eff6ff;

@@ -43,7 +43,7 @@ class Dashboard extends Page
         foreach ($jenjang as $j) {
             $result[$j] = Siswa::where('is_calon', false)
                 ->where('status_aktif', true)
-                ->where('jenis_sekolah', $j)
+                ->whereHas('kelasSaatIni', fn($q) => $q->where('jenis_sekolah', $j))
                 ->count();
         }
         return $result;

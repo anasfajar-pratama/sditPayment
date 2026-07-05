@@ -39,7 +39,7 @@
             </tr>
             <tr>
                 <td>Kelas</td>
-                <td>{{ $pembayaran->siswa->kelas }}</td>
+                <td>{{ $pembayaran->siswa->kelasSaatIni?->kelas ?? '—' }}</td>
             </tr>
             <tr>
                 <td>Jenis Pembayaran</td>

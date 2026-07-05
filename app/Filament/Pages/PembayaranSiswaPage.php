@@ -86,7 +86,7 @@ class PembayaranSiswaPage extends Page
     public function selectSiswa(int $id): void
     {
         $this->siswa_id      = $id;
-        $this->selectedSiswa = Siswa::find($id);
+        $this->selectedSiswa = Siswa::with('kelasSaatIni')->find($id);
         $this->searchQuery   = "{$this->selectedSiswa->nis} - {$this->selectedSiswa->nama}";
         $this->showResults   = false;
         unset($this->tagihans, $this->history, $this->riwayatPerTahun);
@@ -207,7 +207,7 @@ class PembayaranSiswaPage extends Page
     #[Computed]
     public function jenisSekolahList(): array
     {
-        return Siswa::where('status_aktif', true)
+        return \App\Models\SiswaKelasHistory::where('is_current', true)
             ->whereNotNull('jenis_sekolah')
             ->distinct()->orderBy('jenis_sekolah')
             ->pluck('jenis_sekolah')
@@ -219,9 +219,8 @@ class PembayaranSiswaPage extends Page
     {
         if (! $this->filterJenisSekolah) return [];
 
-        return Siswa::where('jenis_sekolah', $this->filterJenisSekolah)
-            ->where('status_aktif', true)
-            ->whereNotNull('kelas')
+        return \App\Models\SiswaKelasHistory::where('jenis_sekolah', $this->filterJenisSekolah)
+            ->where('is_current', true)
             ->distinct()->orderBy('kelas')
             ->pluck('kelas')
             ->toArray();
@@ -245,9 +244,10 @@ class PembayaranSiswaPage extends Page
             ];
         }
 
-        $students = Siswa::where('jenis_sekolah', $this->filterJenisSekolah)
-            ->where('kelas', $this->filterKelas)
-            ->where('status_aktif', true)
+        $students = Siswa::where('status_aktif', true)
+            ->whereHas('kelasSaatIni', fn($q) => $q
+                ->where('jenis_sekolah', $this->filterJenisSekolah)
+                ->where('kelas', $this->filterKelas))
             ->orderBy('nama')
             ->get();
 
@@ -308,7 +308,7 @@ class PembayaranSiswaPage extends Page
             $rows[] = [
                 'no'        => $no + 1,
                 'nama'      => $siswa->nama,
-                'kelas'     => $siswa->kelas,
+                'kelas'     => $siswa->kelasSaatIni?->kelas ?? '-',
                 'siswa_id'  => $siswa->id,
                 'lunas'     => $lunas,
                 'tunggakan' => $tunggakan,
@@ -372,7 +372,7 @@ class PembayaranSiswaPage extends Page
                 TextInput::make('potongan')
                     ->label('Potongan / Diskon (Rp)')
                     ->numeric()->prefix('Rp')->default(0)
-                    ->live()
+                    ->lazy()
                     ->afterStateUpdated(function (Get $get, Set $set): void {
                         $tagihan  = (float) $get('_nominal_tagihan');
                         $potongan = (float) ($get('potongan') ?? 0);

@@ -5,30 +5,29 @@
     <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:0.75rem;">
 
         <div style="display:flex;align-items:center;gap:0.75rem;">
-            <select wire:model.live="filterBulan"
-                style="border:1px solid #d1d5db;border-radius:0.5rem;padding:0.5rem 0.75rem;font-size:0.875rem;background:#fff;min-width:130px;cursor:pointer;">
-                @foreach(['01'=>'Januari','02'=>'Februari','03'=>'Maret','04'=>'April','05'=>'Mei','06'=>'Juni',
-                          '07'=>'Juli','08'=>'Agustus','09'=>'September','10'=>'Oktober','11'=>'November','12'=>'Desember'] as $val => $lbl)
-                    <option value="{{ $val }}" @selected($filterBulan === $val)>{{ $lbl }}</option>
-                @endforeach
-            </select>
+            <input type="date" wire:model.live="filterStart"
+                style="border:1px solid #d1d5db;border-radius:0.5rem;padding:0.5rem 0.75rem;font-size:0.875rem;background:#fff;min-width:150px;">
 
-            <select wire:model.live="filterTahun"
-                style="border:1px solid #d1d5db;border-radius:0.5rem;padding:0.5rem 0.75rem;font-size:0.875rem;background:#fff;min-width:90px;cursor:pointer;">
-                @foreach(range(now()->year, 2023) as $y)
-                    <option value="{{ $y }}" @selected($filterTahun == $y)>{{ $y }}</option>
-                @endforeach
-            </select>
+            <span style="color:#9ca3af;font-size:0.85rem;">s.d.</span>
+
+            <input type="date" wire:model.live="filterEnd"
+                style="border:1px solid #d1d5db;border-radius:0.5rem;padding:0.5rem 0.75rem;font-size:0.875rem;background:#fff;min-width:150px;">
 
             <span style="font-size:0.875rem;color:#6b7280;font-weight:500;">
-                {{ $this->getBulanLabel($filterBulan) }} {{ $filterTahun }}
+                {{ \Carbon\Carbon::parse($filterStart)->format('d M Y') }} — {{ \Carbon\Carbon::parse($filterEnd)->format('d M Y') }}
             </span>
         </div>
 
-        <div style="background:linear-gradient(135deg,#6366f1,#4f46e5);color:#fff;border-radius:0.75rem;padding:0.6rem 1.25rem;text-align:right;min-width:180px;">
-            <div style="font-size:0.65rem;text-transform:uppercase;letter-spacing:0.06em;opacity:0.85;margin-bottom:0.15rem;">Total Upah Bulan Ini</div>
-            <div style="font-size:1.1rem;font-weight:800;font-variant-numeric:tabular-nums;">
-                Rp {{ number_format($this->grandTotal, 0, ',', '.') }}
+        <div style="display:flex;align-items:center;gap:0.75rem;">
+            <a href="{{ route('upah.pdf', ['start' => $filterStart, 'end' => $filterEnd]) }}" target="_blank"
+                style="display:inline-flex;align-items:center;gap:0.5rem;background:#ef4444;color:#fff;border-radius:0.5rem;padding:0.5rem 1rem;font-size:0.8rem;font-weight:600;text-decoration:none;border:none;cursor:pointer;">
+                <span style="font-size:1rem;">📄</span> Cetak PDF
+            </a>
+            <div style="background:linear-gradient(135deg,#6366f1,#4f46e5);color:#fff;border-radius:0.75rem;padding:0.6rem 1.25rem;text-align:right;min-width:180px;">
+                <div style="font-size:0.65rem;text-transform:uppercase;letter-spacing:0.06em;opacity:0.85;margin-bottom:0.15rem;">Total Upah</div>
+                <div style="font-size:1.1rem;font-weight:800;font-variant-numeric:tabular-nums;">
+                    Rp {{ number_format($this->grandTotal, 0, ',', '.') }}
+                </div>
             </div>
         </div>
     </div>
@@ -50,7 +49,6 @@
                 @php
                     $isActive = $activeTab === $penerima;
                     $totalBln = $this->ringkasan[$penerima] ?? 0;
-                    $totalThn = $this->totalTahunPerPenerima[$penerima] ?? 0;
                 @endphp
                 <div wire:click="setTab('{{ $penerima }}')"
                     style="
@@ -70,9 +68,6 @@
                     </div>
                     <div style="font-weight:700;font-size:0.85rem;color:{{ $isActive ? '#4f46e5' : ($totalBln > 0 ? '#1f2937' : '#d1d5db') }};font-variant-numeric:tabular-nums;">
                         Rp {{ number_format($totalBln, 0, ',', '.') }}
-                    </div>
-                    <div style="font-size:0.68rem;color:#9ca3af;margin-top:0.1rem;font-variant-numeric:tabular-nums;">
-                        Tahun: Rp {{ number_format($totalThn, 0, ',', '.') }}
                     </div>
                 </div>
             @endforeach
@@ -153,11 +148,9 @@
                 <div style="background:#1f2937;color:#fff;padding:0.85rem 1.25rem;display:flex;justify-content:space-between;align-items:center;">
                     <div>
                         <div style="color:#9ca3af;font-size:0.8rem;">
-                            Upah <strong style="color:#a5b4fc;">{{ $activeTab }}</strong> — {{ $this->getBulanLabel($filterBulan) }} {{ $filterTahun }}
+                            Upah <strong style="color:#a5b4fc;">{{ $activeTab }}</strong>
+                            — {{ \Carbon\Carbon::parse($filterStart)->format('d M Y') }} s.d. {{ \Carbon\Carbon::parse($filterEnd)->format('d M Y') }}
                             &nbsp;({{ count($rows) }} pembayaran)
-                        </div>
-                        <div style="color:#6b7280;font-size:0.7rem;margin-top:0.1rem;">
-                            Total tahun {{ $filterTahun }}: Rp {{ number_format($this->totalTahunPerPenerima[$activeTab] ?? 0, 0, ',', '.') }}
                         </div>
                     </div>
                     <span style="font-weight:800;color:#818cf8;font-size:1.05rem;font-variant-numeric:tabular-nums;">

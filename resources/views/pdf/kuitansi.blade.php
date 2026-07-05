@@ -320,7 +320,7 @@
                                     Calon Siswa{{ $pembayaran->siswa->calon_jenis ? ' – ' . $pembayaran->siswa->calon_jenis : '' }}
                                 </span>
                             @else
-                                (Kelas {{ $pembayaran->siswa->kelas }})
+                                (Kelas {{ $pembayaran->siswa->kelasSaatIni?->kelas ?? '—' }})
                             @endif
                         </td>
                     </tr>

@@ -1,5 +1,4 @@
 <?php
-// File: app/Filament/Pages/PengeluaranOperasionalPage.php
 
 namespace App\Filament\Pages;
 
@@ -18,7 +17,6 @@ class PengeluaranOperasionalPage extends Page
 
     protected static string $view = 'filament.pages.pengeluaran-operasional-page';
 
-    // Daftar tab/kategori — sesuaikan jika berubah
     public const KATEGORI = [
         'TOKEN & PULSA',
         'PERLENGKAPAN',
@@ -27,31 +25,30 @@ class PengeluaranOperasionalPage extends Page
         'PEMBANGUNAN',
         'BUKU PAKET',
         'BANGKU & SERAGAM',
-        // 'MAKAN & MINUM',
     ];
 
-    #[Url] public string $filterBulan;
-    #[Url] public string $filterTahun;
+    #[Url] public string $filterStart = '';
+    #[Url] public string $filterEnd   = '';
     #[Url] public string $activeTab = '';
 
     public function mount(): void
     {
-        $this->filterBulan = now()->format('m');
-        $this->filterTahun = now()->format('Y');
+        $now = now();
+        $this->filterStart = $now->startOfMonth()->format('Y-m-d');
+        $this->filterEnd   = $now->endOfMonth()->format('Y-m-d');
         $this->activeTab   = self::KATEGORI[0];
     }
 
-    public function updatedFilterBulan(): void { unset($this->entriesPerTab, $this->ringkasan); }
-    public function updatedFilterTahun(): void { unset($this->entriesPerTab, $this->ringkasan); }
+    public function updatedFilterStart(): void { unset($this->entriesPerTab, $this->ringkasan); }
+    public function updatedFilterEnd(): void   { unset($this->entriesPerTab, $this->ringkasan); }
     public function setTab(string $tab): void  { $this->activeTab = $tab; }
 
     #[Computed]
     public function entriesPerTab(): array
     {
-        // Ambil semua data sekaligus, kelompokkan di PHP
         $rows = KasHarian::with('akun')
-            ->where('tahun', $this->filterTahun)
-            ->where('bulan', $this->filterBulan)
+            ->whereDate('tanggal', '>=', $this->filterStart)
+            ->whereDate('tanggal', '<=', $this->filterEnd)
             ->whereIn('sub_kategori', self::KATEGORI)
             ->orderBy('tanggal')->orderBy('id')
             ->get();
@@ -84,8 +81,8 @@ class PengeluaranOperasionalPage extends Page
     {
         $summary = [];
         foreach (self::KATEGORI as $kat) {
-            $summary[$kat] = (float) KasHarian::where('tahun', $this->filterTahun)
-                ->where('bulan', $this->filterBulan)
+            $summary[$kat] = (float) KasHarian::whereDate('tanggal', '>=', $this->filterStart)
+                ->whereDate('tanggal', '<=', $this->filterEnd)
                 ->where('sub_kategori', $kat)
                 ->sum('kredit');
         }
@@ -100,8 +97,12 @@ class PengeluaranOperasionalPage extends Page
 
     public function getBulanLabel(string $bulan): string
     {
-        return ['01'=>'Januari','02'=>'Februari','03'=>'Maret','04'=>'April',
-                '05'=>'Mei','06'=>'Juni','07'=>'Juli','08'=>'Agustus',
-                '09'=>'September','10'=>'Oktober','11'=>'November','12'=>'Desember'][$bulan] ?? $bulan;
+        return match ($bulan) {
+            '01' => 'Januari', '02' => 'Februari', '03' => 'Maret',
+            '04' => 'April', '05' => 'Mei', '06' => 'Juni',
+            '07' => 'Juli', '08' => 'Agustus', '09' => 'September',
+            '10' => 'Oktober', '11' => 'November', '12' => 'Desember',
+            default => $bulan,
+        };
     }
 }
