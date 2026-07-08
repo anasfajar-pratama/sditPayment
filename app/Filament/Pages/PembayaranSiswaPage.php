@@ -397,7 +397,7 @@ class PembayaranSiswaPage extends Page
                     ->required()
                     ->default(now())
                     ->maxDate(now())
-                    ->format('d/m/Y')
+                    ->format('m/d/Y')
                     ->helperText('tidak boleh lebih dari hari ini'),
 
                 FileUpload::make('bukti_bayar')
