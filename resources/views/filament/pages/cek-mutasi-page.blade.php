@@ -51,7 +51,7 @@
 
         {{-- ═══ FILTER ═══════════════════════════════════════════════════════ --}}
         <x-filament::section heading="Filter Pencarian">
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6 gap-3">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
                 <div>
                     <label class="block text-xs font-medium text-gray-500 mb-1">Tanggal Dari</label>
                     <input type="date" wire:model.live.debounce.500ms="tanggalDari"
@@ -63,13 +63,8 @@
                         class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm">
                 </div>
                 <div>
-                    <label class="block text-xs font-medium text-gray-500 mb-1">No. Referensi</label>
-                    <input type="text" wire:model.live.debounce.500ms="searchNoRef" placeholder="Cari no ref..."
-                        class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm">
-                </div>
-                <div>
-                    <label class="block text-xs font-medium text-gray-500 mb-1">Nama Pengirim</label>
-                    <input type="text" wire:model.live.debounce.500ms="searchPengirim" placeholder="Cari pengirim..."
+                    <label class="block text-xs font-medium text-gray-500 mb-1">Cari (No. Ref / Pengirim / Uraian)</label>
+                    <input type="text" wire:model.live.debounce.500ms="searchGlobal" placeholder="Ketik kata kunci..."
                         class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm">
                 </div>
                 <div>
@@ -82,21 +77,28 @@
                         @endforeach
                     </select>
                 </div>
-                <div>
-                    <label class="block text-xs font-medium text-gray-500 mb-1">Status</label>
-                    <select wire:model.live="filterVerified"
-                        class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm">
-                        <option value="">Semua</option>
-                        <option value="pending">Belum Verifikasi</option>
-                        <option value="verified">Sudah Verifikasi</option>
-                    </select>
-                </div>
+            </div>
+            <div class="mt-3">
+                <button wire:click="resetFilter"
+                    class="rounded-lg border border-gray-300 px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 transition">
+                    &#x21bb; Reset Pencarian
+                </button>
             </div>
         </x-filament::section>
         
         {{-- ═══ TABEL TRANSAKSI PENDING (BLM VERIFIKASI) ═════════════════════ --}}
         @php $pending = $this->transaksiPending; @endphp
-        <x-filament::section heading="Daftar Transaksi (Belum Verifikasi)">
+        <x-filament::section>
+            <x-slot:heading>
+                <div class="flex items-center justify-between w-full">
+                    <span>Daftar Transaksi (Belum Verifikasi) <span class="text-xs text-gray-400">— {{ count($pending) }} transaksi</span></span>
+                    <button wire:click="openVerifModal"
+                        class="rounded-lg bg-primary-600 px-4 py-2 text-sm text-white hover:bg-primary-700 transition inline-flex items-center gap-2"
+                        wire:loading.attr="disabled">
+                        <span>Verifikasi Terpilih</span>
+                    </button>
+                </div>
+            </x-slot:heading>
             @if ($pending->isEmpty())
                 <div class="py-6 text-center text-gray-400">Semua transaksi sudah terverifikasi.</div>
             @else
@@ -104,22 +106,26 @@
                     <table class="w-full text-sm">
                         <thead>
                             <tr class="border-b border-gray-200 text-xs font-semibold uppercase text-gray-500">
-                                <th class="pb-3 pr-3 text-center w-10">✓</th>
+                                <th class="pb-3 pr-3 text-center w-10">
+                                    <input type="checkbox" class="rounded border-gray-300 text-primary-600"
+                                        wire:click="$toggle('selectAll')"
+                                        wire:key="select-all">
+                                </th>
                                 <th class="pb-3 pr-3 text-left">Tanggal</th>
                                 <th class="pb-3 pr-3 text-left">No. Ref</th>
                                 <th class="pb-3 pr-3 text-left">Rek. Tujuan</th>
                                 <th class="pb-3 pr-3 text-left">Pengirim</th>
                                 <th class="pb-3 pr-3 text-left">Uraian</th>
-                                <th class="pb-3 pr-3 text-right">Nominal</th>
+                                <th class="pb-3 pr-3 text-center">Bukti</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-gray-100">
                             @foreach ($pending as $item)
-                                <tr class="hover:bg-gray-50 transition cursor-pointer"
-                                    wire:click="toggleVerifikasi({{ $item->id }})">
+                                <tr class="hover:bg-gray-50 transition">
                                     <td class="py-2.5 pr-3 text-center">
                                         <input type="checkbox" class="rounded border-gray-300 text-primary-600"
-                                            wire:click.stop="toggleVerifikasi({{ $item->id }})">
+                                            value="{{ $item->id }}"
+                                            wire:model.live="selectedIds">
                                     </td>
                                     <td class="py-2.5 pr-3 whitespace-nowrap">
                                         {{ \Carbon\Carbon::parse($item->tanggal)->format('d M Y') }}
@@ -127,14 +133,33 @@
                                     <td class="py-2.5 pr-3 font-mono text-xs">{{ $item->no_ref ?: '—' }}</td>
                                     <td class="py-2.5 pr-3 text-xs">{{ \App\Models\MasterRekeningTujuan::where('label', $item->rekening_tujuan)->value('bank') ?: ($item->rekening_tujuan ?: '—') }}</td>
                                     <td class="py-2.5 pr-3">{{ $item->nama_rekening_pengirim ?: '—' }}</td>
-                                    <td class="py-2.5 pr-3 max-w-xs truncate" title="{{ $item->uraian }}">{{ $item->uraian }}</td>
-                                    <td class="py-2.5 pr-3 text-right font-semibold whitespace-nowrap">
-                                        Rp {{ number_format($item->debit, 0, ',', '.') }}
+                                    <td class="py-2.5 pr-3 max-w-xs truncate" title="{{ $item->uraian }} — Rp {{ number_format($item->debit, 0, ',', '.') }}">
+                                        {{ $item->uraian }} — Rp {{ number_format($item->debit, 0, ',', '.') }}
+                                    </td>
+                                    <td class="py-2.5 pr-3 text-center">
+                                        @if ($item->source_bukti_url)
+                                            <button type="button"
+                                                x-data
+                                                x-on:click="
+                                                    $nextTick(() => {
+                                                        $dispatch('open-bukti', { url: '{{ $item->source_bukti_url }}' });
+                                                    });
+                                                "
+                                                class="inline-flex items-center gap-1 text-xs text-primary-600 hover:text-primary-800 transition cursor-pointer bg-transparent border-none">
+                                                <x-heroicon-o-photo class="w-4 h-4" />
+                                                Lihat
+                                            </button>
+                                        @else
+                                            <span class="text-xs text-gray-300">—</span>
+                                        @endif
                                     </td>
                                 </tr>
                             @endforeach
                         </tbody>
                     </table>
+                </div>
+                <div class="mt-3">
+                    {{ $pending->links() }}
                 </div>
             @endif
         </x-filament::section>
@@ -154,6 +179,7 @@
                                 <th class="pb-3 pr-3 text-left">No. Ref</th>
                                 <th class="pb-3 pr-3 text-left">Rek. Tujuan</th>
                                 <th class="pb-3 pr-3 text-left">Pengirim</th>
+                                <th class="pb-3 pr-3 text-center">Bukti</th>
                                 <th class="pb-3 pr-3 text-right">Nominal</th>
                                 <th class="pb-3 text-center">Verifikator</th>
                             </tr>
@@ -170,6 +196,23 @@
                                     <td class="py-2.5 pr-3 font-mono text-xs">{{ $item->no_ref ?: '—' }}</td>
                                     <td class="py-2.5 pr-3 text-xs">{{ \App\Models\MasterRekeningTujuan::where('label', $item->rekening_tujuan)->value('bank') ?? ($item->rekening_tujuan ?: '—') }}</td>
                                     <td class="py-2.5 pr-3">{{ $item->nama_rekening_pengirim ?: '—' }}</td>
+                                    <td class="py-2.5 pr-3 text-center">
+                                        @if ($item->source_bukti_url)
+                                            <button type="button"
+                                                x-data
+                                                x-on:click="
+                                                    $nextTick(() => {
+                                                        $dispatch('open-bukti', { url: '{{ $item->source_bukti_url }}' });
+                                                    });
+                                                "
+                                                class="inline-flex items-center gap-1 text-xs text-primary-600 hover:text-primary-800 transition cursor-pointer bg-transparent border-none">
+                                                <x-heroicon-o-photo class="w-4 h-4" />
+                                                Lihat
+                                            </button>
+                                        @else
+                                            <span class="text-xs text-gray-300">—</span>
+                                        @endif
+                                    </td>
                                     <td class="py-2.5 pr-3 text-right font-semibold whitespace-nowrap">
                                         Rp {{ number_format($item->debit, 0, ',', '.') }}
                                     </td>
@@ -181,8 +224,68 @@
                         </tbody>
                     </table>
                 </div>
+                <div class="mt-3">
+                    {{ $verified->links() }}
+                </div>
             @endif
         </x-filament::section>
 
     </div>
+
+{{-- Popup preview bukti transaksi --}}
+<div
+    x-data="{ open: false, url: '' }"
+    x-on:open-bukti.window="url = $event.detail.url; open = true"
+    x-show="open"
+    x-cloak
+    class="fixed inset-0 z-[999] flex items-center justify-center bg-black/60 p-4"
+    x-on:click.self="open = false"
+>
+    <div class="relative w-full max-w-2xl max-h-[80vh] bg-white rounded-xl shadow-2xl overflow-auto">
+        <button type="button"
+            x-on:click="open = false"
+            class="sticky top-2 z-10 ml-auto mr-2 block w-8 h-8 flex items-center justify-center rounded-full bg-black/40 text-white hover:bg-black/60 transition">
+            <x-heroicon-o-x-mark class="w-5 h-5" />
+        </button>
+        <div class="p-4 pt-0 flex items-start justify-center">
+            <img :src="url" alt="Bukti Transaksi" class="max-w-full h-auto rounded">
+        </div>
+    </div>
+</div>
+
+{{-- Modal verifikasi massal --}}
+@if ($showVerifModal)
+<div class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+    wire:click.self="closeVerifModal">
+    <div class="w-full max-w-md rounded-xl shadow-2xl p-6 space-y-4"
+        style="background:#fff7ed;border:2px solid #f97316;">
+        <h3 class="text-lg font-bold text-gray-800">Verifikasi Transaksi</h3>
+        <p class="text-sm text-gray-600">
+            {{ count($selectedIds) }} transaksi akan diverifikasi. Masukkan password untuk mengonfirmasi.
+        </p>
+        <div>
+            <label class="block text-xs font-medium text-gray-500 mb-1">Password</label>
+            <input type="password" wire:model="verifPassword"
+                class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                wire:keydown.enter="submitVerifikasiMassal">
+            @if ($verifError)
+                <p class="mt-1 text-xs" style="color:#dc2626;">{{ $verifError }}</p>
+            @endif
+        </div>
+        <div class="flex items-center justify-end gap-2 pt-2">
+            <button wire:click="closeVerifModal"
+                class="rounded-lg border border-gray-300 px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 transition">
+                Batal
+            </button>
+            <button wire:click="submitVerifikasiMassal"
+                class="rounded-lg bg-primary-600 px-4 py-2 text-sm text-white hover:bg-primary-700 transition inline-flex items-center gap-2"
+                wire:loading.attr="disabled"
+                wire:target="submitVerifikasiMassal">
+                <span wire:loading.remove wire:target="submitVerifikasiMassal">Verifikasi</span>
+                <span wire:loading wire:target="submitVerifikasiMassal">&#x21bb; Memproses...</span>
+            </button>
+        </div>
+    </div>
+</div>
+@endif
 </x-filament-panels::page>

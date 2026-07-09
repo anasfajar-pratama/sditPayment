@@ -257,12 +257,13 @@
                                         @endif
                                     </td>
                                     <td style="padding:0.75rem 1rem;text-align:center;">
-                                        @if ($e['bukti'])
+                                        @php $buktiUrl = $e['bukti_url'] ?? $e['source_bukti_url']; @endphp
+                                        @if ($buktiUrl)
                                             <button type="button"
                                                 x-data
                                                 x-on:click="
                                                     $nextTick(() => {
-                                                        $dispatch('open-bukti-kas', { url: '{{ $e['bukti_url'] }}' });
+                                                        $dispatch('open-bukti-kas', { url: '{{ $buktiUrl }}' });
                                                     });
                                                 "
                                                 class="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 border border-blue-200 transition cursor-pointer">

@@ -7,15 +7,18 @@ use App\Filament\Resources\DonaturResource;
 use App\Models\Donasi;
 use App\Models\Donatur;
 use App\Filament\Traits\ConvertsToWebp;
+use App\Models\MasterRekeningTujuan;
 use Filament\Actions\Action;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Grid;
+use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Concerns\InteractsWithForms;
 use Filament\Forms\Contracts\HasForms;
 use Filament\Forms\Form;
+use Filament\Forms\Get;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\Page;
 use Illuminate\Support\Collection;
@@ -40,9 +43,12 @@ class DetailDonatur extends Page implements HasForms
         $this->donatur = Donatur::findOrFail($record);
 
         $this->donasiForm->fill([
-            'tanggal' => now()->toDateString(),
-            'nominal' => null,
-            'note'    => null,
+            'tanggal'          => now()->toDateString(),
+            'nominal'          => null,
+            'rekening_tujuan'  => 'Cash',
+            'nama_rekening_pengirim' => '',
+            'no_ref'           => '',
+            'note'             => null,
         ]);
     }
 
@@ -64,6 +70,7 @@ class DetailDonatur extends Page implements HasForms
                         ->label('Tanggal Donasi')
                         ->required()
                         ->default(now()->toDateString())
+                        ->maxDate(now())
                         ->native(false),
 
                     TextInput::make('nominal')
@@ -73,6 +80,25 @@ class DetailDonatur extends Page implements HasForms
                         ->minValue(1)
                         ->required()
                         ->placeholder('Contoh: 500000'),
+
+                    Select::make('rekening_tujuan')
+                        ->label('Rekening Tujuan')
+                        ->options(fn () => MasterRekeningTujuan::orderBy('urutan')->pluck('label', 'label'))
+                        ->default('Cash')
+                        ->live()
+                        ->required()
+                        ->columnSpanFull(),
+
+                    TextInput::make('nama_rekening_pengirim')
+                        ->label('Nama Pengirim')
+                        ->placeholder('Contoh: Sri Utami')
+                        ->hidden(fn (Get $get) => $get('rekening_tujuan') === 'Cash')
+                        ->required(fn (Get $get) => $get('rekening_tujuan') !== 'Cash'),
+
+                    TextInput::make('no_ref')
+                        ->label('No. Referensi / Transfer')
+                        ->placeholder('Contoh: TRF2025001')
+                        ->nullable(),
 
                     FileUpload::make('bukti_transfer')
                         ->label('Bukti Transfer')
@@ -99,23 +125,29 @@ class DetailDonatur extends Page implements HasForms
         $tanggal = \Illuminate\Support\Carbon::parse($data['tanggal']);
 
         Donasi::create([
-            'donatur_id'     => $this->donatur->id,
-            'tanggal'        => $tanggal->toDateString(),
-            'nominal'        => $data['nominal'],
-            'bukti_transfer' => $this->convertToWebp($data['bukti_transfer'] ?? null),
-            'note'           => $data['note'] ?? null,
-            'bulan'          => $tanggal->format('m'),
-            'tahun'          => $tanggal->format('Y'),
-            'created_by'     => auth()->id(),
+            'donatur_id'              => $this->donatur->id,
+            'tanggal'                 => $tanggal->toDateString(),
+            'nominal'                 => $data['nominal'],
+            'rekening_tujuan'         => $data['rekening_tujuan'] ?? null,
+            'nama_rekening_pengirim'  => $data['nama_rekening_pengirim'] ?? null,
+            'no_ref'                  => $data['no_ref'] ?? null,
+            'bukti_transfer'          => $this->convertToWebp($data['bukti_transfer'] ?? null),
+            'note'                    => $data['note'] ?? null,
+            'bulan'                   => $tanggal->format('m'),
+            'tahun'                   => $tanggal->format('Y'),
+            'created_by'              => auth()->id(),
         ]);
 
         $this->donatur->refresh();
 
         $this->donasiForm->fill([
-            'tanggal'        => now()->toDateString(),
-            'nominal'        => null,
-            'bukti_transfer' => null,
-            'note'           => null,
+            'tanggal'                 => now()->toDateString(),
+            'nominal'                 => null,
+            'rekening_tujuan'         => 'Cash',
+            'nama_rekening_pengirim'  => '',
+            'no_ref'                  => '',
+            'bukti_transfer'          => null,
+            'note'                    => null,
         ]);
 
         Notification::make()

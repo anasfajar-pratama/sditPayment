@@ -29,12 +29,24 @@ class Pembayaran extends Model
         'created_by',
     ];
 
+    protected $appends = [
+        'bukti_url',
+    ];
+
     protected $casts = [
         'tanggal_bayar'   => 'date',
         'tgl_bayar_struk' => 'date',
         'nominal'         => 'decimal:2',
         'potongan'        => 'decimal:2',
     ];
+
+    public function getBuktiUrlAttribute(): ?string
+    {
+        if (!$this->bukti_bayar) {
+            return null;
+        }
+        return \Illuminate\Support\Facades\Storage::url($this->bukti_bayar);
+    }
 
     public function siswa(): \Illuminate\Database\Eloquent\Relations\BelongsTo
     {
