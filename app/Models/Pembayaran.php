@@ -24,6 +24,8 @@ class Pembayaran extends Model
         'tgl_bayar_struk',
         'potongan',
         'bukti_bayar',
+        'rekening_tujuan',
+        'nama_rekening_pengirim',
         'created_by',
     ];
 

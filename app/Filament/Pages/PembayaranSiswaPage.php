@@ -10,10 +10,11 @@ use App\Models\SiswaKelasHistory;
 use App\Models\Tagihan;
 use Carbon\Carbon;
 use Filament\Actions\Action;
-use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Placeholder;
+use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Get;
 use Filament\Forms\Set;
@@ -348,10 +349,12 @@ class PembayaranSiswaPage extends Page
                         ? $this->getBulanLabel($tagihan->bulan) . ' ' . $tagihan->tahun
                         : (string) $tagihan->tahun),
                     '_is_spp'         => $this->isSppByJenis($tagihan->jenisPembayaran?->nama),
-                    'potongan'        => 0,
-                    'nominal_bayar'   => (float) $tagihan->nominal_tagihan,
-                    'tgl_bayar_struk' => now()->toDateString(),
-                    'no_ref'          => '',
+                    'potongan'              => 0,
+                    'nominal_bayar'         => (float) $tagihan->nominal_tagihan,
+                    'tgl_bayar_struk'       => now()->toDateTimeString(),
+                    'no_ref'                => '',
+                    'rekening_tujuan'       => 'Cash',
+                    'nama_rekening_pengirim'=> '',
                 ];
             })
             ->form([
@@ -383,6 +386,8 @@ class PembayaranSiswaPage extends Page
                 TextInput::make('nominal_bayar')
                     ->label('Nominal Bayar (Rp)')
                     ->numeric()->prefix('Rp')->required()
+                    ->disabled(fn (Get $get) => $this->isSppByJenis($get('_jenis')))
+                    ->dehydrated()
                     ->helperText(fn (Get $get) => $this->isSppByJenis($get('_jenis'))
                         ? 'SPP harus dibayar penuh (setelah potongan)'
                         : 'Bisa diisi sebagian untuk cicilan'),
@@ -392,7 +397,20 @@ class PembayaranSiswaPage extends Page
                     ->placeholder('Contoh: TRF2025001 — kosongkan jika tunai')
                     ->nullable(),
 
-                DatePicker::make('tgl_bayar_struk')
+                Select::make('rekening_tujuan')
+                    ->label('Rekening Tujuan')
+                    ->options(fn () => \App\Models\MasterRekeningTujuan::orderBy('urutan')->pluck('label', 'label'))
+                    ->default('Cash')
+                    ->live()
+                    ->required(),
+
+                TextInput::make('nama_rekening_pengirim')
+                    ->label('Nama Pengirim')
+                    ->placeholder('Contoh: Sri Utami')
+                    ->hidden(fn (Get $get) => $get('rekening_tujuan') === 'Cash')
+                    ->required(fn (Get $get) => $get('rekening_tujuan') !== 'Cash'),
+
+                DateTimePicker::make('tgl_bayar_struk')
                     ->label('Tanggal Bayar di Struk')
                     ->required()
                     ->default(now())
@@ -456,13 +474,15 @@ class PembayaranSiswaPage extends Page
                     'bulan'               => $tagihan->bulan,
                     'tahun'               => $tagihan->tahun,
                     'nominal'             => $nominal,
-                    'tanggal_bayar'       => now(),
+                    'tanggal_bayar'       => $data['tgl_bayar_struk'] ?? now(),
                     'status'              => $lunas ? 'lunas' : 'cicilan',
                     'no_ref'              => $data['no_ref'] ?: null,
                     'tgl_bayar_struk'     => $data['tgl_bayar_struk'] ?? null,
-                    'potongan'            => $potongan,
-                    'bukti_bayar'         => $data['bukti_bayar'] ?? null,
-                    'created_by'          => auth()->id(),
+                    'potongan'              => $potongan,
+                    'bukti_bayar'           => $data['bukti_bayar'] ?? null,
+                    'rekening_tujuan'       => $data['rekening_tujuan'] ?? null,
+                    'nama_rekening_pengirim'=> $data['nama_rekening_pengirim'] ?? null,
+                    'created_by'            => auth()->id(),
                 ]);
 
                 $pembayaran->setRelation('siswa', $siswaModel);
