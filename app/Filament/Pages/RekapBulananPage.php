@@ -18,7 +18,7 @@ class RekapBulananPage extends Page
     protected static ?string $navigationGroup = 'Keuangan';
     protected static ?string $navigationLabel = 'Rekap Bulanan';
     protected static ?string $title           = 'Rekap Bulanan';
-    protected static ?int    $navigationSort  = 11;
+    protected static ?int    $navigationSort  = 21;
 
     protected static string $view = 'filament.pages.rekap-bulanan-page';
 

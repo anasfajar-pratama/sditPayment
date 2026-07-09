@@ -16,7 +16,7 @@ class CekMutasiPage extends Page
     protected static ?string $navigationGroup   = 'Pembayaran';
     protected static ?string $navigationLabel   = 'Cek Mutasi';
     protected static ?string $title             = 'Cek Mutasi';
-    protected static ?int    $navigationSort    = 2;
+    protected static ?int    $navigationSort    = 32;
 
     protected static string $view = 'filament.pages.cek-mutasi-page';
 

@@ -15,10 +15,10 @@ use Livewire\Attributes\Computed;
 
 class Dashboard extends Page
 {
-    protected static ?string $navigationIcon  = 'heroicon-o-home';
-    protected static ?string $navigationLabel = 'Dashboard';
-    protected static ?string $title           = 'Dashboard';
-    protected static ?int    $navigationSort  = -1;
+protected static ?string $navigationIcon    = 'heroicon-o-home';
+    protected static ?string $navigationLabel   = 'Dashboard';
+    protected static ?string $title             = 'Dashboard';
+    protected static ?int    $navigationSort    = 10;
 
     protected static string $view = 'filament.pages.dashboard';
 

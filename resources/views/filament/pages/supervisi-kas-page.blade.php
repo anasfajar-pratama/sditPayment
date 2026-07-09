@@ -225,7 +225,8 @@
                         Batal
                     </button>
                     <button wire:click="submitVerifikasi"
-                        class="rounded-lg {{ $verifToggleTo ? 'bg-primary-600 hover:bg-primary-700' : 'bg-danger-600 hover:bg-danger-700' }} px-4 py-2 text-sm text-white transition inline-flex items-center gap-2"
+                        class="rounded-lg px-4 py-2 text-sm text-white transition inline-flex items-center gap-2"
+                        style="background:{{ $verifToggleTo ? '#2563eb' : '#ea580c' }};"
                         wire:loading.attr="disabled"
                         wire:target="submitVerifikasi">
                         <span wire:loading.remove wire:target="submitVerifikasi">

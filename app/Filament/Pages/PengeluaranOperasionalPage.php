@@ -13,7 +13,7 @@ class PengeluaranOperasionalPage extends Page
     protected static ?string $navigationGroup = 'Pengeluaran';
     protected static ?string $navigationLabel = 'Operasional';
     protected static ?string $title           = 'Pengeluaran Operasional';
-    protected static ?int    $navigationSort  = 20;
+    protected static ?int    $navigationSort  = 51;
 
     protected static string $view = 'filament.pages.pengeluaran-operasional-page';
 

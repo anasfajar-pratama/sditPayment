@@ -17,7 +17,7 @@ class AbsenHarianPage extends Page
     protected static ?string $navigationGroup = 'Karyawan';
     protected static ?string $navigationLabel = 'Absen Harian';
     protected static ?string $title           = 'Absen Harian Guru';
-    protected static ?int    $navigationSort  = 20;
+    protected static ?int    $navigationSort  = 81;
 
     protected static string $view = 'filament.pages.absen-harian-page';
 

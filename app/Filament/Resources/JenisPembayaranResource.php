@@ -16,6 +16,7 @@ class JenisPembayaranResource extends Resource
     protected static ?string $navigationIcon = 'heroicon-o-currency-rupee';
     protected static ?string $navigationGroup = 'Master Data';
     protected static ?string $pluralLabel = 'Jenis Pembayaran';
+    protected static ?int    $navigationSort  = 90;
 
     public static function form(Form $form): Form
     {

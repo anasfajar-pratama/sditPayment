@@ -19,7 +19,7 @@ class TokenListrikResource extends Resource
     protected static ?string $navigationLabel = 'Token Listrik';
     protected static ?string $navigationGroup = 'Pengeluaran';
     protected static ?string $pluralLabel     = 'Token Listrik';
-    protected static ?int    $navigationSort  = 25;
+    protected static ?int    $navigationSort  = 50;
 
     // ─── Form (Create & Edit) ─────────────────────────────────────────────────
 

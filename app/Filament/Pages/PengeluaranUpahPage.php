@@ -13,7 +13,7 @@ class PengeluaranUpahPage extends Page
     protected static ?string $navigationGroup = 'Pengeluaran';
     protected static ?string $navigationLabel = 'Upah';
     protected static ?string $title           = 'Pengeluaran Upah';
-    protected static ?int    $navigationSort  = 22;
+    protected static ?int    $navigationSort  = 53;
 
     protected static string $view = 'filament.pages.pengeluaran-upah-page';
 

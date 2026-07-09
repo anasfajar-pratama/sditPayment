@@ -17,7 +17,7 @@ class GajiBulananPage extends Page
     protected static ?string $navigationGroup = 'Karyawan';
     protected static ?string $navigationLabel = 'Gaji Bulanan';
     protected static ?string $title           = 'Pembayaran Gaji Bulanan';
-    protected static ?int    $navigationSort  = 30;
+    protected static ?int    $navigationSort  = 82;
 
     protected static string $view = 'filament.pages.gaji-bulanan-page';
 
