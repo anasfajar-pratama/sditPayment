@@ -10,6 +10,7 @@ use App\Filament\Traits\ConvertsToWebp;
 use App\Models\Akun;
 use App\Models\KasHarian;
 use App\Models\KasHarianLog;
+use App\Models\MasterRekeningTujuan;
 use App\Models\SaldoAwalBulan;
 use Carbon\Carbon;
 use Filament\Actions\Action;
@@ -149,17 +150,18 @@ class KasHarianPage extends Page
             $saldo -= (float) ($row->kredit ?? 0);
 
             $result[] = [
-                'id'           => $row->id,
-                'tanggal'      => $row->tanggal->format('d M y'),
-                'uraian'       => $row->uraian,
-                'sub_kategori' => $row->sub_kategori,
-                'akun'         => $row->akun?->nama_akun,
-                'debit'        => $row->debit,
-                'kredit'       => $row->kredit,
-                'saldo'        => $saldo,
-                'source'       => $row->source,
-                'bukti'        => $row->bukti,
-                'bukti_url'    => $row->bukti_url,
+                'id'               => $row->id,
+                'tanggal'          => $row->tanggal->format('d M y'),
+                'uraian'           => $row->uraian,
+                'sub_kategori'     => $row->sub_kategori,
+                'akun'             => $row->akun?->nama_akun,
+                'debit'            => $row->debit,
+                'kredit'           => $row->kredit,
+                'saldo'            => $saldo,
+                'source'           => $row->source,
+                'bukti'            => $row->bukti,
+                'bukti_url'        => $row->bukti_url,
+                'source_bukti_url' => $row->source_bukti_url,
             ];
         }
 
@@ -325,13 +327,16 @@ class KasHarianPage extends Page
             ->fillForm(function (array $arguments): array {
                 $entry = KasHarian::findOrFail($arguments['id']);
                 return [
-                    'tanggal'      => $entry->tanggal->toDateString(),
-                    'akun_id'      => $entry->akun_id,
-                    'sub_kategori' => $entry->sub_kategori,
-                    'uraian'       => $entry->uraian,
-                    'tipe'         => $entry->debit ? 'debit' : 'kredit',
-                    'nominal'      => (float) ($entry->debit ?? $entry->kredit),
-                    'bukti'        => $entry->bukti,
+                    'tanggal'               => $entry->tanggal->toDateString(),
+                    'akun_id'               => $entry->akun_id,
+                    'sub_kategori'          => $entry->sub_kategori,
+                    'uraian'                => $entry->uraian,
+                    'tipe'                  => $entry->debit ? 'debit' : 'kredit',
+                    'nominal'               => (float) ($entry->debit ?? $entry->kredit),
+                    'no_ref'                => $entry->no_ref,
+                    'rekening_tujuan'       => $entry->rekening_tujuan ?? 'Cash',
+                    'nama_rekening_pengirim'=> $entry->nama_rekening_pengirim,
+                    'bukti'                 => $entry->bukti,
                 ];
             })
             ->form([
@@ -381,7 +386,28 @@ class KasHarianPage extends Page
                 Radio::make('tipe')
                     ->label('Tipe')
                     ->options(['debit' => 'DEBIT — Uang Masuk', 'kredit' => 'KREDIT — Uang Keluar'])
-                    ->inline()->required(),
+                    ->inline()->required()
+                    ->live(),
+
+                TextInput::make('no_ref')
+                    ->label('No. Referensi / Transfer')
+                    ->placeholder('Contoh: TRF2025001')
+                    ->visible(fn (Get $get) => $get('tipe') === 'debit')
+                    ->columnSpanFull(),
+
+                Select::make('rekening_tujuan')
+                    ->label('Rekening Tujuan')
+                    ->options(fn () => MasterRekeningTujuan::orderBy('urutan')->pluck('label', 'label'))
+                    ->default('Cash')
+                    ->live()
+                    ->required(fn (Get $get) => $get('tipe') === 'debit')
+                    ->visible(fn (Get $get) => $get('tipe') === 'debit'),
+
+                TextInput::make('nama_rekening_pengirim')
+                    ->label('Nama Pengirim')
+                    ->placeholder('Contoh: Sri Utami')
+                    ->visible(fn (Get $get) => $get('tipe') === 'debit' && $get('rekening_tujuan') !== 'Cash')
+                    ->required(fn (Get $get) => $get('tipe') === 'debit' && $get('rekening_tujuan') !== 'Cash'),
 
                 TextInput::make('nominal')
                     ->label('Nominal')->numeric()->prefix('Rp')->required(),
@@ -402,23 +428,27 @@ class KasHarianPage extends Page
                 $buktibaru = $this->convertToWebp($data['bukti'] ?? null);
 
                 $entry->update([
-                    'tanggal'      => $data['tanggal'],
-                    'uraian'       => $data['uraian'],
-                    'akun_id'      => $data['akun_id'],
-                    'sub_kategori' => $data['sub_kategori'] ?? null,
-                    'debit'        => $data['tipe'] === 'debit'  ? $data['nominal'] : null,
-                    'kredit'       => $data['tipe'] === 'kredit' ? $data['nominal'] : null,
-                    'bukti'        => $buktibaru ?? $entry->bukti,
-                    'bulan'        => $tanggal->format('m'),
-                    'tahun'        => $tanggal->format('Y'),
+                    'tanggal'               => $data['tanggal'],
+                    'uraian'                => $data['uraian'],
+                    'akun_id'               => $data['akun_id'],
+                    'sub_kategori'          => $data['sub_kategori'] ?? null,
+                    'debit'                 => $data['tipe'] === 'debit'  ? $data['nominal'] : null,
+                    'kredit'                => $data['tipe'] === 'kredit' ? $data['nominal'] : null,
+                    'no_ref'                => $data['no_ref'] ?? null,
+                    'rekening_tujuan'       => $data['rekening_tujuan'] ?? null,
+                    'nama_rekening_pengirim'=> $data['nama_rekening_pengirim'] ?? null,
+                    'bukti'                 => $buktibaru ?? $entry->bukti,
+                    'bulan'                 => $tanggal->format('m'),
+                    'tahun'                 => $tanggal->format('Y'),
                 ]);
 
+                $akunNamaEdit = $entry->akun?->nama_akun ?? 'Tanpa Akun';
                 KasHarianLog::catat(
                     aksi: 'edit',
                     kasHarianId: $entry->id,
                     sebelum: $sebelum,
                     sesudah: $entry->fresh()->toArray(),
-                    keterangan: "Edit: {$entry->uraian}",
+                    keterangan: "Edit: {$entry->uraian} ({$akunNamaEdit})",
                 );
 
                 unset($this->entries, $this->totalDebit, $this->totalKredit, $this->saldoAkhir, $this->kasHariIni, $this->logEntries);
@@ -463,12 +493,13 @@ class KasHarianPage extends Page
 
                 $snapshot = $entry->toArray();
 
+                $akunNamaHapus = $entry->akun?->nama_akun ?? 'Tanpa Akun';
                 KasHarianLog::catat(
                     aksi: 'hapus',
                     kasHarianId: $entry->id,
                     sebelum: $snapshot,
                     sesudah: null,
-                    keterangan: "Hapus: {$entry->uraian}",
+                    keterangan: "Hapus: {$entry->uraian} ({$akunNamaHapus})",
                 );
 
                 $entry->delete();
@@ -533,7 +564,7 @@ class KasHarianPage extends Page
                 ->modalSubmitActionLabel('Simpan Jurnal')
                 ->form([
                     DatePicker::make('tanggal')
-                        ->label('Tanggal')->required()->default(now()),
+                        ->label('Tanggal')->required()->default(now())->maxDate(now()),
 
                     Select::make('akun_id')
                         ->label('Akun')
@@ -585,7 +616,28 @@ class KasHarianPage extends Page
                     Radio::make('tipe')
                         ->label('Tipe')
                         ->options(['debit' => 'DEBIT — Uang Masuk', 'kredit' => 'KREDIT — Uang Keluar'])
-                        ->default('kredit')->inline()->required(),
+                        ->default('kredit')->inline()->required()
+                        ->live(),
+
+                    TextInput::make('no_ref')
+                        ->label('No. Referensi / Transfer')
+                        ->placeholder('Contoh: TRF2025001')
+                        ->visible(fn (Get $get) => $get('tipe') === 'debit')
+                        ->columnSpanFull(),
+
+                    Select::make('rekening_tujuan')
+                        ->label('Rekening Tujuan')
+                        ->options(fn () => MasterRekeningTujuan::orderBy('urutan')->pluck('label', 'label'))
+                        ->default('Cash')
+                        ->live()
+                        ->required(fn (Get $get) => $get('tipe') === 'debit')
+                        ->visible(fn (Get $get) => $get('tipe') === 'debit'),
+
+                    TextInput::make('nama_rekening_pengirim')
+                        ->label('Nama Pengirim')
+                        ->placeholder('Contoh: Sri Utami')
+                        ->visible(fn (Get $get) => $get('tipe') === 'debit' && $get('rekening_tujuan') !== 'Cash')
+                        ->required(fn (Get $get) => $get('tipe') === 'debit' && $get('rekening_tujuan') !== 'Cash'),
 
                     TextInput::make('nominal')
                         ->label('Nominal')->numeric()->prefix('Rp')->required(),
@@ -594,25 +646,29 @@ class KasHarianPage extends Page
                     $tanggal = Carbon::parse($data['tanggal']);
 
                     $entry = KasHarian::create([
-                        'tanggal'      => $data['tanggal'],
-                        'uraian'       => $data['uraian'],
-                        'akun_id'      => $data['akun_id'],
-                        'sub_kategori' => $data['sub_kategori'] ?? null,
-                        'debit'        => $data['tipe'] === 'debit'  ? $data['nominal'] : null,
-                        'kredit'       => $data['tipe'] === 'kredit' ? $data['nominal'] : null,
-                        'bukti'        => $this->convertToWebp($data['bukti'] ?? null),
-                        'source'       => 'manual',
-                        'bulan'        => $tanggal->format('m'),
-                        'tahun'        => $tanggal->format('Y'),
-                        'created_by'   => auth()->id(),
+                        'tanggal'               => $data['tanggal'],
+                        'uraian'                => $data['uraian'],
+                        'akun_id'               => $data['akun_id'],
+                        'sub_kategori'          => $data['sub_kategori'] ?? null,
+                        'debit'                 => $data['tipe'] === 'debit'  ? $data['nominal'] : null,
+                        'kredit'                => $data['tipe'] === 'kredit' ? $data['nominal'] : null,
+                        'no_ref'                => $data['no_ref'] ?? null,
+                        'rekening_tujuan'       => $data['rekening_tujuan'] ?? null,
+                        'nama_rekening_pengirim'=> $data['nama_rekening_pengirim'] ?? null,
+                        'bukti'                 => $this->convertToWebp($data['bukti'] ?? null),
+                        'source'                => 'manual',
+                        'bulan'                 => $tanggal->format('m'),
+                        'tahun'                 => $tanggal->format('Y'),
+                        'created_by'            => auth()->id(),
                     ]);
 
+                    $akunNamaBuat = $entry->akun?->nama_akun ?? 'Tanpa Akun';
                     KasHarianLog::catat(
                         aksi: 'buat',
                         kasHarianId: $entry->id,
                         sebelum: null,
                         sesudah: $entry->toArray(),
-                        keterangan: "Buat: {$entry->uraian}",
+                        keterangan: "Buat: {$entry->uraian} ({$akunNamaBuat})",
                     );
 
                     unset($this->entries, $this->totalDebit, $this->totalKredit, $this->saldoAkhir, $this->kasHariIni, $this->logEntries);

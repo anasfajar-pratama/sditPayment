@@ -235,7 +235,9 @@
                                 <th class="pb-3 pr-4 text-right">Nominal</th>
                                 <th class="pb-3 pr-4 text-right">Potongan</th>
                                 <th class="pb-3 pr-4 text-center">Tgl Bayar</th>
-                                <th class="pb-3 pr-4 text-center">No. Ref</th>
+                                <!-- <th class="pb-3 pr-4 text-center">No. Ref</th>
+                                <th class="pb-3 pr-4 text-center">Rek. Tujuan</th>
+                                <th class="pb-3 pr-4 text-center">Nama Pengirim</th> -->
                                 <th class="pb-3 pr-4 text-center">Status</th>
                                 <th class="pb-3 text-center">Kuitansi</th>
                             </tr>
@@ -259,9 +261,15 @@
                                     <td class="py-2.5 pr-4 text-center text-gray-500 text-xs">
                                         {{ \Carbon\Carbon::parse($bayar->tgl_bayar_struk ?? $bayar->tanggal_bayar)->format('d M Y') }}
                                     </td>
-                                    <td class="py-2.5 pr-4 text-center text-xs font-mono text-gray-500">
+                                    <!-- <td class="py-2.5 pr-4 text-center text-xs font-mono text-gray-500">
                                         {{ $bayar->no_ref ?: '—' }}
                                     </td>
+                                    <td class="py-2.5 pr-4 text-center text-xs text-gray-500">
+                                        {{ $bayar->rekening_tujuan ?: '—' }}
+                                    </td>
+                                    <td class="py-2.5 pr-4 text-center text-xs text-gray-500">
+                                        {{ $bayar->nama_rekening_pengirim ?: '—' }}
+                                    </td> -->
                                     <td class="py-2.5 pr-4 text-center">
                                         @if ($bayar->status === 'lunas')
                                             <span class="rounded-full bg-success-100 text-success-700 text-xs px-2 py-0.5 font-semibold">Lunas</span>

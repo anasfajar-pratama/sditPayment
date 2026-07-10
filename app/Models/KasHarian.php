@@ -6,6 +6,7 @@
 
 namespace App\Models;
 
+use App\Models\LogDanaMasuk;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -16,26 +17,36 @@ class KasHarian extends Model
         'tanggal', 'uraian', 'sub_kategori', 'akun_id',
         'debit', 'kredit', 'bukti',
         'source', 'source_id',
+        'no_ref', 'rekening_tujuan', 'nama_rekening_pengirim',
+        'verified_at', 'verified_by',
         'bulan', 'tahun',
         'created_by',
     ];
 
     protected $casts = [
-        'tanggal' => 'date',
-        'debit'   => 'decimal:2',
-        'kredit'  => 'decimal:2',
+        'tanggal'      => 'date',
+        'debit'        => 'decimal:2',
+        'kredit'       => 'decimal:2',
+        'verified_at'  => 'datetime',
     ];
 
     protected $appends = [
-        'bukti_url',
+        'source_bukti_url',
     ];
 
-    public function getBuktiUrlAttribute(): ?string
+    public function getSourceBuktiUrlAttribute(): ?string
     {
-        if (!$this->bukti) {
-            return null;
+        if ($this->source === 'pembayaran') {
+            $pembayaran = \App\Models\Pembayaran::find($this->source_id);
+            return $pembayaran?->bukti_url;
         }
-        return \Illuminate\Support\Facades\Storage::url($this->bukti);
+        if ($this->source === 'donasi') {
+            $donasi = \App\Models\Donasi::find($this->source_id);
+            if ($donasi?->bukti_transfer) {
+                return \Illuminate\Support\Facades\Storage::url($donasi->bukti_transfer);
+            }
+        }
+        return null;
     }
 
     public function akun(): BelongsTo
@@ -46,6 +57,11 @@ class KasHarian extends Model
     public function createdBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by');
+    }
+
+    public function verifiedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'verified_by');
     }
 
     // ─── Posting dari pembayaran siswa ────────────────────────────────────────
@@ -79,24 +95,39 @@ class KasHarian extends Model
 
         $siswa      = $pembayaran->siswa;
         $bulanLabel = $bulanLabels[$pembayaran->bulan] ?? '';
-        $uraian     = "{$siswa->nama} Kls " . ($siswa->kelasSaatIni?->kelas ?? '-')
-                    . " — {$pembayaran->jenisPembayaran->nama}"
-                    . ($bulanLabel ? " {$bulanLabel}" : '')
-                    . " {$pembayaran->tahun}";
+        $kelas = $pembayaran->jenisPembayaran->nama === 'Daftar Masuk'
+            ? ''
+            : ' Kls ' . ($siswa->kelasSaatIni?->kelas ?? '-');
 
-        static::create([
-            'tanggal'    => $pembayaran->tanggal_bayar,
-            'uraian'     => $uraian,
-            'akun_id'    => $akun?->id,
-            'debit'      => $pembayaran->nominal,
-            'kredit'     => null,
-            'source'     => 'pembayaran',
-            'source_id'  => $pembayaran->id,
-            'bulan'      => $pembayaran->bulan,
-            'tahun'      => $pembayaran->tahun,
-            'created_by' => $pembayaran->created_by,
+        $uraian = "{$siswa->nama}{$kelas}"
+            . " — {$pembayaran->jenisPembayaran->nama}"
+            . ($bulanLabel ? " {$bulanLabel}" : '')
+            . " {$pembayaran->tahun}";
+
+        $record = static::create([
+            'tanggal'               => $pembayaran->tanggal_bayar,
+            'uraian'                => $uraian,
+            'akun_id'               => $akun?->id,
+            'debit'                 => $pembayaran->nominal,
+            'kredit'                => null,
+            'source'                => 'pembayaran',
+            'source_id'             => $pembayaran->id,
+            'no_ref'                => $pembayaran->no_ref,
+            'rekening_tujuan'       => $pembayaran->rekening_tujuan,
+            'nama_rekening_pengirim'=> $pembayaran->nama_rekening_pengirim,
+            'bulan'                 => $pembayaran->bulan,
+            'tahun'                 => $pembayaran->tahun,
+            'created_by'            => $pembayaran->created_by,
         ]);
-        // \Log::info('KasHarian: row DIBUAT', ['kas_id' => $record->id, 'akun_id' => $akun?->id]);
+
+        LogDanaMasuk::create([
+            'kas_harian_id' => $record->id,
+            'action'         => 'create',
+            'uraian'         => $record->uraian,
+            'data_lama'      => null,
+            'data_baru'      => $record->only(['no_ref', 'rekening_tujuan', 'nama_rekening_pengirim', 'debit']),
+            'created_by'     => $pembayaran->created_by,
+        ]);
     }
 
     public static function hapusPostingPembayaran(int $pembayaranId): void
@@ -120,17 +151,34 @@ class KasHarian extends Model
         $uraian  = "Donasi — {$donatur->nama}"
                  . ($donasi->note ? " ({$donasi->note})" : '');
 
-        static::create([
-            'tanggal'    => $donasi->tanggal,
-            'uraian'     => $uraian,
-            'akun_id'    => 7,          // Pendapatan Donasi (4104)
-            'debit'      => $donasi->nominal,
-            'kredit'     => null,
-            'source'     => 'donasi',
-            'source_id'  => $donasi->id,
-            'bulan'      => $donasi->bulan,
-            'tahun'      => $donasi->tahun,
-            'created_by' => $donasi->created_by,
+        $buktiTransfer  = $donasi->bukti_transfer ?? null;
+        $rekeningTujuan = $donasi->rekening_tujuan ?? null;
+        $namaPengirim   = $donasi->nama_rekening_pengirim ?? $donasi->donatur?->nama ?? null;
+
+        $record = static::create([
+            'tanggal'               => $donasi->tanggal,
+            'uraian'                => $uraian,
+            'akun_id'               => 7,
+            'debit'                 => $donasi->nominal,
+            'kredit'                => null,
+            'source'                => 'donasi',
+            'source_id'             => $donasi->id,
+            'no_ref'                => $donasi->no_ref ?? null,
+            'rekening_tujuan'       => $rekeningTujuan,
+            'nama_rekening_pengirim'=> $namaPengirim,
+            'bukti'                 => $buktiTransfer,
+            'bulan'                 => $donasi->bulan,
+            'tahun'                 => $donasi->tahun,
+            'created_by'            => $donasi->created_by,
+        ]);
+
+        LogDanaMasuk::create([
+            'kas_harian_id' => $record->id,
+            'action'         => 'create',
+            'uraian'         => $record->uraian,
+            'data_lama'      => null,
+            'data_baru'      => $record->only(['no_ref', 'rekening_tujuan', 'nama_rekening_pengirim', 'debit']),
+            'created_by'     => $donasi->created_by,
         ]);
     }
 

@@ -24,7 +24,13 @@ class Pembayaran extends Model
         'tgl_bayar_struk',
         'potongan',
         'bukti_bayar',
+        'rekening_tujuan',
+        'nama_rekening_pengirim',
         'created_by',
+    ];
+
+    protected $appends = [
+        'bukti_url',
     ];
 
     protected $casts = [
@@ -33,6 +39,14 @@ class Pembayaran extends Model
         'nominal'         => 'decimal:2',
         'potongan'        => 'decimal:2',
     ];
+
+    public function getBuktiUrlAttribute(): ?string
+    {
+        if (!$this->bukti_bayar) {
+            return null;
+        }
+        return \Illuminate\Support\Facades\Storage::url($this->bukti_bayar);
+    }
 
     public function siswa(): \Illuminate\Database\Eloquent\Relations\BelongsTo
     {
