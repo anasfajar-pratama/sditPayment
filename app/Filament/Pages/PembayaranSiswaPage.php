@@ -397,7 +397,8 @@ class PembayaranSiswaPage extends Page
                     ->required()
                     ->default(now())
                     ->maxDate(now())
-                    ->helperText('Tidak boleh lebih dari hari ini'),
+                    ->format('m/d/Y')
+                    ->helperText('tidak boleh lebih dari hari ini'),
 
                 FileUpload::make('bukti_bayar')
                     ->label('Bukti Bayar (Foto / Struk)')
@@ -456,7 +457,7 @@ class PembayaranSiswaPage extends Page
                     'bulan'               => $tagihan->bulan,
                     'tahun'               => $tagihan->tahun,
                     'nominal'             => $nominal,
-                    'tanggal_bayar'       => now(),
+                    'tanggal_bayar'       => $data['tgl_bayar_struk'] ?? now(),
                     'status'              => $lunas ? 'lunas' : 'cicilan',
                     'no_ref'              => $data['no_ref'] ?: null,
                     'tgl_bayar_struk'     => $data['tgl_bayar_struk'] ?? null,
