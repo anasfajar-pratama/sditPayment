@@ -18,7 +18,7 @@ class KenaikanKelasPage extends Page
     protected static ?string $navigationGroup = 'Kesiswaan';
     protected static ?string $navigationLabel = 'Kenaikan Kelas';
     protected static ?string $title           = 'Kenaikan Kelas';
-    protected static ?int    $navigationSort  = 10;
+    protected static ?int    $navigationSort  = 70;
 
     protected static string $view = 'filament.pages.kenaikan-kelas-page';
 

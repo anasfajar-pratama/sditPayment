@@ -37,7 +37,7 @@ class KasHarianPage extends Page
     protected static ?string $navigationGroup = 'Keuangan';
     protected static ?string $navigationLabel = 'Kas Harian';
     protected static ?string $title           = 'Kas Harian';
-    protected static ?int    $navigationSort  = 10;
+    protected static ?int    $navigationSort  = 20;
 
     protected static string $view = 'filament.pages.kas-harian-page';
 

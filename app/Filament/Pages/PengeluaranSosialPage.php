@@ -13,7 +13,7 @@ class PengeluaranSosialPage extends Page
     protected static ?string $navigationGroup = 'Pengeluaran';
     protected static ?string $navigationLabel = 'Sosial';
     protected static ?string $title           = 'Pengeluaran Sosial';
-    protected static ?int    $navigationSort  = 21;
+    protected static ?int    $navigationSort  = 52;
 
     protected static string $view = 'filament.pages.pengeluaran-sosial-page';
 

@@ -17,7 +17,7 @@ class SupervisiKasPage extends Page
     protected static ?string $navigationGroup   = 'Pembayaran';
     protected static ?string $navigationLabel   = 'Supervisi Kas';
     protected static ?string $title             = 'Supervisi Kas';
-    protected static ?int    $navigationSort    = 3;
+    protected static ?int    $navigationSort    = 33;
 
     protected static string $view = 'filament.pages.supervisi-kas-page';
 
@@ -236,7 +236,7 @@ class SupervisiKasPage extends Page
         $this->closeEdit();
         Notification::make()->title('Data berhasil diperbarui')->success()->send();
 
-        unset($this->transaksi);
+        unset($this->transaksiList);
     }
 
     public function openLogDetail(int $id): void

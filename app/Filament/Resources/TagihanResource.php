@@ -19,6 +19,7 @@ class TagihanResource extends Resource
     protected static ?string $model = Tagihan::class;
     protected static ?string $navigationIcon = 'heroicon-o-clipboard-document-list';
     protected static ?string $navigationGroup = 'Pembayaran';
+    protected static ?int    $navigationSort  = 31;
     protected static ?string $pluralLabel = 'Daftar Tagihan';
 
     public static function form(Form $form): Form

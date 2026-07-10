@@ -21,7 +21,7 @@ class KaryawanResource extends Resource
     protected static ?string $navigationLabel = 'Data Karyawan';
     protected static ?string $modelLabel      = 'Karyawan';
     protected static ?string $pluralModelLabel = 'Data Karyawan';
-    protected static ?int    $navigationSort  = 10;   // muncul paling atas di group Karyawan
+    protected static ?int    $navigationSort  = 80;
 
     // ─── FORM ─────────────────────────────────────────────────────────────────
 

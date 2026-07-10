@@ -24,11 +24,10 @@ use Livewire\Attributes\Computed;
 
 class PembayaranSiswaPage extends Page
 {
-    protected static ?string $navigationIcon  = 'heroicon-o-banknotes';
+protected static ?string $navigationIcon  = 'heroicon-o-banknotes';
     protected static ?string $navigationGroup = 'Pembayaran';
     protected static ?string $navigationLabel = 'Pembayaran Siswa';
-    protected static ?string $title           = 'Pembayaran Siswa';
-    protected static ?int    $navigationSort  = 1;
+    protected static ?int    $navigationSort  = 30;
 
     protected static string $view = 'filament.pages.pembayaran-siswa-page';
 

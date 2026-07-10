@@ -31,7 +31,7 @@ class SiswaResource extends Resource
     protected static ?string $navigationIcon  = 'heroicon-o-academic-cap';
     protected static ?string $navigationLabel = 'Siswa';
     protected static ?string $navigationGroup = 'Siswa';
-    protected static ?int    $navigationSort  = 1;
+    protected static ?int    $navigationSort  = 60;
 
     // ─── Sub-menu sidebar ─────────────────────────────────────────────────────
 

@@ -18,7 +18,7 @@ class DonaturResource extends Resource
     protected static ?string $navigationLabel = 'Orang Tua Asuh';
     protected static ?string $navigationGroup = 'Orang Tua Asuh';
     protected static ?string $pluralLabel     = 'Orang Tua Asuh';
-    protected static ?int    $navigationSort  = 1;
+    protected static ?int    $navigationSort  = 40;
 
     // ─── Form (dipakai halaman Create & Edit) ─────────────────────────────────
 
