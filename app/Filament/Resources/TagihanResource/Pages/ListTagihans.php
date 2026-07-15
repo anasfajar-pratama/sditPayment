@@ -33,6 +33,22 @@ class ListTagihans extends ListRecords
         return JenisPembayaran::find($id)?->nama === 'Daftar Masuk';
     }
 
+    public function exportPdf(): void
+    {
+        $filters = $this->tableFilters;
+        $params = [];
+        foreach (['bulan', 'tahun', 'status'] as $key) {
+            $val = $filters[$key] ?? null;
+            if (is_array($val)) {
+                $val = $val['value'] ?? null;
+            }
+            if (is_string($val) && $val !== '') {
+                $params[$key] = $val;
+            }
+        }
+        $this->redirect(url('/tagihan/export-pdf' . ($params ? '?' . http_build_query($params) : '')));
+    }
+
     protected function getHeaderActions(): array
     {
         return [
@@ -78,6 +94,7 @@ class ListTagihans extends ListRecords
                         ->placeholder('Semua Status')
                         ->native(false),
                 ])
+                ->hidden()
                 ->action(function (array $data, \Livewire\Component $livewire): void {
                     $params = http_build_query(array_filter($data, fn ($v) => filled($v)));
                     $livewire->redirect(url('/tagihan/export' . ($params ? '?' . $params : '')));
@@ -92,15 +109,13 @@ class ListTagihans extends ListRecords
                 ->modalWidth('lg')
                 ->modalSubmitActionLabel('Generate')
                 ->form([
-                    // ── Jenis Pembayaran (live agar form bereaksi) ──────────
                     Select::make('jenis_pembayaran_id')
                         ->label('Jenis Pembayaran')
                         ->options(JenisPembayaran::pluck('nama', 'id'))
                         ->required()
                         ->placeholder('Pilih Jenis Pembayaran')
-                        ->live(),   // ← PENTING: reactive agar field di bawah muncul/hilang
+                        ->live(),
 
-                    // ── Kelas (muncul hanya jika BUKAN Daftar Masuk) ───────
                     Radio::make('filter_kelas')
                         ->label('Kelas')
                         ->options([
@@ -127,7 +142,6 @@ class ListTagihans extends ListRecords
                         ->required(fn (Get $get) => ! static::isDaftarMasuk((int) $get('jenis_pembayaran_id'))
                             && $get('filter_kelas') === 'pilih'),
 
-                    // ── Calon Siswa (muncul hanya jika Daftar Masuk dipilih) ─
                     Radio::make('filter_calon')
                         ->label('Calon Siswa')
                         ->options([
@@ -153,7 +167,6 @@ class ListTagihans extends ListRecords
                         ->required(fn (Get $get) => static::isDaftarMasuk((int) $get('jenis_pembayaran_id'))
                             && $get('filter_calon') === 'pilih'),
 
-                    // ── Field lain (tetap sama) ─────────────────────────────
                     Select::make('bulan')
                         ->label('Bulan')
                         ->options([
@@ -190,15 +203,12 @@ class ListTagihans extends ListRecords
                     $isDaftarMasuk = static::isDaftarMasuk((int) $data['jenis_pembayaran_id']);
 
                     if ($isDaftarMasuk) {
-                        // Hanya ambil calon siswa (is_calon = 1)
                         $query->where('is_calon', true);
 
-                        // Filter berdasarkan calon_jenis jika dipilih
                         if (($data['filter_calon'] ?? 'semua') === 'pilih' && filled($data['calon_jenis'] ?? null)) {
                             $query->where('calon_jenis', $data['calon_jenis']);
                         }
                     } else {
-                        // Logika kelas biasa (siswa reguler)
                         if ($data['filter_kelas'] === 'pilih' && filled($data['kelas'] ?? null)) {
                             $query->whereHas('kelasSaatIni', fn($q) => $q->where('kelas', $data['kelas']));
                         }
@@ -238,6 +248,13 @@ class ListTagihans extends ListRecords
                         ->success()
                         ->send();
                 }),
+
+            // ── Cetak PDF ──────────────────────────────────────────────────
+            Action::make('exportPdf')
+                ->label('Cetak PDF')
+                ->icon('heroicon-o-document-arrow-down')
+                ->color('danger')
+                ->action('exportPdf'),
         ];
     }
 }
