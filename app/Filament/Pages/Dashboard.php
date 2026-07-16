@@ -3,8 +3,8 @@
 namespace App\Filament\Pages;
 
 use App\Models\AbsenHarian;
-use App\Models\Donasi;
 use App\Models\GajiBulanan;
+use App\Models\JenisPembayaran;
 use App\Models\KasHarian;
 use App\Models\Karyawan;
 use App\Models\Pembayaran;
@@ -65,7 +65,48 @@ protected static ?string $navigationIcon    = 'heroicon-o-home';
             ->toArray();
     }
 
-    // ─── TAGIHAN ──────────────────────────────────────────────────────────────
+    // ─── SISWA BELUM BAYAR (dari Master Biaya) ────────────────────────────────
+
+    #[Computed]
+    public function belumBayarBulanIni(): array
+    {
+        $now   = now();
+        $bulan = $now->format('m');
+        $tahun = $now->format('Y');
+        $taTahun = (int) $bulan >= 7 ? (int) $tahun : (int) $tahun - 1;
+
+        $siswaIds = Siswa::where('is_calon', false)->where('status_aktif', true)->pluck('id');
+
+        $jenisSpp = JenisPembayaran::whereRaw('LOWER(nama) = ?', ['spp'])->value('id');
+        $jenisDu  = JenisPembayaran::whereRaw('LOWER(nama) = ?', ['daftar ulang'])->value('id');
+
+        // Siswa yang sudah bayar SPP bulan ini
+        $sppPaidIds = Pembayaran::whereIn('siswa_id', $siswaIds)
+            ->where('jenis_pembayaran_id', $jenisSpp)
+            ->where('bulan', $bulan)
+            ->where('tahun', $tahun)
+            ->pluck('siswa_id')
+            ->unique()
+            ->toArray();
+        $sppUnpaid = $siswaIds->diff($sppPaidIds)->values();
+
+        // Siswa yang sudah bayar DU (hanya relevan Jun–Jul)
+        $duUnpaid = collect();
+        if (in_array($bulan, ['06', '07'])) {
+            $duPaidIds = Pembayaran::whereIn('siswa_id', $siswaIds)
+                ->where('jenis_pembayaran_id', $jenisDu)
+                ->where('tahun', $taTahun)
+                ->pluck('siswa_id')
+                ->unique()
+                ->toArray();
+            $duUnpaid = $siswaIds->diff($duPaidIds)->values();
+        }
+
+        return [
+            'spp_unpaid' => $sppUnpaid->count(),
+            'du_unpaid'  => $duUnpaid->count(),
+        ];
+    }
 
     #[Computed]
     public function totalTagihanBelumBayar(): int

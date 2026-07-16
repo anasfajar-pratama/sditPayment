@@ -103,30 +103,59 @@
         {{-- ── Detail Tagihan ──────────────────────────────────────────────── --}}
         <div class="px-6 py-4">
             <h2 class="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-3">Detail Tagihan</h2>
-            <div class="space-y-3">
 
-                <div class="flex justify-between items-start gap-4">
-                    <span class="text-sm text-gray-500 min-w-fit">Jenis Pembayaran</span>
-                    <span class="text-sm font-medium text-gray-700 text-right">
-                        {{ $tagihan->jenisPembayaran->nama ?? '-' }}
-                    </span>
+            @if ($tagihan->detail && count($tagihan->detail) > 0)
+                <div class="space-y-2">
+                    @foreach ($tagihan->detail as $i => $item)
+                        <div class="flex justify-between items-center gap-4 py-2 {{ $i > 0 ? 'border-t border-gray-100' : '' }}">
+                            <div>
+                                <span class="text-sm font-medium text-gray-800 block">{{ $item['jenis'] ?? '-' }}</span>
+                                <span class="text-xs text-gray-400">
+                                    @if (($item['jenis'] ?? '') === 'SPP')
+                                        {{ \App\Http\Controllers\TagihanPublicController::$namaBulan[$item['bulan']] ?? $item['bulan'] }} {{ $item['tahun'] ?? '' }}
+                                    @else
+                                        {{ $item['tahun'] ?? '' }}
+                                    @endif
+                                </span>
+                            </div>
+                            <span class="text-sm font-semibold text-gray-900">
+                                Rp {{ number_format($item['nominal'] ?? 0, 0, ',', '.') }}
+                            </span>
+                        </div>
+                    @endforeach
+                    <div class="flex justify-between items-center gap-4 pt-3 border-t-2 border-gray-200 mt-2">
+                        <span class="text-sm font-bold text-gray-800">Total Tagihan</span>
+                        <span class="text-base font-bold text-gray-900">
+                            Rp {{ number_format($tagihan->nominal_tagihan, 0, ',', '.') }}
+                        </span>
+                    </div>
                 </div>
+            @else
+                <div class="space-y-3">
+                    <div class="flex justify-between items-start gap-4">
+                        <span class="text-sm text-gray-500 min-w-fit">Jenis Pembayaran</span>
+                        <span class="text-sm font-medium text-gray-700 text-right">
+                            {{ $tagihan->jenisPembayaran->nama ?? '-' }}
+                        </span>
+                    </div>
 
-                <div class="flex justify-between items-start gap-4">
-                    <span class="text-sm text-gray-500 min-w-fit">Periode</span>
-                    <span class="text-sm font-medium text-gray-700 text-right">
-                        {{ $namaBulan }} {{ $tagihan->tahun }}
-                    </span>
+                    <div class="flex justify-between items-start gap-4">
+                        <span class="text-sm text-gray-500 min-w-fit">Periode</span>
+                        <span class="text-sm font-medium text-gray-700 text-right">
+                            {{ $namaBulan ?? '' }} {{ $tagihan->tahun }}
+                        </span>
+                    </div>
+
+                    <div class="flex justify-between items-center gap-4">
+                        <span class="text-sm text-gray-500 min-w-fit">Nominal Tagihan</span>
+                        <span class="text-base font-bold text-gray-900">
+                            Rp {{ number_format($tagihan->nominal_tagihan, 0, ',', '.') }}
+                        </span>
+                    </div>
                 </div>
+            @endif
 
-                <div class="flex justify-between items-center gap-4">
-                    <span class="text-sm text-gray-500 min-w-fit">Nominal Tagihan</span>
-                    <span class="text-base font-bold text-gray-900">
-                        Rp {{ number_format($tagihan->nominal_tagihan, 0, ',', '.') }}
-                    </span>
-                </div>
-
-            </div>
+        </div>
         </div>
 
         {{-- ── Info Pembayaran (jika LUNAS) ────────────────────────────────── --}}

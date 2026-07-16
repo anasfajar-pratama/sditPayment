@@ -48,7 +48,7 @@
             </div>
         </div>
 
-        {{-- Tagihan Belum Bayar --}}
+        {{-- Siswa Belum Bayar (dari Master Biaya) --}}
         <div style="background:#fffbeb; border:1px solid #fde68a; border-radius:12px; padding:16px 18px;">
             <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;">
                 <span style="font-size:11px; font-weight:600; text-transform:uppercase;
@@ -57,11 +57,12 @@
                     <x-heroicon-o-exclamation-circle style="width:16px;height:16px;color:#d97706;"/>
                 </div>
             </div>
+            @php $bb = $this->belumBayarBulanIni; @endphp
             <div style="font-size:28px; font-weight:700; color:#b45309; line-height:1;">
-                {{ number_format($this->totalTagihanBelumBayar) }}
+                {{ $bb['spp_unpaid'] + $bb['du_unpaid'] }}
             </div>
             <div style="font-size:11px; color:#fcd34d; margin-top:4px;">
-                Tagihan · Rp {{ number_format($this->nominalTagihanBelumBayar, 0, ',', '.') }}
+                SPP: {{ $bb['spp_unpaid'] }} siswa &middot; DU: {{ $bb['du_unpaid'] }} siswa
             </div>
         </div>
 

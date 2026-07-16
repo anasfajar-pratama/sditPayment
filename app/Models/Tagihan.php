@@ -17,7 +17,12 @@ class Tagihan extends Model
         'bulan',
         'tahun',
         'nominal_tagihan',
-        'status'
+        'status',
+        'detail',
+    ];
+
+    protected $casts = [
+        'detail' => 'array',
     ];
 
     public function siswa()

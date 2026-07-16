@@ -74,6 +74,7 @@ class AdminPanelProvider extends PanelProvider
                 \App\Filament\Pages\PengeluaranUpahPage::class,   
                 \App\Filament\Pages\AbsenHarianPage::class,
                 \App\Filament\Pages\GajiBulananPage::class,
+                \App\Filament\Pages\PengaturanKeuangan::class,
             ])
             ->discoverWidgets(in: app_path('Filament/Widgets'), for: 'App\\Filament\\Widgets')
             ->middleware([
