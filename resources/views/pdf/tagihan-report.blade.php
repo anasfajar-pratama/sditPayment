@@ -78,6 +78,7 @@
             font-weight: 700;
             font-size: 9px;
         }
+        .no-wrap { white-space: nowrap; }
         .footer {
             margin-top: 20px;
             padding-top: 12px;
@@ -89,6 +90,15 @@
     </style>
 </head>
 <body>
+    @php
+        $bulanLabels = [
+            '01' => 'Januari',  '02' => 'Februari', '03' => 'Maret',
+            '04' => 'April',    '05' => 'Mei',       '06' => 'Juni',
+            '07' => 'Juli',     '08' => 'Agustus',   '09' => 'September',
+            '10' => 'Oktober',  '11' => 'November',  '12' => 'Desember',
+        ];
+    @endphp
+
     <div class="header">
         <div class="header-left">
             <h1>Laporan Tagihan</h1>
@@ -114,12 +124,22 @@
         </thead>
         <tbody>
             @forelse ($tagihans as $t)
+                @php
+                    $siswa = $t->siswa;
+                    if ($siswa && $siswa->is_calon) {
+                        $namaSiswa = ($siswa->nama ?? '-') . ' / ' . (optional($siswa->kelasSaatIni)->jenis_sekolah ?? $siswa->calon_jenis ?? '-');
+                    } elseif ($siswa) {
+                        $namaSiswa = ($siswa->nama ?? '-') . ' / ' . (optional($siswa->kelasSaatIni)->kelas ?? '-') . ' / ' . (optional($siswa->kelasSaatIni)->jenis_sekolah ?? '-');
+                    } else {
+                        $namaSiswa = '-';
+                    }
+                @endphp
                 <tr>
                     <td>{{ $loop->iteration }}</td>
-                    <td>{{ $t->siswa->nis ?? '-' }}</td>
-                    <td>{{ $t->siswa->nama ?? '-' }}</td>
+                    <td class="no-wrap">{{ $t->siswa->nis ?? '-' }}</td>
+                    <td>{{ $namaSiswa }}</td>
                     <td>{{ $t->jenisPembayaran->nama ?? '-' }}</td>
-                    <td>{{ $t->bulan }}</td>
+                    <td>{{ $bulanLabels[$t->bulan] ?? $t->bulan }}</td>
                     <td>{{ $t->tahun }}</td>
                     <td class="text-right">Rp {{ number_format($t->nominal_tagihan, 0, ',', '.') }}</td>
                     <td class="text-center">

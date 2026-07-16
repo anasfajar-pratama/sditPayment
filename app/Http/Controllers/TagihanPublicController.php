@@ -80,12 +80,17 @@ class TagihanPublicController extends Controller
             $query->where('status', $request->status);
         }
 
+        if ($request->filled('jenis_pembayaran_id')) {
+            $query->where('jenis_pembayaran_id', $request->jenis_pembayaran_id);
+        }
+
         $tagihans = $query->get();
 
         $bagianFilter = collect([
             $request->filled('bulan')  ? (self::$namaBulan[$request->bulan] ?? $request->bulan) : null,
             $request->filled('tahun')  ? $request->tahun  : null,
             $request->filled('status') ? $request->status : null,
+            $request->filled('jenis_pembayaran_id') ? 'Jenis-' . $request->jenis_pembayaran_id : null,
         ])->filter()->implode('_');
 
         $filename = 'tagihan' . ($bagianFilter ? "_{$bagianFilter}" : '') . '_' . now()->format('Ymd_His') . '.csv';
@@ -149,6 +154,7 @@ class TagihanPublicController extends Controller
         $bulan  = is_string($request->bulan)  && $request->bulan  !== '' ? $request->bulan  : null;
         $tahun  = is_string($request->tahun)  && $request->tahun  !== '' ? $request->tahun  : null;
         $status = is_string($request->status) && $request->status !== '' ? $request->status : null;
+        $jenis  = is_string($request->jenis_pembayaran_id) && $request->jenis_pembayaran_id !== '' ? $request->jenis_pembayaran_id : null;
 
         if ($bulan) {
             $query->where('bulan', $bulan);
@@ -162,12 +168,17 @@ class TagihanPublicController extends Controller
             $query->where('status', $status);
         }
 
+        if ($jenis) {
+            $query->where('jenis_pembayaran_id', $jenis);
+        }
+
         $tagihans = $query->get();
 
         $bagianFilter = collect([
             $bulan  ? (self::$namaBulan[$bulan] ?? $bulan) : null,
             $tahun,
             $status,
+            $jenis ? 'Jenis-' . $jenis : null,
         ])->filter()->implode('_');
 
         $filename = 'tagihan' . ($bagianFilter ? "_{$bagianFilter}" : '') . '_' . now()->format('Ymd_His') . '.pdf';

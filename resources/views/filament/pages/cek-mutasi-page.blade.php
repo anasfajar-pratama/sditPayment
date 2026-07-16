@@ -130,10 +130,9 @@
                                     <td class="py-2.5 pr-3 whitespace-nowrap">
                                         {{ \Carbon\Carbon::parse($item->tanggal)->format('d M Y') }}
                                     </td>
-                                    <td class="py-2.5 pr-3 font-mono text-xs">{{ $item->no_ref ?: '—' }}</td>
                                     <td class="py-2.5 pr-3 text-xs">{{ \App\Models\MasterRekeningTujuan::where('label', $item->rekening_tujuan)->value('bank') ?: ($item->rekening_tujuan ?: '—') }}</td>
                                     <td class="py-2.5 pr-3">{{ $item->nama_rekening_pengirim ?: '—' }}</td>
-                                    <td class="py-2.5 pr-3 max-w-xs truncate" title="{{ $item->uraian }} — Rp {{ number_format($item->debit, 0, ',', '.') }}">
+                                    <td class="py-2.5 pr-3 whitespace-normal break-words">
                                         {{ $item->uraian }} — Rp {{ number_format($item->debit, 0, ',', '.') }}
                                     </td>
                                     <td class="py-2.5 pr-3 text-center">
@@ -193,7 +192,6 @@
                                     <td class="py-2.5 pr-3 whitespace-nowrap">
                                         {{ \Carbon\Carbon::parse($item->tanggal)->format('d M Y') }}
                                     </td>
-                                    <td class="py-2.5 pr-3 font-mono text-xs">{{ $item->no_ref ?: '—' }}</td>
                                     <td class="py-2.5 pr-3 text-xs">{{ \App\Models\MasterRekeningTujuan::where('label', $item->rekening_tujuan)->value('bank') ?? ($item->rekening_tujuan ?: '—') }}</td>
                                     <td class="py-2.5 pr-3">{{ $item->nama_rekening_pengirim ?: '—' }}</td>
                                     <td class="py-2.5 pr-3 text-center">
