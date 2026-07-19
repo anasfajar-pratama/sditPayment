@@ -81,8 +81,8 @@ class SiswaResource extends Resource
             'sd'   => array_combine($r = range(1, 6), array_map(fn ($v) => "Kelas {$v}", $r)),
             'smp'  => array_combine($r = range(7, 9), array_map(fn ($v) => "Kelas {$v}", $r)),
             'dta'  => array_combine($r = range(1, 4), array_map(fn ($v) => "Tingkat {$v}", $r)),
-            'paud' => ['tk_a' => 'TK-A', 'tk_b' => 'TK-B', 'kelompok_bermain' => 'Kelompok Bermain'],
-            'tk'   => ['tk_a' => 'TK-A', 'tk_b' => 'TK-B'],
+            'paud' => ['A' => 'A', 'B' => 'B'],
+            'tk'   => ['A' => 'A', 'B' => 'B'],
             default => [],
         };
     }
