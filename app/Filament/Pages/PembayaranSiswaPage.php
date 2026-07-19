@@ -1039,70 +1039,76 @@ protected static ?string $navigationIcon  = 'heroicon-o-banknotes';
                 return $data;
             })
             ->form([
-                Hidden::make('_siswa_id'),
-                Hidden::make('_tahun'),
-                Hidden::make('_total_tagihan'),
+                Placeholder::make('_info')
+                    ->label('Tagihan')
+                    ->content(fn (Get $get) => "{$get('_jenis')} — {$get('_periode')}"),
 
-                Placeholder::make('_info_siswa')
-                    ->label('Siswa')
-                    ->content(fn (Get $get) => Siswa::find($get('_siswa_id'))?->nama . ' — ' . $this->filterKelas),
+                Placeholder::make('_nominal_display')
+                    ->label('Nominal Tagihan')
+                    ->content(fn (Get $get) => 'Rp ' . number_format((float) $get('_nominal_tagihan'), 0, ',', '.')),
 
-                \Filament\Forms\Components\Section::make('Pilih Tagihan')
-                    ->schema([
-                        // DU checkbox
-                        \Filament\Forms\Components\Checkbox::make('du_checked')
-                            ->label('Daftar Ulang + Juli')
-                            ->live()
-                            ->afterStateUpdated($rekap),
+                Hidden::make('_tagihan_id'),
+                Hidden::make('_nominal_tagihan'),
+                Hidden::make('_jenis'),
+                Hidden::make('_periode'),
+                Hidden::make('_is_spp'),
 
-                        TextInput::make('nominal_du')
-                            ->label('Nominal Daftar Ulang (Rp)')
-                            ->numeric()->prefix('Rp')->default(null)
-                            ->visible(fn (Get $get) => $get('du_checked'))
-                            ->lazy()
-                            ->afterStateUpdated($rekap)
-                            ->helperText('Sudah termasuk SPP Juli'),
+                TextInput::make('potongan')
+                    ->label('Potongan / Diskon (Rp)')
+                    ->numeric()->prefix('Rp')->default(0)
+                    ->lazy()
+                    ->afterStateUpdated(function (Get $get, Set $set): void {
+                        $tagihan  = (float) $get('_nominal_tagihan');
+                        $potongan = (float) ($get('potongan') ?? 0);
+                        $set('nominal_bayar', max(0, $tagihan - $potongan));
+                    })
+                    ->helperText('Kosongkan atau isi 0 jika tidak ada potongan'),
 
-                        \Filament\Forms\Components\Grid::make(4)
-                            ->schema([
-                                \Filament\Forms\Components\Checkbox::make('bulan_08')->label('Agu')->live()->afterStateUpdated($rekap),
-                                \Filament\Forms\Components\Checkbox::make('bulan_09')->label('Sep')->live()->afterStateUpdated($rekap),
-                                \Filament\Forms\Components\Checkbox::make('bulan_10')->label('Okt')->live()->afterStateUpdated($rekap),
-                                \Filament\Forms\Components\Checkbox::make('bulan_11')->label('Nov')->live()->afterStateUpdated($rekap),
-                                \Filament\Forms\Components\Checkbox::make('bulan_12')->label('Des')->live()->afterStateUpdated($rekap),
-                                \Filament\Forms\Components\Checkbox::make('bulan_01')->label('Jan')->live()->afterStateUpdated($rekap),
-                                \Filament\Forms\Components\Checkbox::make('bulan_02')->label('Feb')->live()->afterStateUpdated($rekap),
-                                \Filament\Forms\Components\Checkbox::make('bulan_03')->label('Mar')->live()->afterStateUpdated($rekap),
-                                \Filament\Forms\Components\Checkbox::make('bulan_04')->label('Apr')->live()->afterStateUpdated($rekap),
-                                \Filament\Forms\Components\Checkbox::make('bulan_05')->label('Mei')->live()->afterStateUpdated($rekap),
-                                \Filament\Forms\Components\Checkbox::make('bulan_06')->label('Jun')->live()->afterStateUpdated($rekap),
-                            ]),
+                TextInput::make('nominal_bayar')
+                    ->label('Nominal Bayar (Rp)')
+                    ->numeric()->prefix('Rp')->required()
+                    ->disabled(fn (Get $get) => $this->isSppByJenis($get('_jenis')))
+                    ->dehydrated()
+                    ->helperText(fn (Get $get) => $this->isSppByJenis($get('_jenis'))
+                        ? 'SPP harus dibayar penuh (setelah potongan)'
+                        : 'Bisa diisi sebagian untuk cicilan'),
 
-                        TextInput::make('nominal_spp_per_bulan')
-                            ->label('Nominal SPP per Bulan (Rp)')
-                            ->numeric()->prefix('Rp')->default(null)
-                            ->lazy()
-                            ->afterStateUpdated($rekap)
-                            ->helperText('Akan dikali jumlah bulan yang dicentang'),
-                    ]),
+                TextInput::make('no_ref')
+                    ->label('No. Referensi / Transfer')
+                    ->placeholder('Contoh: TRF2025001 — kosongkan jika tunai')
+                    ->nullable(),
 
-                \Filament\Forms\Components\Section::make('Ringkasan')
-                    ->schema([
-                        Placeholder::make('_ringkasan')
-                            ->label('Total Tagihan')
-                            ->content(function (Get $get) {
-                                $total = (float) ($get('_total_tagihan') ?? 0);
-                                $jmlBulan = 0;
-                                foreach (['08','09','10','11','12','01','02','03','04','05','06'] as $b) {
-                                    if ($get('bulan_' . $b)) $jmlBulan++;
-                                }
-                                $parts = [];
-                                if ($get('du_checked')) $parts[] = 'DU';
-                                if ($jmlBulan > 0) $parts[] = $jmlBulan . ' bln SPP';
-                                $label = count($parts) > 0 ? implode(' + ', $parts) : '(belum ada pilihan)';
-                                return 'Rp ' . number_format($total, 0, ',', '.') . ' — ' . $label;
-                            }),
-                    ]),
+                Select::make('rekening_tujuan')
+                    ->label('Rekening Tujuan')
+                    ->options(fn () => \App\Models\MasterRekeningTujuan::orderBy('urutan')->pluck('label', 'label'))
+                    ->default('Cash')
+                    ->live()
+                    ->required(),
+
+                TextInput::make('nama_rekening_pengirim')
+                    ->label('Nama Pengirim')
+                    ->placeholder('Contoh: Sri Utami')
+                    ->hidden(fn (Get $get) => $get('rekening_tujuan') === 'Cash')
+                    ->required(fn (Get $get) => $get('rekening_tujuan') !== 'Cash'),
+
+                DatePicker::make('tgl_bayar_struk')
+                    ->label('Tanggal Bayar di Struk')
+                    ->required()
+                    ->default(now())
+                    ->maxDate(now())
+                    ->format('m/d/Y')
+                    ->helperText('tidak boleh lebih dari hari ini'),
+
+                FileUpload::make('bukti_bayar')
+                    ->label('Bukti Bayar (Foto / Struk)')
+                    ->image()
+                    ->imagePreviewHeight('160')
+                    ->directory('bukti-bayar')
+                    ->visibility('public')
+                    ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/webp', 'image/gif'])
+                    ->helperText('Format: JPG, PNG, WebP. Maks 5 MB.')
+                    ->maxSize(5120)
+                    ->nullable(),
             ])
             ->action(function (array $data): void {
                 $siswaId   = (int) $data['_siswa_id'];
