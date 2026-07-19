@@ -7,6 +7,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Tagihan;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 
 class TagihanPublicController extends Controller
@@ -134,6 +135,47 @@ class TagihanPublicController extends Controller
         }, $filename, [
             'Content-Type' => 'text/csv; charset=UTF-8',
         ]);
+    }
+
+    // ─── Export PDF ───────────────────────────────────────────────────────────
+
+    public function exportPdf(Request $request): \Illuminate\Http\Response
+    {
+        $query = Tagihan::with(['siswa', 'jenisPembayaran'])
+            ->orderBy('tahun')
+            ->orderBy('bulan')
+            ->orderBy('created_at');
+
+        $bulan  = is_string($request->bulan)  && $request->bulan  !== '' ? $request->bulan  : null;
+        $tahun  = is_string($request->tahun)  && $request->tahun  !== '' ? $request->tahun  : null;
+        $status = is_string($request->status) && $request->status !== '' ? $request->status : null;
+
+        if ($bulan) {
+            $query->where('bulan', $bulan);
+        }
+
+        if ($tahun) {
+            $query->where('tahun', $tahun);
+        }
+
+        if ($status) {
+            $query->where('status', $status);
+        }
+
+        $tagihans = $query->get();
+
+        $bagianFilter = collect([
+            $bulan  ? (self::$namaBulan[$bulan] ?? $bulan) : null,
+            $tahun,
+            $status,
+        ])->filter()->implode('_');
+
+        $filename = 'tagihan' . ($bagianFilter ? "_{$bagianFilter}" : '') . '_' . now()->format('Ymd_His') . '.pdf';
+
+        $pdf = Pdf::loadView('pdf.tagihan-report', compact('tagihans', 'bagianFilter'))
+            ->setPaper('a4', 'landscape');
+
+        return $pdf->download($filename);
     }
 
     // ─── Helper enkripsi ID (dipanggil juga dari TagihanResource) ─────────────

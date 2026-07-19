@@ -88,6 +88,9 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/tagihan/export', [TagihanPublicController::class, 'exportCsv'])
         ->name('tagihan.export.csv');
 
+    Route::get('/tagihan/export-pdf', [TagihanPublicController::class, 'exportPdf'])
+        ->name('tagihan.export.pdf');
+
     Route::get('/calon-siswa/template', function () {
         return \Maatwebsite\Excel\Facades\Excel::download(
             new \App\Exports\CalonSiswaTemplateExport(),

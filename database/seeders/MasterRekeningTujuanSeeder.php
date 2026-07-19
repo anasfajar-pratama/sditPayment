@@ -50,6 +50,14 @@ class MasterRekeningTujuanSeeder extends Seeder
                 'urutan'     => 4,
                 'is_cash'    => false,
             ],
+            [
+                'label'      => 'BRI 139301000155500 a.n. Sri Utami',
+                'bank'       => 'BRI',
+                'no_rekening'=> '139301000155500',
+                'atas_nama'  => 'Sri Utami',
+                'urutan'     => 5,
+                'is_cash'    => false,
+            ],
         ]);
     }
 }

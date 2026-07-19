@@ -10,7 +10,7 @@ use App\Models\SiswaKelasHistory;
 use App\Models\Tagihan;
 use Carbon\Carbon;
 use Filament\Actions\Action;
-use Filament\Forms\Components\DateTimePicker;
+use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Placeholder;
@@ -409,7 +409,7 @@ protected static ?string $navigationIcon  = 'heroicon-o-banknotes';
                     ->hidden(fn (Get $get) => $get('rekening_tujuan') === 'Cash')
                     ->required(fn (Get $get) => $get('rekening_tujuan') !== 'Cash'),
 
-                DateTimePicker::make('tgl_bayar_struk')
+                DatePicker::make('tgl_bayar_struk')
                     ->label('Tanggal Bayar di Struk')
                     ->required()
                     ->default(now())

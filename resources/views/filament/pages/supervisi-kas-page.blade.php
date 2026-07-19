@@ -156,16 +156,39 @@
                         <input type="date" wire:model="editTanggal"
                             class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm">
                     </div>
-                    <div>
-                        <label class="block text-xs font-medium text-gray-500 mb-1">Nominal (Rp)</label>
-                        <input type="text" wire:model="editNominal"
-                            class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
-                            x-data
-                            x-init="$watch('$wire.editNominal', val => { if (val) $wire.editNominal = val.replace(/[^0-9]/g, '') })"
-                            x-on:input="
-                                let raw = $event.target.value.replace(/[^0-9]/g, '');
-                                $wire.editNominal = raw;
-                            ">
+                    <div x-data="{
+                        nominalAwal: {{ (int) $editNominalAwal }},
+                        potongan: '{{ $editPotongan }}',
+                        get nominalBayar() {
+                            let p = parseInt(this.potongan) || 0;
+                            return Math.max(0, this.nominalAwal - p);
+                        },
+                        potonganInput(e) {
+                            let raw = e.target.value.replace(/[^0-9]/g, '');
+                            this.potongan = raw;
+                            let p = parseInt(raw) || 0;
+                            let nb = Math.max(0, this.nominalAwal - p);
+                            $wire.set('editPotongan', String(p));
+                            $wire.set('editNominal', String(nb));
+                            e.target.value = raw;
+                        }
+                    }">
+                        <div>
+                            <label class="block text-xs font-medium text-gray-500 mb-1">Total Tagihan (Rp)</label>
+                            <input type="text" :value="'Rp ' + nominalAwal.toLocaleString('id-ID')" readonly
+                                class="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm bg-gray-100 text-gray-500">
+                        </div>
+                        <div class="mt-3">
+                            <label class="block text-xs font-medium text-gray-500 mb-1">Potongan / Diskon (Rp)</label>
+                            <input type="text" x-bind:value="potongan"
+                                x-on:input="potonganInput($event)"
+                                class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm">
+                        </div>
+                        <div class="mt-3">
+                            <label class="block text-xs font-medium text-gray-500 mb-1">Nominal Bayar (Rp)</label>
+                            <input type="text" :value="'Rp ' + nominalBayar.toLocaleString('id-ID')" readonly
+                                class="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm bg-gray-100 text-green-700 font-semibold">
+                        </div>
                     </div>
 
                     <div class="border-t border-gray-200 pt-4">

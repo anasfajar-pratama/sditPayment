@@ -34,6 +34,8 @@ class SupervisiKasPage extends Page
     public string $editNamaPengirim = '';
     public string $editTanggal = '';
     public string $editNominal = '';
+    public string $editPotongan = '';
+    public string $editNominalAwal = '';
     public string $editPassword = '';
     public ?string $editError = null;
     public ?int $logDetailId = null;
@@ -163,6 +165,17 @@ class SupervisiKasPage extends Page
         $this->editNominal = (string) ((int) ($row->debit ?? 0));
         $this->editPassword = '';
         $this->editError = null;
+
+        if ($row->source === 'pembayaran' && $row->source_id) {
+            $pembayaran = Pembayaran::find($row->source_id);
+            if ($pembayaran) {
+                $this->editPotongan = (string) ((int) ($pembayaran->potongan ?? 0));
+                $this->editNominalAwal = (string) ((int) ($pembayaran->nominal + $pembayaran->potongan));
+                return;
+            }
+        }
+        $this->editPotongan = '0';
+        $this->editNominalAwal = $this->editNominal;
     }
 
     public function closeEdit(): void
@@ -170,6 +183,15 @@ class SupervisiKasPage extends Page
         $this->editId = null;
         $this->editPassword = '';
         $this->editError = null;
+        $this->editPotongan = '';
+        $this->editNominalAwal = '';
+    }
+
+    public function updatedEditPotongan($value): void
+    {
+        $nominalAwal = max(0, (int) ($this->editNominalAwal ?? 0));
+        $potongan = max(0, (int) ($value ?? 0));
+        $this->editNominal = (string) max(0, $nominalAwal - $potongan);
     }
 
     public function saveEdit(): void
@@ -181,12 +203,19 @@ class SupervisiKasPage extends Page
 
         $row = KasHarian::findOrFail($this->editId);
 
+        $potonganLama = 0;
+        if ($row->source === 'pembayaran' && $row->source_id) {
+            $pembayaran = Pembayaran::find($row->source_id);
+            $potonganLama = (float) ($pembayaran->potongan ?? 0);
+        }
+
         $dataLama = [
             'no_ref'              => $row->no_ref,
             'rekening_tujuan'     => $row->rekening_tujuan,
             'nama_rekening_pengirim' => $row->nama_rekening_pengirim,
             'tanggal'             => $row->tanggal?->format('Y-m-d'),
             'nominal'             => (float) $row->debit,
+            'potongan'            => $potonganLama,
         ];
 
         $dataBaru = [
@@ -195,6 +224,7 @@ class SupervisiKasPage extends Page
             'nama_rekening_pengirim' => $this->editNamaPengirim ?: null,
             'tanggal'             => $this->editTanggal,
             'nominal'             => (float) $this->editNominal,
+            'potongan'            => (float) ($this->editPotongan ?? 0),
         ];
 
         $row->update([
@@ -213,6 +243,7 @@ class SupervisiKasPage extends Page
                 'tanggal_bayar'         => $this->editTanggal,
                 'tgl_bayar_struk'       => $this->editTanggal,
                 'nominal'               => (float) $this->editNominal,
+                'potongan'              => (float) ($this->editPotongan ?? 0),
             ]);
         } elseif ($row->source === 'donasi' && $row->source_id) {
             \App\Models\Donasi::where('id', $row->source_id)->update([
