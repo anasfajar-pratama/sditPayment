@@ -24,6 +24,7 @@ class TagihanController extends Controller
     public function pdf(Tagihan $tagihan)
     {
         $tagihan->load(['siswa', 'jenisPembayaran']);
+        $isMultiItem = !is_null($tagihan->detail) && count($tagihan->detail) > 0;
 
         // Ambil semua pembayaran untuk tagihan ini (support cicilan)
         $historiPembayaran = Pembayaran::where('tagihan_id', $tagihan->id)
@@ -31,11 +32,8 @@ class TagihanController extends Controller
             ->get();
 
         $totalTerbayar = $historiPembayaran->sum('nominal');
-        // $sisaTagihan   = max(0, $tagihan->nominal_tagihan - $totalTerbayar);
-        // nominal_tagihan di DB sudah dikurangi setiap cicilan,
-        // sehingga: nominal asli = sisa (DB) + sudah terbayar
-        $sisaTagihan   = $tagihan->nominal_tagihan;           // sisa yg tersimpan di DB
-        $nominalAsli   = $tagihan->nominal_tagihan + $totalTerbayar; // total tagihan awal
+        $sisaTagihan   = $tagihan->nominal_tagihan;
+        $nominalAsli   = $isMultiItem ? $tagihan->nominal_tagihan : $tagihan->nominal_tagihan + $totalTerbayar;
         $isLunas       = $tagihan->status === 'lunas';
         $isCicilan     = $totalTerbayar > 0 && ! $isLunas;
         $isBelumBayar  = $totalTerbayar == 0 && ! $isLunas;
@@ -47,14 +45,31 @@ class TagihanController extends Controller
             '10' => 'Oktober',  '11' => 'November',  '12' => 'Desember',
         ];
 
-        // Kirim URL saja ke blade; QR di-generate inline di blade (SVG, tanpa imagick)
-        // $urlTagihan   = url('/admin/tagihans/' . $tagihan->id);
-        // URL publik (tanpa login) — sama persis dengan link yang disalin dari tombol salin_link
+        // Build detail items untuk tampilan
+        $detailItems = [];
+        if ($isMultiItem) {
+            foreach ($tagihan->detail as $item) {
+                $jenis = $item['jenis'] ?? '—';
+                $bulanLabel = ($item['bulan'] ?? null)
+                    ? ($bulanLabels[$item['bulan']] ?? $item['bulan'])
+                    : '—';
+                $tahun = $item['tahun'] ?? '—';
+                $nominal = (float) ($item['nominal'] ?? 0);
+                $periode = $jenis === 'SPP'
+                    ? trim($bulanLabel . ' ' . $tahun)
+                    : ($jenis === 'Daftar Ulang' ? $tahun : trim($bulanLabel . ' ' . $tahun));
+                $detailItems[] = [
+                    'jenis'   => $jenis,
+                    'periode' => $periode,
+                    'nominal' => $nominal,
+                ];
+            }
+        }
+
         $urlTagihan   = url('/tagihan/share/' . \App\Http\Controllers\TagihanPublicController::encryptId($tagihan->id));
         $cetakTanggal = now()->format('d M Y, H:i');
 
-        $ttdBendahara = $this->loadTtd('bendahara');
-        $ttdKepsek    = $this->loadTtd('kepalasekolah');
+        $ttdBendahara = $this->loadTtd('ttd_bendahara');
 
         $pdf = Pdf::loadView('tagihan.tagihan', compact(
             'tagihan',
@@ -65,11 +80,12 @@ class TagihanController extends Controller
             'isLunas',
             'isCicilan',
             'isBelumBayar',
+            'isMultiItem',
+            'detailItems',
             'bulanLabels',
             'urlTagihan',
             'cetakTanggal',
             'ttdBendahara',
-            'ttdKepsek',
         ))->setPaper('a4', 'portrait');
 
         return $pdf->stream('Tagihan-' . $tagihan->siswa->nis . '.pdf');

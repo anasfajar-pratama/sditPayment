@@ -43,14 +43,14 @@ class TagihanResource extends Resource
 
     // ─── Helper: nama bulan dari angka ───────────────────────────────────────
 
-    protected static function namaBulan(string $bulan): string
+    protected static function namaBulan(?string $bulan): string
     {
         return match ($bulan) {
             '01' => 'Januari',  '02' => 'Februari', '03' => 'Maret',
             '04' => 'April',    '05' => 'Mei',       '06' => 'Juni',
             '07' => 'Juli',     '08' => 'Agustus',   '09' => 'September',
             '10' => 'Oktober',  '11' => 'November',  '12' => 'Desember',
-            default => $bulan,
+            default => $bulan ?? '—',
         };
     }
 
@@ -59,29 +59,45 @@ class TagihanResource extends Resource
     public static function whatsappUrl(Tagihan $record): string
     {
         $nama    = $record->siswa?->nama ?? 'Siswa';
-        $jenis   = $record->jenisPembayaran?->nama ?? '-';
-        $bulan   = static::namaBulan($record->bulan);
-        $tahun   = $record->tahun;
         $nominal = 'Rp ' . number_format($record->nominal_tagihan, 0, ',', '.');
         $status  = $record->status === 'lunas' ? 'LUNAS ✅' : 'BELUM DIBAYAR ⚠️';
         $link    = static::publicShareUrl($record);
 
-        $pesan = implode("\n", [
-            "Yth. Orang Tua/Wali Murid *{$nama}*",
-            '',
-            'Berikut informasi tagihan sekolah:',
-            "• Jenis    : {$jenis}",
-            "• Periode  : {$bulan} {$tahun}",
-            "• Nominal  : {$nominal}",
-            "• Status   : {$status}",
-            '',
-            'Lihat detail tagihan:',
-            $link,
-            '',
-            'Terima kasih. 🙏',
-        ]);
+        if ($record->detail && count($record->detail) > 0) {
+            $jml = count($record->detail);
+            $pesan = implode("\n", [
+                "Yth. Orang Tua/Wali Murid *{$nama}*",
+                '',
+                'Berikut informasi tagihan sekolah:',
+                "• {$jml} item tagihan",
+                "• Total   : {$nominal}",
+                "• Status  : {$status}",
+                '',
+                'Lihat detail tagihan:',
+                $link,
+                '',
+                'Terima kasih. 🙏',
+            ]);
+        } else {
+            $jenis   = $record->jenisPembayaran?->nama ?? '-';
+            $bulan   = static::namaBulan($record->bulan);
+            $tahun   = $record->tahun;
+            $pesan = implode("\n", [
+                "Yth. Orang Tua/Wali Murid *{$nama}*",
+                '',
+                'Berikut informasi tagihan sekolah:',
+                "• Jenis    : {$jenis}",
+                "• Periode  : {$bulan} {$tahun}",
+                "• Nominal  : {$nominal}",
+                "• Status   : {$status}",
+                '',
+                'Lihat detail tagihan:',
+                $link,
+                '',
+                'Terima kasih. 🙏',
+            ]);
+        }
 
-        // wa.me tanpa nomor → pengguna pilih kontak sendiri di WA
         return 'https://wa.me/?text=' . urlencode($pesan);
     }
 
@@ -98,9 +114,14 @@ class TagihanResource extends Resource
                     ->label('Nama Siswa')
                     ->searchable(),
                 Tables\Columns\TextColumn::make('jenisPembayaran.nama')
-                    ->label('Jenis'),
+                    ->label('Jenis')
+                    ->formatStateUsing(fn ($record) => $record->detail && count($record->detail) > 0
+                        ? 'Multi (' . count($record->detail) . ' item)'
+                        : ($record->jenisPembayaran?->nama ?? '—')),
                 Tables\Columns\TextColumn::make('bulan')
-                    ->formatStateUsing(fn (string $state): string => static::namaBulan($state)),
+                    ->formatStateUsing(fn ($record) => $record->detail && count($record->detail) > 0
+                        ? 'Multi'
+                        : static::namaBulan($record->bulan ?? '')),
                 Tables\Columns\TextColumn::make('tahun'),
                 Tables\Columns\TextColumn::make('nominal_tagihan')
                     ->money('IDR')
@@ -224,7 +245,7 @@ class TagihanResource extends Resource
      * - HTTPS (isSecureContext = true)  → navigator.clipboard.writeText()
      * - HTTP / browser lama             → execCommand('copy') via textarea
      */
-    protected static function clipboardJs(string $url): string
+    public static function clipboardJs(string $url): string
     {
         // addslashes: escape karakter ' dan \ agar aman di dalam JS single-quoted string
         $safe = addslashes($url);

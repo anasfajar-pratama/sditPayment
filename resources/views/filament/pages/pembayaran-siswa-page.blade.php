@@ -480,7 +480,10 @@
                     <span style="width:0.9rem;height:0.9rem;border-radius:0.2rem;background:#fee2e2;border:1px solid #fca5a5;display:inline-block;"></span>Tunggakan
                 </span>
                 <span style="display:inline-flex;align-items:center;gap:0.35rem;font-size:0.72rem;color:#374151;">
-                    <span style="width:0.9rem;height:0.9rem;border-radius:0.2rem;background:#f3f4f6;border:1px solid #e5e7eb;display:inline-block;"></span>Belum ada tagihan
+                    <span style="width:0.9rem;height:0.9rem;border-radius:0.2rem;background:#f3f4f6;border:1px solid #e5e7eb;display:inline-block;"></span>Belum Dibayar
+                </span>
+                <span style="display:inline-flex;align-items:center;gap:0.35rem;font-size:0.72rem;color:#374151;">
+                    <span style="width:0.9rem;height:0.9rem;border-radius:0.2rem;background:#4338ca;border:1px solid #5b5bd6;display:inline-block;"></span>DU + Juli
                 </span>
             </div>
         </div>
@@ -488,7 +491,7 @@
         <div style="background:#fff;border-radius:1rem;border:1px solid #f1f5f9;
                     box-shadow:0 1px 4px rgba(0,0,0,.06);overflow:hidden;">
             <div style="overflow-x:auto;">
-                <table style="width:100%;border-collapse:collapse;font-size:0.78rem;min-width:900px;">
+                <table style="width:100%;border-collapse:collapse;font-size:0.78rem;min-width:1200px;">
                     <thead>
                         @php
                             $months     = $matrix['months'];
@@ -502,6 +505,9 @@
                             <th colspan="3" style="padding:0.6rem 0.75rem;text-align:center;font-size:0.7rem;
                                                    font-weight:600;letter-spacing:0.05em;text-transform:uppercase;
                                                    border-right:1px solid #374151;">Siswa</th>
+                            <th style="background:#4338ca;color:#fff;padding:0.6rem 0.75rem;text-align:center;
+                                       font-size:0.7rem;font-weight:600;letter-spacing:0.05em;text-transform:uppercase;
+                                       border-right:1px solid #5b5bd6;min-width:7rem;">DU + Juli</th>
                             @foreach ($yearGroups as $tahun => $span)
                                 <th colspan="{{ $span }}"
                                     style="padding:0.5rem 0.75rem;text-align:center;font-weight:700;font-size:0.8rem;
@@ -510,12 +516,13 @@
                                 </th>
                             @endforeach
                             <th style="padding:0.5rem 0.75rem;text-align:center;font-size:0.7rem;
-                                       font-weight:600;border-left:1px solid #374151;white-space:nowrap;">Rekap</th>
+                                       font-weight:600;border-left:1px solid #374151;white-space:nowrap;">Aksi</th>
                         </tr>
                         <tr style="background:#374151;color:#d1d5db;">
                             <th style="padding:0.5rem 0.6rem;text-align:center;font-size:0.68rem;font-weight:600;width:2rem;border-right:1px solid #4b5563;">No</th>
                             <th style="padding:0.5rem 0.75rem;text-align:left;font-size:0.68rem;font-weight:600;border-right:1px solid #4b5563;">Nama</th>
                             <th style="padding:0.5rem 0.6rem;text-align:center;font-size:0.68rem;font-weight:600;width:3rem;border-right:1px solid #4b5563;">Kls</th>
+                            <th style="background:#4338ca;color:#fff;padding:0.5rem 0.4rem;text-align:center;font-size:0.68rem;font-weight:600;min-width:7rem;border-right:1px solid #5b5bd6;">DU</th>
                             @foreach ($months as $m)
                                 <th style="padding:0.5rem 0.4rem;text-align:center;font-size:0.68rem;font-weight:600;
                                            white-space:nowrap;min-width:5.5rem;border-right:1px solid #4b5563;">
@@ -523,10 +530,11 @@
                                 </th>
                             @endforeach
                             <th style="padding:0.5rem 0.5rem;text-align:center;font-size:0.68rem;font-weight:600;
-                                       white-space:nowrap;border-left:1px solid #4b5563;min-width:5rem;">✓ / ✗</th>
+                                       white-space:nowrap;border-left:1px solid #4b5563;min-width:6rem;">Aksi</th>
                         </tr>
                     </thead>
                     <tbody>
+                        @php $tahunMulai = $this->akademikTahunMulai(); @endphp
                         @foreach ($matrix['rows'] as $row)
                             <tr style="border-bottom:1px solid #f1f5f9;"
                                 onmouseover="this.style.background='#f8fafc'"
@@ -534,6 +542,51 @@
                                 <td style="padding:0.5rem 0.6rem;text-align:center;color:#9ca3af;font-size:0.72rem;border-right:1px solid #f1f5f9;">{{ $row['no'] }}</td>
                                 <td style="padding:0.5rem 0.75rem;font-weight:600;color:#1f2937;border-right:1px solid #f1f5f9;">{{ $row['nama'] }}</td>
                                 <td style="padding:0.5rem 0.6rem;text-align:center;color:#6b7280;font-size:0.72rem;font-weight:600;border-right:1px solid #f1f5f9;">{{ $row['kelas'] }}</td>
+
+                                {{-- ── Cell Daftar Ulang + Juli ── --}}
+                                @php $du = $row['du_cell']; @endphp
+                                @php
+                                    $duBg = match($du['status']) {
+                                        'lunas'    => '#f0fdf4', 'tunggakan'=> '#fff1f2',
+                                        default    => '#fafafa',
+                                    };
+                                    $duBd = match($du['status']) {
+                                        'lunas'    => '#bbf7d0', 'tunggakan'=> '#fecaca',
+                                        default    => '#f1f5f9',
+                                    };
+                                @endphp
+                                <td style="padding:0.3rem 0.4rem;text-align:center;background:{{ $duBg }};
+                                           border:1px solid {{ $duBd }};vertical-align:middle;min-width:7rem;">
+                                    @if ($du['status'] === 'lunas')
+                                        <div style="font-size:0.65rem;color:#15803d;font-weight:600;white-space:nowrap;">
+                                            🟢 {{ $du['tanggal'] }}
+                                        </div>
+                                        <div style="font-size:0.68rem;color:#166534;font-variant-numeric:tabular-nums;font-weight:700;">
+                                            {{ number_format($du['nominal'], 0, ',', '.') }}
+                                        </div>
+                                    @elseif ($du['status'] === 'tunggakan')
+                                        <div style="font-size:0.65rem;color:#b91c1c;font-weight:700;">🔴 Tunggakan</div>
+                                        <div style="font-size:0.68rem;color:#dc2626;font-variant-numeric:tabular-nums;">
+                                            {{ number_format($du['nominal'], 0, ',', '.') }}
+                                        </div>
+                                        @if ($du['tagihan_id'] ?? null)
+                                            <button wire:click="mountAction('bayar', { tagihan_id: {{ $du['tagihan_id'] }} })"
+                                                style="margin-top:0.25rem;font-size:0.6rem;background:#dc2626;color:#fff;
+                                                       border:none;border-radius:0.25rem;padding:0.1rem 0.35rem;cursor:pointer;"
+                                                onmouseover="this.style.background='#b91c1c'"
+                                                onmouseout="this.style.background='#dc2626'">Bayar</button>
+                                        @endif
+                                    @else
+                                        <div style="font-size:0.65rem;color:#9ca3af;">⚪ Belum</div>
+                                        <button wire:click="mountAction('bayar', { siswa_id: {{ $row['siswa_id'] }}, bulan: '', tahun: '{{ $tahunMulai }}', jenis: 'daftar_ulang' })"
+                                            style="margin-top:0.25rem;font-size:0.6rem;background:#4338ca;color:#fff;
+                                                   border:none;border-radius:0.25rem;padding:0.1rem 0.35rem;cursor:pointer;"
+                                            onmouseover="this.style.background='#3730a3'"
+                                            onmouseout="this.style.background='#4338ca'">Bayar</button>
+                                    @endif
+                                </td>
+
+                                {{-- ── Cell bulan (Agu–Jun) ── --}}
                                 @foreach ($row['cells'] as $cell)
                                     @php
                                         $bg = match($cell['status']) {
@@ -557,42 +610,65 @@
                                                 {{ number_format($cell['nominal'], 0, ',', '.') }}
                                             </div>
                                         @elseif ($cell['status'] === 'tunggakan')
-                                            <div style="font-size:0.65rem;color:#b91c1c;font-weight:700;">Tunggakan</div>
-                                            <div style="font-size:0.68rem;color:#dc2626;font-variant-numeric:tabular-nums;">
-                                                {{ number_format($cell['nominal'], 0, ',', '.') }}
-                                            </div>
-                                            {{-- Tombol bayar langsung dari matrix --}}
-                                            @if ($cell['tagihan_id'])
-                                                <button
-                                                    wire:click="mountAction('bayar', { tagihan_id: {{ $cell['tagihan_id'] }} })"
+                                            <div style="font-size:0.65rem;color:#b91c1c;font-weight:700;">🔴 {{ number_format($cell['nominal'], 0, ',', '.') }}</div>
+                                            @if ($cell['tagihan_id'] ?? null)
+                                                <button wire:click="mountAction('bayar', { tagihan_id: {{ $cell['tagihan_id'] }} })"
                                                     style="margin-top:0.25rem;font-size:0.6rem;background:#dc2626;color:#fff;
                                                            border:none;border-radius:0.25rem;padding:0.1rem 0.35rem;cursor:pointer;"
                                                     onmouseover="this.style.background='#b91c1c'"
-                                                    onmouseout="this.style.background='#dc2626'">
-                                                    Bayar
-                                                </button>
+                                                    onmouseout="this.style.background='#dc2626'">Bayar</button>
                                             @endif
                                         @else
-                                            <span style="color:#d1d5db;font-size:0.75rem;">—</span>
+                                            {{-- belum_dibayar --}}
+                                            <div style="font-size:0.65rem;color:#9ca3af;">⚪ —</div>
+                                            <button wire:click="openBayarDirect({{ $row['siswa_id'] }}, '{{ $cell['bulan'] }}', '{{ $cell['tahun'] }}')"
+                                                style="margin-top:0.25rem;font-size:0.6rem;background:#6b7280;color:#fff;
+                                                       border:none;border-radius:0.25rem;padding:0.1rem 0.35rem;cursor:pointer;"
+                                                onmouseover="this.style.background='#4b5563'"
+                                                onmouseout="this.style.background='#6b7280'">Bayar</button>
                                         @endif
                                     </td>
                                 @endforeach
-                                <td style="padding:0.5rem 0.5rem;text-align:center;border-left:1px solid #e5e7eb;">
-                                    @if ($row['tunggakan'] > 0)
-                                        <div style="font-size:0.68rem;color:#dc2626;font-weight:700;white-space:nowrap;">{{ $row['tunggakan'] }}✗</div>
+
+                                {{-- ── Aksi column ── --}}
+                                <td style="padding:0.4rem 0.4rem;text-align:center;border-left:1px solid #e5e7eb;vertical-align:middle;">
+                                    @if ($row['has_unpaid'])
+                                        <button wire:click="mountAction('buatTagihan', { siswa_id: {{ $row['siswa_id'] }} })"
+                                            style="font-size:0.6rem;background:#1f2937;color:#fff;border:none;
+                                                   border-radius:0.25rem;padding:0.2rem 0.4rem;cursor:pointer;display:block;margin:0 auto 0.25rem;white-space:nowrap;"
+                                            onmouseover="this.style.background='#111827'"
+                                            onmouseout="this.style.background='#1f2937'">
+                                            📄 Buat Tagihan
+                                        </button>
                                     @endif
-                                    @if ($row['lunas'] > 0)
-                                        <div style="font-size:0.68rem;color:#16a34a;font-weight:600;white-space:nowrap;">{{ $row['lunas'] }}✓</div>
+                                    @if ($row['latest_tagihan_id'])
+                                        @php
+                                            $ltId = $row['latest_tagihan_id'];
+                                            $encId = \App\Http\Controllers\TagihanPublicController::encryptId($ltId);
+                                            $shareUrl = url('/tagihan/share/' . $encId);
+                                        @endphp
+                                        <div style="display:flex;gap:0.3rem;justify-content:center;margin-top:0.2rem;">
+                                            <a href="{{ url("/tagihan/{$ltId}/pdf") }}" target="_blank"
+                                               style="font-size:0.65rem;background:#f59e0b;color:#fff;border-radius:0.25rem;
+                                                      padding:0.15rem 0.35rem;text-decoration:none;white-space:nowrap;"
+                                               title="Download PDF Tagihan">🖨 PDF</a>
+                                            <a href="https://wa.me/?text={{ urlencode('Yth. Orang Tua/Wali ' . $row['nama'] . "\n\nBerikut tagihan sekolah:\n" . $shareUrl . "\n\nTerima kasih.") }}"
+                                               target="_blank"
+                                               style="font-size:0.65rem;background:#25D366;color:#fff;border-radius:0.25rem;
+                                                      padding:0.15rem 0.35rem;text-decoration:none;white-space:nowrap;"
+                                               title="Kirim via WhatsApp">📤 WA</a>
+                                        </div>
                                     @endif
                                 </td>
                             </tr>
                         @endforeach
                         <tr style="background:#f8fafc;border-top:2px solid #e5e7eb;">
-                            <td colspan="3" style="padding:0.6rem 0.75rem;font-size:0.72rem;font-weight:700;color:#374151;border-right:1px solid #e5e7eb;">Rekap Bulan</td>
+                            <td colspan="4" style="padding:0.6rem 0.75rem;font-size:0.72rem;font-weight:700;color:#374151;border-right:1px solid #e5e7eb;">Rekap Bulan</td>
                             @foreach ($matrix['summary'] as $s)
                                 <td style="padding:0.4rem 0.3rem;text-align:center;border:1px solid #e5e7eb;">
                                     @if ($s['lunas'] > 0)<div style="font-size:0.65rem;color:#15803d;font-weight:700;">{{ $s['lunas'] }}✓</div>@endif
                                     @if ($s['tunggakan'] > 0)<div style="font-size:0.65rem;color:#dc2626;font-weight:700;">{{ $s['tunggakan'] }}✗</div>@endif
+                                    @if (($s['belum_dibayar'] ?? 0) > 0)<div style="font-size:0.65rem;color:#6b7280;font-weight:600;">{{ $s['belum_dibayar'] }}○</div>@endif
                                 </td>
                             @endforeach
                             <td style="border-left:1px solid #e5e7eb;"></td>

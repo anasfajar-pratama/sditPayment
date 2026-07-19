@@ -212,16 +212,22 @@
         /* ── BOTTOM TABLE (TTD + QR, identik kuitansi) ───── */
         .bottom-table { width: 100%; border-collapse: collapse; margin-top: 14px; }
         .bottom-table td { vertical-align: bottom; padding: 0 6px; }
-        .bottom-table td.ttd-cell { width: 150px; text-align: center; }
+        .bottom-table td.ttd-cell { width: 280px; text-align: center; }
         .bottom-table td.qr-cell  { width: 125px; text-align: center; }
-        .bottom-table td.info-cell { text-align: right; vertical-align: bottom; }
-        .ttd-space { height: 46px; }
-        .ttd-img { max-height: 55px; max-width: 140px; margin-bottom: 2px; }
+        .bottom-table td.info-cell { text-align: center; vertical-align: bottom; }
+        .ttd-space {
+            height: 96px;
+            display: flex;
+            align-items: flex-end;
+            justify-content: center;
+        }
+        .ttd-img { max-height: 94px; max-width: 247px; }
         .garis-ttd {
             border-top: 1px solid #333;
-            padding-top: 3px;
+            padding: 1px 20px 0;
             font-weight: bold;
             font-size: 9px;
+            display: inline-block;
         }
         .qr-img { width: 110px; height: 110px; }
         .scan-label { font-size: 7px; color: #888; margin-top: 3px; line-height: 1.4; }
@@ -324,32 +330,61 @@
 
 {{-- ── DETAIL TAGIHAN ───────────────────────────────────────── --}}
 <div class="section-title">Detail Tagihan</div>
-<table class="info-table mb-4">
-    <tr>
-        <td class="label">Jenis Pembayaran</td>
-        <td class="sep">:</td>
-        <td class="value">{{ $tagihan->jenisPembayaran->nama }}</td>
-    </tr>
-    @if ($tagihan->bulan)
-    <tr>
-        <td class="label">Bulan</td>
-        <td class="sep">:</td>
-        <td class="value">{{ $bulanLabels[$tagihan->bulan] ?? $tagihan->bulan }}</td>
-    </tr>
-    @endif
-    @if ($tagihan->tahun)
-    <tr>
-        <td class="label">Tahun</td>
-        <td class="sep">:</td>
-        <td class="value">{{ $tagihan->tahun }}</td>
-    </tr>
-    @endif
-    <tr>
-        <td class="label">Nominal Tagihan</td>
-        <td class="sep">:</td>
-        <td class="value">Rp {{ number_format($nominalAsli, 0, ',', '.') }}</td>
-    </tr>
-</table>
+@if ($isMultiItem)
+    <table class="detail mb-4">
+        <thead>
+            <tr>
+                <th style="width:4%;">No</th>
+                <th>Jenis Pembayaran</th>
+                <th>Periode</th>
+                <th class="right">Nominal</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach ($detailItems as $i => $item)
+                <tr>
+                    <td class="center">{{ $i + 1 }}</td>
+                    <td>{{ $item['jenis'] }}</td>
+                    <td>{{ $item['periode'] }}</td>
+                    <td class="right">Rp {{ number_format($item['nominal'], 0, ',', '.') }}</td>
+                </tr>
+            @endforeach
+        </tbody>
+        <tfoot>
+            <tr>
+                <td colspan="3">Total Tagihan</td>
+                <td class="right">Rp {{ number_format($nominalAsli, 0, ',', '.') }}</td>
+            </tr>
+        </tfoot>
+    </table>
+@else
+    <table class="info-table mb-4">
+        <tr>
+            <td class="label">Jenis Pembayaran</td>
+            <td class="sep">:</td>
+            <td class="value">{{ $tagihan->jenisPembayaran?->nama ?? '—' }}</td>
+        </tr>
+        @if ($tagihan->bulan)
+        <tr>
+            <td class="label">Bulan</td>
+            <td class="sep">:</td>
+            <td class="value">{{ $bulanLabels[$tagihan->bulan] ?? $tagihan->bulan }}</td>
+        </tr>
+        @endif
+        @if ($tagihan->tahun)
+        <tr>
+            <td class="label">Tahun</td>
+            <td class="sep">:</td>
+            <td class="value">{{ $tagihan->tahun }}</td>
+        </tr>
+        @endif
+        <tr>
+            <td class="label">Nominal Tagihan</td>
+            <td class="sep">:</td>
+            <td class="value">Rp {{ number_format($nominalAsli, 0, ',', '.') }}</td>
+        </tr>
+    </table>
+@endif
 
 {{-- ══════════════════════════════════════════════════════
      BELUM TERBAYAR
@@ -490,20 +525,9 @@
 
 @endif
 
-{{-- ── BOTTOM: TTD Kepsek | TTD Bendahara | QR Code ────────── --}}
+{{-- ── BOTTOM: TTD Bendahara | Cetak Info | QR Code ────────── --}}
 <table class="bottom-table">
     <tr>
-        {{-- Kepala Sekolah --}}
-        <td class="ttd-cell">
-            <div style="font-size:9px;">Mengetahui,</div>
-            <div class="ttd-space">
-                @if ($ttdKepsek)
-                    <img class="ttd-img" src="{{ $ttdKepsek }}" alt="TTD Kepala Sekolah">
-                @endif
-            </div>
-            <div class="garis-ttd">Hj. Suci Andari S. S., M.Hum<br>Kepala Sekolah</div>
-        </td>
-
         {{-- Bendahara --}}
         <td class="ttd-cell">
             <div style="font-size:9px;">Karawang, {{ now()->format('d M Y') }}</div>
@@ -515,9 +539,9 @@
             <div class="garis-ttd">Rita Erninda S.M<br>Bendahara</div>
         </td>
 
-        {{-- Cetak info (tengah bawah) --}}
-        <td class="info-cell" style="text-align:center; vertical-align:bottom; padding-bottom:4px;">
-            <div class="cetak-info" style="text-align:center;">
+        {{-- Cetak info --}}
+        <td class="info-cell">
+            <div class="cetak-info">
                 Dicetak : {{ $cetakTanggal }}<br>
                 Oleh &nbsp;&nbsp;: {{ auth()->user()?->name ?? 'Sistem' }}<br>
                 Dok &nbsp;&nbsp;&nbsp;: #{{ str_pad($tagihan->id, 6, '0', STR_PAD_LEFT) }}
