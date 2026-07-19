@@ -294,28 +294,14 @@
     <tr>
         <td class="label">Nama Siswa</td>
         <td class="sep">:</td>
-        <td class="value">{{ $tagihan->siswa->nama }}</td>
-    </tr>
-    <tr>
-        <td class="label">
-            @if ($tagihan->siswa->is_calon) Jenis Calon @else Kelas @endif
-        </td>
-        <td class="sep">:</td>
         <td class="value">
             @if ($tagihan->siswa->is_calon)
-                Calon Siswa {{ $tagihan->siswa->calon_jenis }}
+                {{ $tagihan->siswa->nama }} / {{ $tagihan->siswa->kelasSaatIni?->jenis_sekolah ?? $tagihan->siswa->calon_jenis ?? '—' }}
             @else
-                {{ $tagihan->siswa->kelasSaatIni?->kelas ?? '—' }}
+                {{ $tagihan->siswa->nama }} / {{ $tagihan->siswa->kelasSaatIni?->kelas ?? '—' }} / {{ $tagihan->siswa->kelasSaatIni?->jenis_sekolah ?? '—' }}
             @endif
         </td>
     </tr>
-    @if (optional($tagihan->siswa->kelasSaatIni)->jenis_sekolah && ! $tagihan->siswa->is_calon)
-    <tr>
-        <td class="label">Jenis Sekolah</td>
-        <td class="sep">:</td>
-        <td class="value">{{ $tagihan->siswa->kelasSaatIni->jenis_sekolah }}</td>
-    </tr>
-    @endif
     <tr>
         <td class="label">Nama Orang Tua</td>
         <td class="sep">:</td>

@@ -250,11 +250,11 @@ class ListTagihans extends ListRecords
                 }),
 
             // ── Cetak PDF ──────────────────────────────────────────────────
-            Action::make('exportPdf')
-                ->label('Cetak PDF')
-                ->icon('heroicon-o-document-arrow-down')
-                ->color('danger')
-                ->action('exportPdf'),
+            // Action::make('exportPdf')
+            //     ->label('Cetak PDF')
+            //     ->icon('heroicon-o-document-arrow-down')
+            //     ->color('danger')
+            //     ->action('exportPdf'),
         ];
     }
 }

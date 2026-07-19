@@ -4,8 +4,10 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\TagihanResource\Pages;
 use App\Http\Controllers\TagihanPublicController;
+use App\Models\JenisPembayaran;
 use App\Models\Tagihan;
 use Filament\Forms;
+use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Form;
 use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
@@ -112,7 +114,8 @@ class TagihanResource extends Resource
                     ->searchable(),
                 Tables\Columns\TextColumn::make('siswa.nama')
                     ->label('Nama Siswa')
-                    ->searchable(),
+                    ->searchable()
+                    ->formatStateUsing(fn ($record) => static::formatNamaSiswa($record->siswa)),
                 Tables\Columns\TextColumn::make('jenisPembayaran.nama')
                     ->label('Jenis')
                     ->formatStateUsing(fn ($record) => $record->detail && count($record->detail) > 0
@@ -168,9 +171,39 @@ class TagihanResource extends Resource
                     ])
                     ->placeholder('Semua Status')
                     ->native(false),
+
+                Tables\Filters\SelectFilter::make('jenis_pembayaran_id')
+                    ->label('Jenis Tagihan')
+                    ->options(fn () => JenisPembayaran::pluck('nama', 'id')->toArray())
+                    ->placeholder('Semua Jenis')
+                    ->native(false),
             ])
 
-            ->headerActions([])
+            ->headerActions([
+                Tables\Actions\Action::make('export_pdf')
+                    ->label('Export PDF')
+                    ->icon('heroicon-o-document-arrow-down')
+                    ->color('gray')
+                    ->modalWidth('sm')
+                    ->modalHeading('Export PDF')
+                    ->modalSubmitActionLabel('Download')
+                    ->form(fn ($livewire) => static::exportModalForm($livewire, 'pdf'))
+                    ->action(function ($data, $livewire) {
+                        return redirect()->route('tagihan.export.pdf', static::exportFilterParams($livewire));
+                    }),
+
+                Tables\Actions\Action::make('export_csv')
+                    ->label('Export CSV')
+                    ->icon('heroicon-o-table-cells')
+                    ->color('gray')
+                    ->modalWidth('sm')
+                    ->modalHeading('Export CSV')
+                    ->modalSubmitActionLabel('Download')
+                    ->form(fn ($livewire) => static::exportModalForm($livewire, 'csv'))
+                    ->action(function ($data, $livewire) {
+                        return redirect()->route('tagihan.export.csv', static::exportFilterParams($livewire));
+                    }),
+            ])
             ->actions([
 
                 // ── Cetak: buka PDF di tab baru ───────────────────────────────
@@ -252,6 +285,86 @@ class TagihanResource extends Resource
 
         // Satu baris flat — tidak boleh ada newline sama sekali
         return "var __u='{$safe}';function __fb(t){var ta=document.createElement('textarea');ta.value=t;ta.style.cssText='position:fixed;top:-9999px;left:-9999px;opacity:0;';document.body.appendChild(ta);ta.focus();ta.select();try{document.execCommand('copy')}catch(e){}document.body.removeChild(ta);}if(navigator.clipboard&&window.isSecureContext){navigator.clipboard.writeText(__u).catch(function(){__fb(__u)});}else{__fb(__u);}";
+    }
+
+    // ─── Helper: format nama siswa ──────────────────────────────────────────
+
+    public static function formatNamaSiswa($siswa): string
+    {
+        if (!$siswa) return '—';
+
+        $nama = $siswa->nama ?? '—';
+
+        if ($siswa->is_calon) {
+            return $nama . ' / ' . ($siswa->kelasSaatIni?->jenis_sekolah ?? $siswa->calon_jenis ?? '—');
+        }
+
+        return $nama . ' / ' . ($siswa->kelasSaatIni?->kelas ?? '—') . ' / ' . ($siswa->kelasSaatIni?->jenis_sekolah ?? '—');
+    }
+
+    // ─── Helper: filter key → label ─────────────────────────────────────────
+
+    protected static function exportFilterLabel(string $key, string $value): string
+    {
+        return match ($key) {
+            'bulan'               => static::namaBulan($value),
+            'tahun'               => $value,
+            'status'              => $value === 'lunas' ? 'Lunas' : 'Belum Bayar',
+            'jenis_pembayaran_id' => JenisPembayaran::find($value)?->nama ?? $value,
+            default               => $value,
+        };
+    }
+
+    // ─── Helper: ekstrak filter params dari Livewire ────────────────────────
+
+    protected static function exportFilterParams($livewire): array
+    {
+        $params = [];
+        foreach (['bulan', 'tahun', 'status', 'jenis_pembayaran_id'] as $key) {
+            $state = $livewire->getTableFilterState($key);
+            $value = $state['value'] ?? null;
+            if (filled($value)) {
+                $params[$key] = $value;
+            }
+        }
+        return $params;
+    }
+
+    // ─── Helper: form schema untuk modal export ─────────────────────────────
+
+    protected static function exportModalForm($livewire, string $jenis): array
+    {
+        $params = static::exportFilterParams($livewire);
+
+        $filterLabels = [
+            'bulan'               => 'Bulan',
+            'tahun'               => 'Tahun',
+            'status'              => 'Status',
+            'jenis_pembayaran_id' => 'Jenis',
+        ];
+
+        $filterParts = [];
+        foreach ($params as $key => $value) {
+            $label = $filterLabels[$key] ?? $key;
+            $filterParts[] = $label . ': ' . static::exportFilterLabel($key, $value);
+        }
+
+        $filterText = $filterParts ? implode(' | ', $filterParts) : 'Semua data';
+
+        $query = Tagihan::query();
+        foreach ($params as $key => $value) {
+            $query->where($key, $value);
+        }
+        $count = $query->count();
+
+        return [
+            Placeholder::make('ringkasan_filter')
+                ->label('Filter Aktif')
+                ->content($filterText),
+            Placeholder::make('jumlah')
+                ->label('Jumlah Tagihan')
+                ->content($count . ' tagihan'),
+        ];
     }
 
     public static function getPages(): array

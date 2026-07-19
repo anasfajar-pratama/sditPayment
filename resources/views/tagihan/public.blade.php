@@ -73,7 +73,14 @@
                 <div class="flex justify-between items-start gap-4">
                     <span class="text-sm text-gray-500 min-w-fit">Nama Siswa</span>
                     <span class="text-sm font-semibold text-gray-800 text-right">
-                        {{ $tagihan->siswa->nama ?? '-' }}
+                        @php $siswa = $tagihan->siswa; @endphp
+                        @if ($siswa && $siswa->is_calon)
+                            {{ $siswa->nama ?? '-' }} / {{ optional($siswa->kelasSaatIni)->jenis_sekolah ?? $siswa->calon_jenis ?? '-' }}
+                        @elseif ($siswa)
+                            {{ $siswa->nama ?? '-' }} / {{ optional($siswa->kelasSaatIni)->kelas ?? '-' }} / {{ optional($siswa->kelasSaatIni)->jenis_sekolah ?? '-' }}
+                        @else
+                            -
+                        @endif
                     </span>
                 </div>
 
@@ -82,15 +89,6 @@
                     <span class="text-sm text-gray-500 min-w-fit">NIS</span>
                     <span class="text-sm font-medium text-gray-700 text-right font-mono">
                         {{ $tagihan->siswa->nis }}
-                    </span>
-                </div>
-                @endif
-
-                @if (optional($tagihan->siswa->kelasSaatIni)->kelas)
-                <div class="flex justify-between items-start gap-4">
-                    <span class="text-sm text-gray-500 min-w-fit">Kelas</span>
-                    <span class="text-sm font-medium text-gray-700 text-right">
-                        {{ $tagihan->siswa->kelasSaatIni->kelas }}
                     </span>
                 </div>
                 @endif
