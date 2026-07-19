@@ -91,17 +91,17 @@ class SiswaResource extends Resource
     {
         return match (strtoupper($jenjang)) {
             'SD'   => self::buildKelas(6, ['A', 'B', 'C', 'D']),
-            'SMP'  => self::buildKelas(3, ['A', 'B', 'C']),
+            'SMP'  => self::buildKelas(9, ['A', 'B', 'C', 'D'], 7),
             'DTA'  => self::buildKelas(4, ['A', 'B']),
-            'PAUD' => ['TK-A' => 'TK-A', 'TK-B' => 'TK-B', 'Kelompok Bermain' => 'Kelompok Bermain'],
+            'PAUD' => ['A' => 'A', 'B' => 'B'],
             default => [],
         };
     }
 
-    private static function buildKelas(int $maxTingkat, array $huruf): array
+    private static function buildKelas(int $maxTingkat, array $huruf, int $start = 1): array
     {
         $options = [];
-        for ($i = 1; $i <= $maxTingkat; $i++) {
+        for ($i = $start; $i <= $maxTingkat; $i++) {
             foreach ($huruf as $h) {
                 $label           = "{$i}{$h}";
                 $options[$label] = $label;
@@ -169,13 +169,6 @@ class SiswaResource extends Resource
                                 ->maxLength(4)
                                 ->helperText('Tahun pertama siswa masuk sekolah ini'),
 
-                            Select::make('_kelas')
-                                ->label('Kelas')
-                                ->options(fn (Get $get) => static::getKelasOptions($get('_jenis_sekolah') ?? 'SD'))
-                                ->searchable()
-                                ->native(false)
-                                ->placeholder('Pilih kelas'),
-
                             Select::make('_jenis_sekolah')
                                 ->label('Jenjang Sekolah')
                                 ->options([
@@ -188,6 +181,13 @@ class SiswaResource extends Resource
                                 ->required()
                                 ->live()
                                 ->placeholder('Pilih jenjang'),
+
+                            Select::make('_kelas')
+                                ->label('Kelas')
+                                ->options(fn (Get $get) => static::getKelasOptions($get('_jenis_sekolah') ?? 'SD'))
+                                ->searchable()
+                                ->native(false)
+                                ->placeholder('Pilih kelas'),
 
                             TextInput::make('_tahun_ajaran')
                                 ->label('Tahun Ajaran')
