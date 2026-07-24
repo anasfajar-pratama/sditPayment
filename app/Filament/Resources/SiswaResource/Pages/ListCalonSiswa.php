@@ -91,8 +91,8 @@ class ListCalonSiswa extends ListRecords
             'sd'   => "Kelas {$tingkat}",
             'smp'  => "Kelas {$tingkat}",
             'dta'  => "Tingkat {$tingkat}",
-            'paud' => $tingkat === 1 ? 'TK-A' : ($tingkat === 2 ? 'TK-B' : 'Kelompok Bermain'),
-            'tk'   => $tingkat === 1 ? 'TK-A' : 'TK-B',
+            'paud' => $tingkat === 1 ? 'A' : 'B',
+            'tk'   => $tingkat === 1 ? 'A' : 'B',
             default => (string) $tingkat,
         };
     }
@@ -227,10 +227,16 @@ class ListCalonSiswa extends ListRecords
 
     protected function getKelasForTingkat(string $jenjang, int $tingkat): array
     {
-        $map = ['sd' => 'SD', 'smp' => 'SMP', 'dta' => 'DTA', 'paud' => 'PAUD', 'tk' => 'SD'];
+        $map = ['sd' => 'SD', 'smp' => 'SMP', 'dta' => 'DTA', 'paud' => 'PAUD', 'tk' => 'PAUD'];
         $normalized = $map[strtolower($jenjang)] ?? null;
         if (! $normalized) return [];
         $all = SiswaResource::getKelasOptions($normalized);
+
+        if (in_array(strtolower($jenjang), ['paud', 'tk'])) {
+            $label = $tingkat === 1 ? 'A' : 'B';
+            return array_filter($all, fn ($key) => $key === $label, ARRAY_FILTER_USE_KEY);
+        }
+
         $prefix = (string) $tingkat;
         return array_filter($all, fn ($key) => str_starts_with($key, $prefix), ARRAY_FILTER_USE_KEY);
     }
@@ -245,7 +251,7 @@ class ListCalonSiswa extends ListRecords
         $tahunAjaran = $this->getTahunAjaranBerjalan();
         $parts       = explode('/', $tahunAjaran);
         $tahunMulai  = (int) ($parts[0] ?? now()->year);
-        $jenisMap    = ['sd' => 'SD', 'smp' => 'SMP', 'dta' => 'DTA', 'paud' => 'PAUD', 'tk' => 'SD'];
+        $jenisMap    = ['sd' => 'SD', 'smp' => 'SMP', 'dta' => 'DTA', 'paud' => 'PAUD', 'tk' => 'PAUD'];
         $sukses      = 0;
 
         foreach ($items as $item) {
@@ -255,8 +261,10 @@ class ListCalonSiswa extends ListRecords
             if (! $siswa || ! $siswa->is_calon) continue;
 
             $kelas        = $item['kelas'];
-            $tingkat      = (int) $kelas;
             $jenisSekolah = $jenisMap[strtolower($siswa->calon_jenis)] ?? 'SD';
+            $tingkat      = in_array(strtolower($siswa->calon_jenis), ['paud', 'tk'])
+                ? (int) $siswa->calon_tingkat
+                : (int) $kelas;
 
             $siswa->update(['is_calon' => false]);
 

@@ -13,10 +13,8 @@
                         <li><strong>SD</strong> : 1 – 6</li>
                         <li><strong>SMP</strong> : 7 – 9</li>
                         <li><strong>DTA</strong> : 1 – 4</li>
-                        <li><strong>PAUD</strong> : <code>TK-A</code>, <code>TK-B</code>, atau <code>Kelompok Bermain</code> (bisa ditulis <code>KB</code>)</li>
-                        <li><strong>TK</strong> : <code>TK-A</code> atau <code>TK-B</code>
-                            <br><span class="text-blue-500">Bisa ditulis dengan spasi, underscore, atau hyphen: <code>TK A</code>, <code>TK_A</code>, <code>TK-A</code> — semua diterima.</span>
-                        </li>
+                        <li><strong>PAUD</strong> : <code>A</code> atau <code>B</code></li>
+                        <li><strong>TK</strong> : <code>A</code> atau <code>B</code></li>
                     </ul>
                 </li>
                 <li><strong>hportu</strong> — No HP Orang Tua / Wali, 9 – 15 digit angka.</li>

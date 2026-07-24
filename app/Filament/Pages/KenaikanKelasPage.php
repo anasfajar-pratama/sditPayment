@@ -118,9 +118,8 @@ class KenaikanKelasPage extends Page
     {
         if ($jenisSekolah === 'PAUD') {
             return match ($kelas) {
-                'Kelompok Bermain' => 'TK-A',
-                'TK-A'             => 'TK-B',
-                default            => '',
+                'A'      => 'B',
+                default  => '',
             };
         }
 

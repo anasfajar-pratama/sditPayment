@@ -507,7 +507,9 @@
                                                    border-right:1px solid #374151;">Siswa</th>
                             <th style="background:#4338ca;color:#fff;padding:0.6rem 0.75rem;text-align:center;
                                        font-size:0.7rem;font-weight:600;letter-spacing:0.05em;text-transform:uppercase;
-                                       border-right:1px solid #5b5bd6;min-width:7rem;">DU + Juli</th>
+                                       border-right:1px solid #5b5bd6;min-width:7rem;">
+                                {{ $matrix['is_new_entry'] ? 'Biaya Daftar' : 'DU + Juli' }}
+                            </th>
                             @foreach ($yearGroups as $tahun => $span)
                                 <th colspan="{{ $span }}"
                                     style="padding:0.5rem 0.75rem;text-align:center;font-weight:700;font-size:0.8rem;
@@ -522,7 +524,9 @@
                             <th style="padding:0.5rem 0.6rem;text-align:center;font-size:0.68rem;font-weight:600;width:2rem;border-right:1px solid #4b5563;">No</th>
                             <th style="padding:0.5rem 0.75rem;text-align:left;font-size:0.68rem;font-weight:600;border-right:1px solid #4b5563;">Nama</th>
                             <th style="padding:0.5rem 0.6rem;text-align:center;font-size:0.68rem;font-weight:600;width:3rem;border-right:1px solid #4b5563;">Kls</th>
-                            <th style="background:#4338ca;color:#fff;padding:0.5rem 0.4rem;text-align:center;font-size:0.68rem;font-weight:600;min-width:7rem;border-right:1px solid #5b5bd6;">DU</th>
+                            <th style="background:#4338ca;color:#fff;padding:0.5rem 0.4rem;text-align:center;font-size:0.68rem;font-weight:600;min-width:7rem;border-right:1px solid #5b5bd6;">
+                                {{ $matrix['is_new_entry'] ? 'BP' : 'DU' }}
+                            </th>
                             @foreach ($months as $m)
                                 <th style="padding:0.5rem 0.4rem;text-align:center;font-size:0.68rem;font-weight:600;
                                            white-space:nowrap;min-width:5.5rem;border-right:1px solid #4b5563;">
@@ -543,47 +547,65 @@
                                 <td style="padding:0.5rem 0.75rem;font-weight:600;color:#1f2937;border-right:1px solid #f1f5f9;">{{ $row['nama'] }}</td>
                                 <td style="padding:0.5rem 0.6rem;text-align:center;color:#6b7280;font-size:0.72rem;font-weight:600;border-right:1px solid #f1f5f9;">{{ $row['kelas'] }}</td>
 
-                                {{-- ── Cell Daftar Ulang + Juli ── --}}
-                                @php $du = $row['du_cell']; @endphp
-                                @php
-                                    $duBg = match($du['status']) {
-                                        'lunas'    => '#f0fdf4', 'tunggakan'=> '#fff1f2',
-                                        default    => '#fafafa',
-                                    };
-                                    $duBd = match($du['status']) {
-                                        'lunas'    => '#bbf7d0', 'tunggakan'=> '#fecaca',
-                                        default    => '#f1f5f9',
-                                    };
-                                @endphp
-                                <td style="padding:0.3rem 0.4rem;text-align:center;background:{{ $duBg }};
-                                           border:1px solid {{ $duBd }};vertical-align:middle;min-width:7rem;">
-                                    @if ($du['status'] === 'lunas')
-                                        <div style="font-size:0.65rem;color:#15803d;font-weight:600;white-space:nowrap;">
-                                            🟢 {{ $du['tanggal'] }}
-                                        </div>
-                                        <div style="font-size:0.68rem;color:#166534;font-variant-numeric:tabular-nums;font-weight:700;">
-                                            {{ number_format($du['nominal'], 0, ',', '.') }}
-                                        </div>
-                                    @elseif ($du['status'] === 'tunggakan')
-                                        <div style="font-size:0.65rem;color:#b91c1c;font-weight:700;">🔴 Tunggakan</div>
-                                        <div style="font-size:0.68rem;color:#dc2626;font-variant-numeric:tabular-nums;">
-                                            {{ number_format($du['nominal'], 0, ',', '.') }}
-                                        </div>
-                                        @if ($du['tagihan_id'] ?? null)
-                                            <button wire:click="mountAction('bayar', { tagihan_id: {{ $du['tagihan_id'] }} })"
-                                                style="margin-top:0.25rem;font-size:0.6rem;background:#dc2626;color:#fff;
+                                {{-- ── Cell pertama: BP (new entry) atau Daftar Ulang + Juli ── --}}
+                                @php $fc = $row['first_cell']; @endphp
+                                    @php
+                                        $fcBg = match($fc['status']) {
+                                            'lunas'    => '#f0fdf4', 'cicilan'  => '#fffbeb',
+                                            'tunggakan'=> '#fff1f2', default    => '#fafafa',
+                                        };
+                                        $fcBd = match($fc['status']) {
+                                            'lunas'    => '#bbf7d0', 'cicilan'  => '#fde68a',
+                                            'tunggakan'=> '#fecaca', default    => '#f1f5f9',
+                                        };
+                                    @endphp
+                                    <td style="padding:0.3rem 0.4rem;text-align:center;background:{{ $fcBg }};
+                                               border:1px solid {{ $fcBd }};vertical-align:middle;min-width:7rem;">
+                                        @if ($fc['status'] === 'lunas')
+                                            <div style="font-size:0.65rem;color:#15803d;font-weight:600;white-space:nowrap;">
+                                                🟢 {{ $fc['tanggal'] }}
+                                            </div>
+                                            <div style="font-size:0.68rem;color:#166534;font-variant-numeric:tabular-nums;font-weight:700;">
+                                                {{ number_format($fc['nominal'], 0, ',', '.') }}
+                                            </div>
+                                        @elseif ($fc['status'] === 'cicilan')
+                                            <div style="font-size:0.65rem;color:#92400e;font-weight:600;white-space:nowrap;">
+                                                🟠 {{ $fc['tanggal'] }}
+                                            </div>
+                                            <div style="font-size:0.68rem;color:#78350f;font-variant-numeric:tabular-nums;font-weight:700;">
+                                                {{ number_format($fc['nominal'], 0, ',', '.') }}
+                                            </div>
+                                            <div style="font-size:0.6rem;color:#b91c1c;margin-top:0.15rem;">
+                                                Sisa: Rp {{ number_format($fc['sisa'], 0, ',', '.') }}
+                                            </div>
+                                            @if ($fc['tagihan_id'] ?? null)
+                                                <button wire:click="mountAction('bayar', { tagihan_id: {{ $fc['tagihan_id'] }} })"
+                                                    style="margin-top:0.25rem;font-size:0.6rem;background:#dc2626;color:#fff;
+                                                           border:none;border-radius:0.25rem;padding:0.1rem 0.35rem;cursor:pointer;"
+                                                    onmouseover="this.style.background='#b91c1c'"
+                                                    onmouseout="this.style.background='#dc2626'">Bayar</button>
+                                            @endif
+                                        @elseif ($fc['status'] === 'tunggakan')
+                                            <div style="font-size:0.65rem;color:#b91c1c;font-weight:700;">🔴 Tunggakan</div>
+                                            <div style="font-size:0.68rem;color:#dc2626;font-variant-numeric:tabular-nums;">
+                                                {{ number_format($fc['nominal'], 0, ',', '.') }}
+                                            </div>
+                                            @if ($fc['tagihan_id'] ?? null)
+                                                <button wire:click="mountAction('bayar', { tagihan_id: {{ $fc['tagihan_id'] }} })"
+                                                    style="margin-top:0.25rem;font-size:0.6rem;background:#dc2626;color:#fff;
+                                                           border:none;border-radius:0.25rem;padding:0.1rem 0.35rem;cursor:pointer;"
+                                                    onmouseover="this.style.background='#b91c1c'"
+                                                    onmouseout="this.style.background='#dc2626'">Bayar</button>
+                                            @endif
+                                        @else
+                                            @php $jenisBayar = $matrix['is_new_entry'] ? 'daftar_masuk' : 'daftar_ulang'; @endphp
+                                            <div style="font-size:0.65rem;color:#9ca3af;">⚪ Belum</div>
+                                            <button wire:click="mountAction('bayar', { siswa_id: {{ $row['siswa_id'] }}, bulan: '', tahun: '{{ $tahunMulai }}', jenis: '{{ $jenisBayar }}' })"
+                                                style="margin-top:0.25rem;font-size:0.6rem;background:#4338ca;color:#fff;
                                                        border:none;border-radius:0.25rem;padding:0.1rem 0.35rem;cursor:pointer;"
-                                                onmouseover="this.style.background='#b91c1c'"
-                                                onmouseout="this.style.background='#dc2626'">Bayar</button>
+                                                onmouseover="this.style.background='#3730a3'"
+                                                onmouseout="this.style.background='#4338ca'">Bayar</button>
                                         @endif
-                                    @else
-                                        <div style="font-size:0.65rem;color:#9ca3af;">⚪ Belum</div>
-                                        <button wire:click="mountAction('bayar', { siswa_id: {{ $row['siswa_id'] }}, bulan: '', tahun: '{{ $tahunMulai }}', jenis: 'daftar_ulang' })"
-                                            style="margin-top:0.25rem;font-size:0.6rem;background:#4338ca;color:#fff;
-                                                   border:none;border-radius:0.25rem;padding:0.1rem 0.35rem;cursor:pointer;"
-                                            onmouseover="this.style.background='#3730a3'"
-                                            onmouseout="this.style.background='#4338ca'">Bayar</button>
-                                    @endif
                                 </td>
 
                                 {{-- ── Cell bulan (Agu–Jun) ── --}}
@@ -600,15 +622,30 @@
                                     @endphp
                                     <td style="padding:0.3rem 0.4rem;text-align:center;background:{{ $bg }};
                                                border:1px solid {{ $bd }};vertical-align:middle;">
-                                        @if ($cell['status'] === 'lunas' || $cell['status'] === 'cicilan')
-                                            <div style="font-size:0.65rem;color:{{ $cell['status']==='lunas'?'#15803d':'#92400e' }};
-                                                        font-weight:600;line-height:1.3;white-space:nowrap;">
+                                        @if ($cell['status'] === 'lunas')
+                                            <div style="font-size:0.65rem;color:#15803d;font-weight:600;line-height:1.3;white-space:nowrap;">
                                                 {{ $cell['tanggal'] }}
                                             </div>
-                                            <div style="font-size:0.68rem;color:{{ $cell['status']==='lunas'?'#166534':'#78350f' }};
-                                                        font-variant-numeric:tabular-nums;font-weight:700;">
+                                            <div style="font-size:0.68rem;color:#166534;font-variant-numeric:tabular-nums;font-weight:700;">
                                                 {{ number_format($cell['nominal'], 0, ',', '.') }}
                                             </div>
+                                        @elseif ($cell['status'] === 'cicilan')
+                                            <div style="font-size:0.65rem;color:#92400e;font-weight:600;line-height:1.3;white-space:nowrap;">
+                                                {{ $cell['tanggal'] }}
+                                            </div>
+                                            <div style="font-size:0.68rem;color:#78350f;font-variant-numeric:tabular-nums;font-weight:700;">
+                                                {{ number_format($cell['nominal'], 0, ',', '.') }}
+                                            </div>
+                                            @if (($cell['sisa'] ?? 0) > 0 && ($cell['tagihan_id'] ?? null))
+                                                <div style="font-size:0.6rem;color:#b91c1c;margin-top:0.15rem;">
+                                                    Sisa: Rp {{ number_format($cell['sisa'], 0, ',', '.') }}
+                                                </div>
+                                                <button wire:click="mountAction('bayar', { tagihan_id: {{ $cell['tagihan_id'] }} })"
+                                                    style="margin-top:0.25rem;font-size:0.6rem;background:#dc2626;color:#fff;
+                                                           border:none;border-radius:0.25rem;padding:0.1rem 0.35rem;cursor:pointer;"
+                                                    onmouseover="this.style.background='#b91c1c'"
+                                                    onmouseout="this.style.background='#dc2626'">Bayar</button>
+                                            @endif
                                         @elseif ($cell['status'] === 'tunggakan')
                                             <div style="font-size:0.65rem;color:#b91c1c;font-weight:700;">🔴 {{ number_format($cell['nominal'], 0, ',', '.') }}</div>
                                             @if ($cell['tagihan_id'] ?? null)

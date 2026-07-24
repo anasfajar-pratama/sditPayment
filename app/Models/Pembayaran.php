@@ -26,6 +26,7 @@ class Pembayaran extends Model
         'bukti_bayar',
         'rekening_tujuan',
         'nama_rekening_pengirim',
+        'batch_uuid',
         'created_by',
     ];
 

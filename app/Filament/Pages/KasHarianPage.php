@@ -142,7 +142,7 @@ class KasHarianPage extends Page
     public function entries(): array
     {
         $rows  = $this->buildQuery()->orderBy('tanggal')->orderBy('id')->get();
-        $saldo = $this->saldoAwal;
+        $saldo = 0;
         $result = [];
 
         foreach ($rows as $row) {
@@ -187,9 +187,31 @@ class KasHarianPage extends Page
     }
 
     #[Computed]
+    public function totalDebitTransfer(): float
+    {
+        return (float) $this->buildQuery()
+            ->where('debit', '>', 0)
+            ->whereNotNull('rekening_tujuan')
+            ->where('rekening_tujuan', '!=', 'Cash')
+            ->sum('debit');
+    }
+
+    #[Computed]
+    public function totalDebitCash(): float
+    {
+        return (float) $this->buildQuery()
+            ->where('debit', '>', 0)
+            ->where(function ($q) {
+                $q->whereNull('rekening_tujuan')
+                  ->orWhere('rekening_tujuan', 'Cash');
+            })
+            ->sum('debit');
+    }
+
+    #[Computed]
     public function saldoAkhir(): float
     {
-        return $this->saldoAwal + $this->totalDebit - $this->totalKredit;
+        return $this->totalDebit - $this->totalKredit;
     }
 
     #[Computed]
@@ -269,6 +291,8 @@ class KasHarianPage extends Page
             $this->saldoAwal,
             $this->totalDebit,
             $this->totalKredit,
+            $this->totalDebitTransfer,
+            $this->totalDebitCash,
             $this->saldoAkhir,
             $this->kasHariIni,
             $this->hasSaldoAwal,

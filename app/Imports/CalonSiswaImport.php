@@ -47,10 +47,8 @@ class CalonSiswaImport implements ToCollection, WithHeadingRow, SkipsEmptyRows
         ];
 
         $tingkatMapPaud = [
-            'tk-a'             => 1,
-            'tk-b'             => 2,
-            'kelompok-bermain' => 3,
-            'kb'               => 3,
+            'a' => 1,
+            'b' => 2,
         ];
 
         $tingkatRange = [
@@ -100,10 +98,9 @@ class CalonSiswaImport implements ToCollection, WithHeadingRow, SkipsEmptyRows
 
             if (in_array($calonJenis, ['paud', 'tk'])) {
                 $normalizedTingkat = strtolower(trim($tingkatInput));
-                $normalizedTingkat = preg_replace('/[–—_\s]+/', '-', $normalizedTingkat);
 
                 if (! isset($tingkatMapPaud[$normalizedTingkat])) {
-                    $allowed = 'TK-A, TK-B, Kelompok Bermain (KB)';
+                    $allowed = 'A atau B';
                     $this->errors[] = "Baris {$rowNum}: 'tingkat' untuk {$jenjangKey} harus: {$allowed}.";
                     continue;
                 }
