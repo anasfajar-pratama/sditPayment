@@ -112,7 +112,7 @@
                                         wire:key="select-all">
                                 </th>
                                 <th class="pb-3 pr-3 text-left">Tanggal</th>
-                                <th class="pb-3 pr-3 text-left">No. Ref</th>
+                                <!-- <th class="pb-3 pr-3 text-left">No. Ref</th> -->
                                 <th class="pb-3 pr-3 text-left">Rek. Tujuan</th>
                                 <th class="pb-3 pr-3 text-left">Pengirim</th>
                                 <th class="pb-3 pr-3 text-left">Uraian</th>
