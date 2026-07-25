@@ -181,4 +181,9 @@ class PembayaranResource extends Resource
             'edit'   => Pages\EditPembayaran::route('/{record}/edit'),
         ];
     }
+
+    public static function canAccess(): bool
+    {
+        return auth()->user()->hasRole('admin');
+    }
 }

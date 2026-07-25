@@ -12,6 +12,7 @@
                        border-right:1px solid #e5e7eb;">
                 🔍 Inquiry Siswa
             </button>
+            @role('admin')
             <button wire:click="$set('viewMode','kelas')"
                 style="padding:0.5rem 1.25rem;font-size:0.85rem;border:none;cursor:pointer;white-space:nowrap;
                        font-weight:{{ $viewMode==='kelas'?'700':'500' }};
@@ -19,6 +20,7 @@
                        color:{{ $viewMode==='kelas'?'#fff':'#6b7280' }};">
                 📋 Per Kelas
             </button>
+            @endrole
         </div>
 
         {{-- ══ INQUIRY SISWA ══════════════════════════════════════════════════ --}}
@@ -205,6 +207,7 @@
                                         Rp {{ number_format($tagihan->nominal_tagihan, 0, ',', '.') }}
                                     </td>
                                     <td class="py-3 text-center">
+                                        @role('admin')
                                         <x-filament::button
                                             wire:click="mountAction('bayar', { tagihan_id: {{ $tagihan->id }} })"
                                             wire:loading.attr="disabled"
@@ -213,6 +216,7 @@
                                             color="primary">
                                             Bayar
                                         </x-filament::button>
+                                        @endrole
                                     </td>
                                 </tr>
                             @endforeach

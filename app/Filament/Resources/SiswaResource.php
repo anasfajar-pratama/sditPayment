@@ -370,4 +370,9 @@ class SiswaResource extends Resource
             'detail'  => Pages\DetailSiswa::route('/{record}/detail'),  // ← BARU
         ];
     }
+
+    public static function canAccess(): bool
+    {
+        return auth()->user()->hasRole('admin');
+    }
 }

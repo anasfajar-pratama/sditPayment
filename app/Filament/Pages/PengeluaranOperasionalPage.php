@@ -105,4 +105,9 @@ class PengeluaranOperasionalPage extends Page
             default => $bulan,
         };
     }
+
+    public static function canAccess(): bool
+    {
+        return auth()->user()->hasRole('admin');
+    }
 }

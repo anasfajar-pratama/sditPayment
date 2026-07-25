@@ -282,4 +282,9 @@ class GajiBulananPage extends Page
         $teks = rawurlencode($pesan);
         return "https://wa.me/?text={$teks}";
     }
+
+    public static function canAccess(): bool
+    {
+        return auth()->user()->hasRole('admin');
+    }
 }

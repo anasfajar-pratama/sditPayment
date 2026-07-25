@@ -709,4 +709,9 @@ class KasHarianPage extends Page
                 '05'=>'Mei','06'=>'Juni','07'=>'Juli','08'=>'Agustus',
                 '09'=>'September','10'=>'Oktober','11'=>'November','12'=>'Desember'][$bulan] ?? $bulan;
     }
+
+    public static function canAccess(): bool
+    {
+        return auth()->user()->hasRole('admin');
+    }
 }

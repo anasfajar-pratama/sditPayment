@@ -116,4 +116,9 @@ class RekapBulananPage extends Page
             '10' => 'Oktober', '11' => 'November',  '12' => 'Desember',
         ][$bulan] ?? $bulan;
     }
+
+    public static function canAccess(): bool
+    {
+        return auth()->user()->hasRole('admin');
+    }
 }

@@ -519,6 +519,7 @@ protected static ?string $navigationIcon  = 'heroicon-o-banknotes';
     public function bayarAction(): Action
     {
         return Action::make('bayar')
+            ->visible(fn () => auth()->user()->hasRole('admin'))
             ->modalHeading('Proses Pembayaran')
             ->modalWidth('lg')
             ->modalSubmitActionLabel('Simpan Pembayaran')
@@ -1141,6 +1142,7 @@ protected static ?string $navigationIcon  = 'heroicon-o-banknotes';
         };
 
         return Action::make('buatTagihan')
+            ->visible(fn () => auth()->user()->hasRole('admin'))
             ->modalHeading('Buat Tagihan')
             ->modalWidth('lg')
             ->modalSubmitActionLabel('Simpan Tagihan')
@@ -1394,6 +1396,7 @@ protected static ?string $navigationIcon  = 'heroicon-o-banknotes';
 public function buatTagihanBulanAction(): Action
     {
         return Action::make('buatTagihanBulan')
+            ->visible(fn () => auth()->user()->hasRole('admin'))
             ->modalHeading('Buat Tagihan Bulanan')
             ->modalWidth('sm')
             ->modalSubmitActionLabel('Buat & Cetak PDF')
