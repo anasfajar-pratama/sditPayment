@@ -192,7 +192,7 @@
                             @foreach ($this->tagihans as $tagihan)
                                 <tr>
                                     <td class="py-3 pr-4 font-medium">
-                                        {{ $tagihan->jenisPembayaran->nama }}
+                                        {{ $tagihan->jenisPembayaran?->nama }}
                                         @if ($this->isSpp($tagihan))
                                             <span class="ml-1 rounded-full bg-danger-100 text-danger-700 text-xs px-2 py-0.5">Wajib Lunas</span>
                                         @else
@@ -700,16 +700,58 @@
                             </tr>
                         @endforeach
                         <tr style="background:#f8fafc;border-top:2px solid #e5e7eb;">
-                            <td colspan="4" style="padding:0.6rem 0.75rem;font-size:0.72rem;font-weight:700;color:#374151;border-right:1px solid #e5e7eb;">Rekap Bulan</td>
-                            @foreach ($matrix['summary'] as $s)
-                                <td style="padding:0.4rem 0.3rem;text-align:center;border:1px solid #e5e7eb;">
-                                    @if ($s['lunas'] > 0)<div style="font-size:0.65rem;color:#15803d;font-weight:700;">{{ $s['lunas'] }}✓</div>@endif
-                                    @if ($s['tunggakan'] > 0)<div style="font-size:0.65rem;color:#dc2626;font-weight:700;">{{ $s['tunggakan'] }}✗</div>@endif
-                                    @if (($s['belum_dibayar'] ?? 0) > 0)<div style="font-size:0.65rem;color:#6b7280;font-weight:600;">{{ $s['belum_dibayar'] }}○</div>@endif
-                                </td>
-                            @endforeach
-                            <td style="border-left:1px solid #e5e7eb;"></td>
-                        </tr>
+    @php
+        $duLunas = $duTunggakan = $duBelum = 0;
+        foreach ($matrix['rows'] as $row) {
+            $fc = $row['first_cell'] ?? [];
+            match ($fc['status'] ?? 'belum_dibayar') {
+                'lunas'    => $duLunas++,
+                'cicilan'  => $duTunggakan++,
+                'tunggakan'=> $duTunggakan++,
+                default    => $duBelum++,
+            };
+        }
+    @endphp
+    <td colspan="3" style="padding:0.6rem 0.75rem;font-size:0.72rem;font-weight:700;color:#374151;border-right:1px solid #e5e7eb;">Rekap</td>
+    <td style="padding:0.4rem 0.3rem;text-align:center;border:1px solid #e5e7eb;">
+        @if ($duLunas > 0)<div style="font-size:0.65rem;color:#15803d;font-weight:700;">{{ $duLunas }}✓</div>@endif
+        @if ($duTunggakan > 0)<div style="font-size:0.65rem;color:#dc2626;font-weight:700;">{{ $duTunggakan }}✗</div>@endif
+        @if ($duBelum > 0)<div style="font-size:0.65rem;color:#6b7280;font-weight:600;">{{ $duBelum }}○</div>@endif
+        @if (($duTunggakan + $duBelum) > 0)
+            <div style="margin-top:4px;display:flex;flex-wrap:wrap;gap:3px;justify-content:center;">
+                <button wire:click="mountAction('buatTagihanBulan', { bulan: '', tahun: '{{ $tahunMulai }}' })"
+                    style="font-size:0.6rem;background:#1f2937;color:#fff;border:none;border-radius:3px;padding:2px 6px;cursor:pointer;white-space:nowrap;">+ Buat</button>
+                @if ($duTunggakan > 0)
+                    <a href="{{ route('tagihan.matrix.pdf', ['jenis_sekolah' => $filterJenisSekolah, 'kelas' => $filterKelas, 'bulan' => '', 'tahun' => $tahunMulai]) }}"
+                       style="font-size:0.6rem;background:#d97706;color:#fff;border-radius:3px;padding:2px 5px;text-decoration:none;white-space:nowrap;">PDF</a>
+                    <a href="{{ route('tagihan.matrix.csv', ['jenis_sekolah' => $filterJenisSekolah, 'kelas' => $filterKelas, 'bulan' => '', 'tahun' => $tahunMulai]) }}"
+                       style="font-size:0.6rem;background:#059669;color:#fff;border-radius:3px;padding:2px 5px;text-decoration:none;white-space:nowrap;">CSV</a>
+                @endif
+            </div>
+        @endif
+    </td>
+    @foreach ($matrix['summary'] as $idx => $s)
+        @php $m = $matrix['months'][$idx] ?? null; @endphp
+        <td style="padding:0.4rem 0.3rem;text-align:center;border:1px solid #e5e7eb;">
+            @if ($s['lunas'] > 0)<div style="font-size:0.65rem;color:#15803d;font-weight:700;">{{ $s['lunas'] }}✓</div>@endif
+            @if ($s['tunggakan'] > 0)<div style="font-size:0.65rem;color:#dc2626;font-weight:700;">{{ $s['tunggakan'] }}✗</div>@endif
+            @if (($s['belum_dibayar'] ?? 0) > 0)<div style="font-size:0.65rem;color:#6b7280;font-weight:600;">{{ $s['belum_dibayar'] }}○</div>@endif
+            @if ($m && ($s['tunggakan'] + ($s['belum_dibayar'] ?? 0)) > 0)
+                <div style="margin-top:4px;display:flex;flex-wrap:wrap;gap:3px;justify-content:center;">
+                    <button wire:click="mountAction('buatTagihanBulan', { bulan: '{{ $m['bulan'] }}', tahun: '{{ $m['tahun'] }}' })"
+                        style="font-size:0.6rem;background:#1f2937;color:#fff;border:none;border-radius:3px;padding:2px 6px;cursor:pointer;white-space:nowrap;">+ Buat</button>
+                    @if ($s['tunggakan'] > 0)
+                        <a href="{{ route('tagihan.matrix.pdf', ['jenis_sekolah' => $filterJenisSekolah, 'kelas' => $filterKelas, 'bulan' => $m['bulan'], 'tahun' => $m['tahun']]) }}"
+                           style="font-size:0.6rem;background:#d97706;color:#fff;border-radius:3px;padding:2px 5px;text-decoration:none;white-space:nowrap;">PDF</a>
+                        <a href="{{ route('tagihan.matrix.csv', ['jenis_sekolah' => $filterJenisSekolah, 'kelas' => $filterKelas, 'bulan' => $m['bulan'], 'tahun' => $m['tahun']]) }}"
+                           style="font-size:0.6rem;background:#059669;color:#fff;border-radius:3px;padding:2px 5px;text-decoration:none;white-space:nowrap;">CSV</a>
+                    @endif
+                </div>
+            @endif
+        </td>
+    @endforeach
+    <td style="border-left:1px solid #e5e7eb;"></td>
+</tr>
                     </tbody>
                 </table>
             </div>

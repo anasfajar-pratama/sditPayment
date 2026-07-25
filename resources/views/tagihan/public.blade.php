@@ -133,7 +133,7 @@
                     <div class="flex justify-between items-start gap-4">
                         <span class="text-sm text-gray-500 min-w-fit">Jenis Pembayaran</span>
                         <span class="text-sm font-medium text-gray-700 text-right">
-                            {{ $tagihan->jenisPembayaran->nama ?? '-' }}
+                            {{ $tagihan->jenisPembayaran?->nama ?? '-' }}
                         </span>
                     </div>
 

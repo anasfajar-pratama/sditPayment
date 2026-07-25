@@ -130,7 +130,7 @@ class TagihanPublicController extends Controller
                     $t->siswa->nama   ?? '-',
                     $t->siswa->kelasSaatIni?->jenis_sekolah ?? '-',
                     $t->siswa->kelasSaatIni?->kelas ?? '-',
-                    $t->jenisPembayaran->nama ?? '-',
+                    $t->jenisPembayaran?->nama ?? '-',
                     self::$namaBulan[$t->bulan] ?? $t->bulan,
                     $t->tahun,
                     $t->nominal_tagihan,
@@ -191,6 +191,112 @@ class TagihanPublicController extends Controller
             ->setPaper('a4', 'landscape');
 
         return $pdf->download($filename);
+    }
+
+    // ─── Export matrix PDF per kelas per bulan ─────────────────────────────
+
+    public function exportMatrixPdf(Request $request): \Illuminate\Http\Response
+    {
+        $jenisSekolah = $request->jenis_sekolah;
+        $kelas        = $request->kelas;
+        $bulan        = $request->bulan;
+        $tahun        = $request->tahun;
+
+        $siswaIds = \App\Models\Siswa::where('status_aktif', true)
+            ->whereHas('kelasSaatIni', fn($q) => $q->where('jenis_sekolah', $jenisSekolah)->where('kelas', $kelas))
+            ->pluck('id');
+
+        $query = Tagihan::with(['siswa', 'jenisPembayaran'])
+            ->whereIn('siswa_id', $siswaIds)
+            ->where('tahun', $tahun)
+            ->where('status', 'belum_bayar');
+
+        if (filled($bulan)) {
+            $query->where('bulan', $bulan);
+        }
+
+        $tagihans = $query->orderBy('created_at')->get();
+
+        $bagianFilter = $bulan
+            ? "{$jenisSekolah}_{$kelas}_{$bulan}_{$tahun}"
+            : "{$jenisSekolah}_{$kelas}_du_{$tahun}";
+        $filename = 'tagihan_' . $bagianFilter . '_' . now()->format('Ymd_His') . '.pdf';
+
+        $pdf = Pdf::loadView('pdf.tagihan-report', compact('tagihans', 'bagianFilter'))
+            ->setPaper('a4', 'landscape');
+
+        return $pdf->download($filename);
+    }
+
+    // ─── Export matrix CSV per kelas per bulan ─────────────────────────────
+
+    public function exportMatrixCsv(Request $request): \Symfony\Component\HttpFoundation\StreamedResponse
+    {
+        $jenisSekolah = $request->jenis_sekolah;
+        $kelas        = $request->kelas;
+        $bulan        = $request->bulan;
+        $tahun        = $request->tahun;
+
+        $siswaIds = \App\Models\Siswa::where('status_aktif', true)
+            ->whereHas('kelasSaatIni', fn($q) => $q->where('jenis_sekolah', $jenisSekolah)->where('kelas', $kelas))
+            ->pluck('id');
+
+        $query = Tagihan::with(['siswa', 'siswa.kelasSaatIni', 'jenisPembayaran'])
+            ->whereIn('siswa_id', $siswaIds)
+            ->where('tahun', $tahun)
+            ->where('status', 'belum_bayar');
+
+        if (filled($bulan)) {
+            $query->where('bulan', $bulan);
+        }
+
+        $tagihans = $query->orderBy('created_at')->get();
+
+        $bagianFilter = $bulan
+            ? "{$jenisSekolah}_{$kelas}_{$bulan}_{$tahun}"
+            : "{$jenisSekolah}_{$kelas}_du_{$tahun}";
+        $filename = 'tagihan_' . $bagianFilter . '_' . now()->format('Ymd_His') . '.csv';
+
+        return response()->streamDownload(function () use ($tagihans) {
+            $file = fopen('php://output', 'w');
+            fputs($file, "\xEF\xBB\xBF");
+
+            fputcsv($file, [
+                'NIS', 'Nama Siswa', 'Jenjang', 'Kelas',
+                'Jenis Pembayaran', 'Bulan', 'Tahun',
+                'Nominal', 'Status',
+                'Link PDF Tagihan / Kuitansi', 'Link Share Wali Murid',
+            ]);
+
+            foreach ($tagihans as $t) {
+                if ($t->status === 'lunas' && $t->pembayaran) {
+                    $linkPdf = url("/kuitansi/{$t->pembayaran->id}");
+                } else {
+                    $linkPdf = url("/tagihan/{$t->id}/pdf");
+                }
+
+                $token     = self::encryptId($t->id);
+                $linkShare = url("/tagihan/share/{$token}");
+
+                fputcsv($file, [
+                    $t->siswa->nis    ?? '-',
+                    $t->siswa->nama   ?? '-',
+                    $t->siswa->kelasSaatIni?->jenis_sekolah ?? '-',
+                    $t->siswa->kelasSaatIni?->kelas ?? '-',
+                    $t->jenisPembayaran?->nama ?? '-',
+                    self::$namaBulan[$t->bulan] ?? $t->bulan,
+                    $t->tahun,
+                    $t->nominal_tagihan,
+                    $t->status === 'lunas' ? 'Lunas' : 'Belum Bayar',
+                    $linkPdf,
+                    $linkShare,
+                ]);
+            }
+
+            fclose($file);
+        }, $filename, [
+            'Content-Type' => 'text/csv; charset=UTF-8',
+        ]);
     }
 
     // ─── Helper enkripsi ID (dipanggil juga dari TagihanResource) ─────────────
