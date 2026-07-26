@@ -257,7 +257,7 @@ class SupervisiKasPage extends Page
 
         if ($tagihanId) {
             $allPembayaran = Pembayaran::where('tagihan_id', $tagihanId)->get();
-            $totalRestore = $allPembayaran->sum('nominal');
+            $totalRestore = $allPembayaran->sum('nominal') + $allPembayaran->sum('potongan');
 
             $tagihan = Tagihan::find($tagihanId);
             if ($tagihan) {

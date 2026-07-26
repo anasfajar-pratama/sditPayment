@@ -19,6 +19,7 @@ use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\ToggleButtons;
 use Filament\Forms\Get;
 use Filament\Forms\Set;
 use Filament\Notifications\Notification;
@@ -305,7 +306,7 @@ protected static ?string $navigationIcon  = 'heroicon-o-banknotes';
             ->whereIn('siswa_id', $siswaIds)
             ->where('tahun', (string) $tahunMulai)
             ->get()
-            ->keyBy('siswa_id');
+            ->groupBy('siswa_id');
 
         $duTagihanSemua = Tagihan::where('jenis_pembayaran_id', $jenisDuId)
             ->whereIn('siswa_id', $siswaIds)
@@ -320,7 +321,7 @@ protected static ?string $navigationIcon  = 'heroicon-o-banknotes';
             $bpPembayaran = Pembayaran::where('jenis_pembayaran_id', $jenisBpId)
                 ->whereIn('siswa_id', $siswaIds)
                 ->get()
-                ->keyBy('siswa_id');
+                ->groupBy('siswa_id');
             $bpTagihan = Tagihan::where('jenis_pembayaran_id', $jenisBpId)
                 ->whereIn('siswa_id', $siswaIds)
                 ->get()
@@ -363,16 +364,31 @@ protected static ?string $navigationIcon  = 'heroicon-o-banknotes';
 
             // ── Cell BP / Daftar Ulang + Juli ──
             if ($isNewEntry) {
-                $bpBayar = $bpPembayaran->get($siswa->id);
+                $bpBayarList = $bpPembayaran->get($siswa->id);
                 $bpTagih = $bpTagihan->get($siswa->id);
-                if ($bpBayar && $bpBayar->status === 'lunas') {
+
+                if ($bpBayarList && $bpBayarList->isNotEmpty()) {
+                    $totalNominal = (float) $bpBayarList->sum('nominal');
+                    $latestBayar = $bpBayarList->sortByDesc('tanggal_bayar')->first();
+                    $allLunas = $bpBayarList->every(fn ($p) => $p->status === 'lunas')
+                        || $totalNominal >= ($bpTagih?->nominal_tagihan ?? 0);
+
                     $firstCell = [
-                        'status'  => 'lunas',
-                        'tanggal' => Carbon::parse($bpBayar->tanggal_bayar)->format('d-M-y'),
-                        'nominal' => (float) $bpBayar->nominal,
+                        'status'  => $allLunas ? 'lunas' : 'cicilan',
+                        'tanggal' => Carbon::parse($latestBayar->tanggal_bayar)->format('d-M-y'),
+                        'nominal' => $totalNominal,
                         'tipe'    => 'bp',
                     ];
-                    $lunas++;
+                    if (!$allLunas && $bpTagih) {
+                        $firstCell['sisa'] = (float) $bpTagih->nominal_tagihan;
+                        $firstCell['tagihan_id'] = $bpTagih->id;
+                    }
+                    if ($allLunas) {
+                        $lunas++;
+                    } else {
+                        $tunggakan++;
+                        $adaBelumBayar = true;
+                    }
                 } elseif ($bpTagih) {
                     $firstCell = [
                         'status'     => 'tunggakan',
@@ -391,26 +407,30 @@ protected static ?string $navigationIcon  = 'heroicon-o-banknotes';
                     $adaBelumBayar = true;
                 }
             } else {
-                $duBayar = $duPembayaran->get($siswa->id);
+                $duBayarList = $duPembayaran->get($siswa->id);
                 $duTagih = $duTagihanSemua->get($siswa->id);
 
-                if ($duBayar && $duBayar->status === 'lunas') {
+                if ($duBayarList && $duBayarList->isNotEmpty()) {
+                    $totalNominal = (float) $duBayarList->sum('nominal');
+                    $latestBayar = $duBayarList->sortByDesc('tanggal_bayar')->first();
+                    $allLunas = $duBayarList->every(fn ($p) => $p->status === 'lunas')
+                        || $totalNominal >= ($duTagih?->nominal_tagihan ?? 0);
+
                     $firstCell = [
-                        'status'  => 'lunas',
-                        'tanggal' => Carbon::parse($duBayar->tanggal_bayar)->format('d-M-y'),
-                        'nominal' => (float) $duBayar->nominal,
+                        'status'  => $allLunas ? 'lunas' : 'cicilan',
+                        'tanggal' => Carbon::parse($latestBayar->tanggal_bayar)->format('d-M-y'),
+                        'nominal' => $totalNominal,
                     ];
-                    $lunas++;
-                } elseif ($duBayar && $duBayar->status === 'cicilan' && $duTagih) {
-                    $firstCell = [
-                        'status'     => 'cicilan',
-                        'tanggal'    => Carbon::parse($duBayar->tanggal_bayar)->format('d-M-y'),
-                        'nominal'    => (float) $duBayar->nominal,
-                        'sisa'       => (float) $duTagih->nominal_tagihan,
-                        'tagihan_id' => $duTagih->id,
-                    ];
-                    $tunggakan++;
-                    $adaBelumBayar = true;
+                    if (!$allLunas && $duTagih) {
+                        $firstCell['sisa'] = (float) $duTagih->nominal_tagihan;
+                        $firstCell['tagihan_id'] = $duTagih->id;
+                    }
+                    if ($allLunas) {
+                        $lunas++;
+                    } else {
+                        $tunggakan++;
+                        $adaBelumBayar = true;
+                    }
                 } elseif ($duTagih) {
                     $firstCell = [
                         'status'     => 'tunggakan',
@@ -437,13 +457,14 @@ protected static ?string $navigationIcon  = 'heroicon-o-banknotes';
 
                 if ($bayarGrp && $bayarGrp->isNotEmpty()) {
                     $p = $bayarGrp->sortByDesc('tanggal_bayar')->first();
+                    $totalNominal = (float) $bayarGrp->sum('nominal');
                     $sisaTagihan = $p->status === 'cicilan' && $tagGrp && $tagGrp->isNotEmpty()
                         ? $tagGrp->first()
                         : null;
                     $cells[] = [
                         'status'      => $p->status === 'lunas' ? 'lunas' : 'cicilan',
                         'tanggal'     => Carbon::parse($p->tanggal_bayar)->format('d-M-y'),
-                        'nominal'     => (float) $p->nominal,
+                        'nominal'     => $totalNominal,
                         'sisa'        => $sisaTagihan ? (float) $sisaTagihan->nominal_tagihan : 0,
                         'siswa_id'    => $siswa->id,
                         'tagihan_id'  => $sisaTagihan?->id ?? $p->tagihan_id,
@@ -535,6 +556,7 @@ protected static ?string $navigationIcon  = 'heroicon-o-banknotes';
                             ? $this->getBulanLabel($tagihan->bulan) . ' ' . $tagihan->tahun
                             : (string) $tagihan->tahun),
                         '_is_spp'         => $this->isSppByJenis($tagihan->jenisPembayaran?->nama),
+                        '_cara_bayar'     => 'lunasi',
                         'pakai_potongan'        => false,
                         'potongan'              => 0,
                         'nominal_bayar'         => (float) $tagihan->nominal_tagihan,
@@ -589,20 +611,46 @@ protected static ?string $navigationIcon  = 'heroicon-o-banknotes';
                         Hidden::make('_periode'),
                         Hidden::make('_is_spp'),
 
+                        ToggleButtons::make('_cara_bayar')
+                            ->label('Cara Bayar')
+                            ->options([
+                                'lunasi' => 'Lunasi',
+                                'cicil'  => 'Cicil',
+                            ])
+                            ->default('lunasi')
+                            ->grouped()
+                            ->live()
+                            ->hidden(fn (Get $get) => $this->isSppByJenis($get('_jenis')))
+                            ->afterStateUpdated(function (Get $get, Set $set): void {
+                                if ($get('_cara_bayar') === 'lunasi') {
+                                    $tagihan  = (float) $get('_nominal_tagihan');
+                                    $potongan = (float) ($get('potongan') ?? 0);
+                                    $set('nominal_bayar', max(0, $tagihan - $potongan));
+                                } else {
+                                    $set('nominal_bayar', 0);
+                                    $set('pakai_potongan', false);
+                                    $set('potongan', 0);
+                                }
+                            }),
+
                         TextInput::make('nominal_bayar')
                             ->label('Nominal Bayar (Rp)')
                             ->numeric()->prefix('Rp')->required()
-                            ->disabled(fn (Get $get) => $this->isSppByJenis($get('_jenis')))
+                            ->disabled(fn (Get $get) => $this->isSppByJenis($get('_jenis'))
+                                || $get('_cara_bayar') === 'lunasi')
                             ->dehydrated()
                             ->helperText(fn (Get $get) => $this->isSppByJenis($get('_jenis'))
                                 ? 'SPP harus dibayar penuh (setelah potongan)'
-                                : 'Bisa diisi sebagian untuk cicilan'),
+                                : ($get('_cara_bayar') === 'lunasi'
+                                    ? 'Lunasi: nominal = tagihan - potongan'
+                                    : 'Isi nominal cicilan')),
 
                         Checkbox::make('pakai_potongan')
                             ->label('Potongan / Diskon')
                             ->default(false)
                             ->live()
-                            ->hidden(fn (Get $get) => $this->isSppByJenis($get('_jenis'))),
+                            ->hidden(fn (Get $get) => $this->isSppByJenis($get('_jenis'))
+                                || $get('_cara_bayar') !== 'lunasi'),
 
                         TextInput::make('potongan')
                             ->label(fn (Get $get) => $this->isSppByJenis($get('_jenis'))
@@ -610,7 +658,8 @@ protected static ?string $navigationIcon  = 'heroicon-o-banknotes';
                             ->numeric()->prefix('Rp')->default(0)
                             ->lazy()
                             ->afterStateUpdated(function (Get $get, Set $set): void {
-                                if ($this->isSppByJenis($get('_jenis'))) {
+                                if ($this->isSppByJenis($get('_jenis'))
+                                    || $get('_cara_bayar') === 'lunasi') {
                                     $tagihan  = (float) $get('_nominal_tagihan');
                                     $potongan = (float) ($get('potongan') ?? 0);
                                     $set('nominal_bayar', max(0, $tagihan - $potongan));
@@ -688,7 +737,9 @@ protected static ?string $navigationIcon  = 'heroicon-o-banknotes';
 
                     if (in_array($jenis, ['daftar_ulang', 'daftar_masuk'])) {
                         $nominalAwal = (float) ($get('nominal_awal') ?? 0);
-                        $set('nominal_bayar', max(0, $nominalAwal));
+                        $pakaiPotongan = (bool) ($get('pakai_potongan') ?? false);
+                        $potonganDu = $pakaiPotongan ? (float) ($get('potongan_du') ?? 0) : 0;
+                        $set('nominal_bayar', max(0, $nominalAwal - $potonganDu));
                     } else {
                         $bulanDari   = (int) $get('_bulan_dari');
                         $bulanSampai = (int) ($get('sampai_bulan') ?? $bulanDari);
@@ -771,13 +822,15 @@ protected static ?string $navigationIcon  = 'heroicon-o-banknotes';
                         ->label('Potongan / Diskon')
                         ->default(false)
                         ->live()
-                        ->visible($isDu),
+                        ->visible($isDu)
+                        ->afterStateUpdated($kalkulasiNominal),
 
                     TextInput::make('potongan_du')
                         ->label('Potongan (Rp)')
                         ->numeric()->prefix('Rp')->default(0)
                         ->lazy()
                         ->visible(fn (Get $get) => $isDu($get) && $get('pakai_potongan'))
+                        ->afterStateUpdated($kalkulasiNominal)
                         ->helperText('Isi nominal potongan jika ada'),
 
                     // ── Fields umum ──
@@ -864,6 +917,24 @@ protected static ?string $navigationIcon  = 'heroicon-o-banknotes';
             return;
         }
 
+        if (!$isSpp && $potongan > 0 && abs(($nominal + $potongan) - $tagihan->nominal_tagihan) > 1) {
+            Notification::make()
+                ->title('Potongan hanya untuk pelunasan penuh')
+                ->body('Nominal bayar (Rp ' . number_format($nominal, 0, ',', '.') . ') + potongan (Rp ' . number_format($potongan, 0, ',', '.') . ') harus sama dengan nominal tagihan (Rp ' . number_format($tagihan->nominal_tagihan, 0, ',', '.') . ').')
+                ->danger()->send();
+            $this->halt();
+            return;
+        }
+
+        if ($potongan > $tagihan->nominal_tagihan) {
+            Notification::make()
+                ->title('Potongan melebihi tagihan')
+                ->body('Potongan Rp ' . number_format($potongan, 0, ',', '.') . ' melebihi nominal tagihan Rp ' . number_format($tagihan->nominal_tagihan, 0, ',', '.') . '.')
+                ->danger()->send();
+            $this->halt();
+            return;
+        }
+
         $lunas = $nominal >= ($tagihan->nominal_tagihan - $potongan - 1);
 
         $siswaModel = $this->selectedSiswa ?? Siswa::find($tagihan->siswa_id);
@@ -892,7 +963,10 @@ protected static ?string $navigationIcon  = 'heroicon-o-banknotes';
         $this->buatPdfLink($pembayaran->id);
 
         if ($lunas) {
-            $tagihan->update(['status' => 'lunas']);
+            $tagihan->update([
+                'status'          => 'lunas',
+                'nominal_tagihan' => 0,
+            ]);
         } else {
             $tagihan->update(['nominal_tagihan' => $tagihan->nominal_tagihan - $nominal]);
         }
@@ -900,9 +974,14 @@ protected static ?string $navigationIcon  = 'heroicon-o-banknotes';
         $jenisNama  = $tagihan->jenisPembayaran?->nama ?? '—';
         $bulanLabel = $tagihan->bulan ? " ({$this->getBulanLabel($tagihan->bulan)})" : '';
 
+        $body = 'Rp ' . number_format($nominal, 0, ',', '.') . " — {$jenisNama}{$bulanLabel}";
+        if ($potongan > 0 && $lunas) {
+            $body .= ' (potongan Rp ' . number_format($potongan, 0, ',', '.') . ')';
+        }
+
         Notification::make()
             ->title($lunas ? 'Pembayaran Lunas ✓' : 'Cicilan Berhasil Disimpan')
-            ->body('Rp ' . number_format($nominal, 0, ',', '.') . " — {$jenisNama}{$bulanLabel}")
+            ->body($body)
             ->success()->send();
     }
 
@@ -953,8 +1032,11 @@ protected static ?string $navigationIcon  = 'heroicon-o-banknotes';
             $this->buatPdfLink($pembayaran->id);
 
             $title = $isDaftarMasuk ? 'Pembayaran Biaya Pendaftaran Berhasil' : 'Pembayaran Daftar Ulang Lunas ✓';
-            $body = 'Rp ' . number_format($nominalBayar, 0, ',', '.')
-                . ($isDaftarMasuk ? '' : ' (sudah termasuk SPP Juli)');
+            $body = 'Rp ' . number_format($nominalBayar, 0, ',', '.');
+            if ($potongan > 0) {
+                $body .= ' (potongan Rp ' . number_format($potongan, 0, ',', '.') . ')';
+            }
+            $body .= $isDaftarMasuk ? '' : ' — sudah termasuk SPP Juli';
             Notification::make()->title($title)->body($body)->success()->send();
             return;
         }
