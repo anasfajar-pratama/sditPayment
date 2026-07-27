@@ -169,23 +169,35 @@
                             $wire.set('editPotongan', String(p));
                             $wire.set('editNominal', String(nb));
                             e.target.value = raw;
+                        },
+                        nominalInput(e) {
+                            let raw = e.target.value.replace(/[^0-9]/g, '');
+                            let nb = parseInt(raw) || 0;
+                            $wire.set('editNominal', String(nb));
+                            e.target.value = raw;
                         }
-                    }">
+                        }">
                         <div>
-                            <label class="block text-xs font-medium text-gray-500 mb-1">Total Tagihan (Rp)</label>
-                            <input type="text" :value="'Rp ' + nominalAwal.toLocaleString('id-ID')" readonly
+                            <label class="block text-xs font-medium text-gray-500 mb-1">Total Tagihan Original (Rp)</label>
+                            <input type="text" value="Rp {{ number_format((int) $editSisaTagihan, 0, ',', '.') }}" readonly
                                 class="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm bg-gray-100 text-gray-500">
+                            @if ((int) $editSisaTagihan > 0)
+                                <p class="mt-1 text-xs text-gray-400">Total original tagihan. Nominal bayar + potongan tidak boleh melebihi Rp {{ number_format((int) $editSisaTagihan, 0, ',', '.') }}</p>
+                            @endif
                         </div>
+                        @if (!$editIsCicilan)
                         <div class="mt-3">
                             <label class="block text-xs font-medium text-gray-500 mb-1">Potongan / Diskon (Rp)</label>
                             <input type="text" x-bind:value="potongan"
                                 x-on:input="potonganInput($event)"
                                 class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm">
                         </div>
-                        <div class="mt-3">
+                        @endif
+                        <div class="mt-3 {{ $editIsCicilan ? 'mt-0' : '' }}">
                             <label class="block text-xs font-medium text-gray-500 mb-1">Nominal Bayar (Rp)</label>
-                            <input type="text" :value="'Rp ' + nominalBayar.toLocaleString('id-ID')" readonly
-                                class="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm bg-gray-100 text-green-700 font-semibold">
+                            <input type="text" x-bind:value="nominalBayar"
+                                x-on:input="nominalInput($event)"
+                                class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm">
                         </div>
                     </div>
 
