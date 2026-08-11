@@ -884,6 +884,112 @@ protected static ?string $navigationIcon  = 'heroicon-o-banknotes';
             });
     }
 
+    // ─── Action: Ubah nominal SPP per bulan (khusus SPP) ─────────────────────
+
+    public function editNominalAction(): Action
+    {
+        return Action::make('editNominal')
+            ->visible(fn () => auth()->user()->hasRole('admin'))
+            ->modalHeading('Ubah Nominal SPP')
+            ->modalWidth('sm')
+            ->modalSubmitActionLabel('Simpan Perubahan')
+            ->fillForm(function (array $arguments): array {
+                $tagihan = Tagihan::with('jenisPembayaran')->findOrFail($arguments['tagihan_id']);
+
+                $detail = $tagihan->detail ?? [];
+                $jumlahBulan = 1;
+                if (count($detail) > 0) {
+                    $jumlahBulan = collect($detail)
+                        ->filter(fn ($item) => strtoupper($item['jenis'] ?? '') === 'SPP')
+                        ->count();
+                    if ($jumlahBulan < 1) $jumlahBulan = 1;
+                }
+
+                return [
+                    '_tagihan_id'       => $tagihan->id,
+                    '_jumlah_bulan'     => $jumlahBulan,
+                    '_bulan_label'      => $tagihan->bulan
+                        ? $this->getBulanLabel($tagihan->bulan) . ' ' . $tagihan->tahun
+                        : (string) $tagihan->tahun,
+                    'nominal_per_bulan' => (float) ($tagihan->nominal_tagihan / $jumlahBulan),
+                ];
+            })
+            ->form([
+                Hidden::make('_tagihan_id'),
+                Hidden::make('_jumlah_bulan'),
+                Hidden::make('_bulan_label'),
+
+                Placeholder::make('_info')
+                    ->label('Tagihan')
+                    ->content(fn (Get $get) => 'SPP — ' . $get('_bulan_label')
+                        . ((int) $get('_jumlah_bulan') > 1 ? ' (× ' . $get('_jumlah_bulan') . ' bulan)' : '')),
+
+                TextInput::make('nominal_per_bulan')
+                    ->label('Nominal SPP per Bulan (Rp)')
+                    ->numeric()->prefix('Rp')->required()
+                    ->live()
+                    ->helperText(fn (Get $get) => (int) $get('_jumlah_bulan') > 1
+                        ? 'Akan dikalikan ' . $get('_jumlah_bulan') . ' bulan'
+                        : 'Nominal untuk 1 bulan SPP'),
+
+                Placeholder::make('_total')
+                    ->label('Total Tagihan (di tabel)')
+                    ->content(function (Get $get) {
+                        $perBulan = (float) ($get('nominal_per_bulan') ?? 0);
+                        $total    = $perBulan * (int) ($get('_jumlah_bulan') ?? 1);
+                        return 'Rp ' . number_format($total, 0, ',', '.');
+                    }),
+            ])
+            ->action(function (array $data): void {
+                $tagihan = Tagihan::with('jenisPembayaran')->findOrFail($data['_tagihan_id']);
+
+                if (! $this->isPureSpp($tagihan)) {
+                    Notification::make()
+                        ->title('Tagihan tidak dapat diedit')
+                        ->body('Hanya tagihan SPP yang bisa diubah nominalnya.')
+                        ->danger()->send();
+                    $this->halt();
+                    return;
+                }
+
+                $jumlahBulan = max(1, (int) ($data['_jumlah_bulan'] ?? 1));
+                $perBulan    = (float) ($data['nominal_per_bulan'] ?? 0);
+
+                if ($perBulan <= 0) {
+                    Notification::make()
+                        ->title('Nominal tidak valid')
+                        ->body('Nominal per bulan harus lebih dari 0.')
+                        ->danger()->send();
+                    $this->halt();
+                    return;
+                }
+
+                $total = $perBulan * $jumlahBulan;
+
+                $detail = $tagihan->detail ?? [];
+                if (count($detail) > 0) {
+                    foreach ($detail as &$item) {
+                        if (strtoupper($item['jenis'] ?? '') === 'SPP') {
+                            $item['nominal'] = $perBulan;
+                        }
+                    }
+                    unset($item);
+                    $tagihan->detail = $detail;
+                }
+
+                $tagihan->fill(['nominal_tagihan' => $total])->save();
+
+                unset($this->tagihans, $this->history, $this->riwayatPerTahun, $this->sppMatrixKelas);
+
+                Notification::make()
+                    ->title('Nominal tagihan diperbarui ✓')
+                    ->body('SPP: Rp ' . number_format($perBulan, 0, ',', '.')
+                        . ($jumlahBulan > 1 ? ' × ' . $jumlahBulan . ' bulan' : '')
+                        . ' — Total: Rp ' . number_format($total, 0, ',', '.'))
+                    ->success()->send();
+            });
+    }
+
     protected function prosesBayarTagihan(array $data): void
     {
         $tagihan  = Tagihan::with('jenisPembayaran')->findOrFail($data['_tagihan_id']);
@@ -1636,6 +1742,18 @@ public function buatTagihanBulanAction(): Action
     public function isSppByJenis(?string $nama): bool
     {
         return strtolower($nama ?? '') === 'spp';
+    }
+
+    public function isPureSpp(Tagihan $tagihan): bool
+    {
+        $detail = $tagihan->detail ?? [];
+
+        if (count($detail) === 0) {
+            return $this->isSppByJenis($tagihan->jenisPembayaran?->nama);
+        }
+
+        return collect($detail)
+            ->every(fn ($item) => strtoupper($item['jenis'] ?? '') === 'SPP');
     }
 
     public function getBulanLabel(string $bulan): string

@@ -208,14 +208,25 @@
                                     </td>
                                     <td class="py-3 text-center">
                                         @role('admin')
-                                        <x-filament::button
-                                            wire:click="mountAction('bayar', { tagihan_id: {{ $tagihan->id }} })"
-                                            wire:loading.attr="disabled"
-                                            wire:target="mountAction"
-                                            size="sm"
-                                            color="primary">
-                                            Bayar
-                                        </x-filament::button>
+                                        <div class="inline-flex items-center gap-1.5">
+                                            @if ($this->isPureSpp($tagihan))
+                                            <x-filament::icon-button
+                                                wire:click="mountAction('editNominal', { tagihan_id: {{ $tagihan->id }} })"
+                                                wire:loading.attr="disabled"
+                                                wire:target="mountAction"
+                                                icon="heroicon-o-pencil-square"
+                                                color="gray"
+                                                tooltip="Ubah Nominal SPP per Bulan" />
+                                            @endif
+                                            <x-filament::button
+                                                wire:click="mountAction('bayar', { tagihan_id: {{ $tagihan->id }} })"
+                                                wire:loading.attr="disabled"
+                                                wire:target="mountAction"
+                                                size="sm"
+                                                color="primary">
+                                                Bayar
+                                            </x-filament::button>
+                                        </div>
                                         @endrole
                                     </td>
                                 </tr>
