@@ -13,7 +13,7 @@ class OperasionalController extends Controller
         $start = $request->query('start', now()->startOfMonth()->format('Y-m-d'));
         $end   = $request->query('end', now()->endOfMonth()->format('Y-m-d'));
 
-        $kategori = [
+        $kategori = $this->dynamicKategori('Operasional', [
             'TOKEN & PULSA',
             'PERLENGKAPAN',
             'MAINTENANCE & FC',
@@ -21,7 +21,7 @@ class OperasionalController extends Controller
             'PEMBANGUNAN',
             'BUKU PAKET',
             'BANGKU & SERAGAM',
-        ];
+        ], $start, $end);
 
         $data = $this->buildData($start, $end, $kategori);
         $data['kategori'] = $kategori;
@@ -35,12 +35,12 @@ class OperasionalController extends Controller
         $start = $request->query('start', now()->startOfMonth()->format('Y-m-d'));
         $end   = $request->query('end', now()->endOfMonth()->format('Y-m-d'));
 
-        $kategori = [
+        $kategori = $this->dynamicKategori('Sosial', [
             'SOSIAL & OBAT',
             'JAMUAN',
             'KELUARGA',
             'KASBON',
-        ];
+        ], $start, $end);
 
         $data = $this->buildData($start, $end, $kategori);
         $data['kategori'] = $kategori;
@@ -97,6 +97,19 @@ class OperasionalController extends Controller
 
         $pdf = Pdf::loadView('pdf.upah', $data)->setPaper('a4', 'landscape');
         return $pdf->stream('upah-' . $start . '-to-' . $end . '.pdf');
+    }
+
+    protected function dynamicKategori(string $subKelompok, array $fixed, string $start, string $end): array
+    {
+        $used = KasHarian::whereDate('tanggal', '>=', $start)
+            ->whereDate('tanggal', '<=', $end)
+            ->whereHas('akun', fn ($q) => $q->where('sub_kelompok', $subKelompok))
+            ->whereNotNull('sub_kategori')
+            ->distinct()->orderBy('sub_kategori')
+            ->pluck('sub_kategori')
+            ->toArray();
+
+        return array_values(array_unique(array_merge($fixed, $used)));
     }
 
     protected function buildData(string $start, string $end, array $kategori): array

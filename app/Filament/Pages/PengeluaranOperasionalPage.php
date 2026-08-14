@@ -39,9 +39,23 @@ class PengeluaranOperasionalPage extends Page
         $this->activeTab   = self::KATEGORI[0];
     }
 
-    public function updatedFilterStart(): void { unset($this->entriesPerTab, $this->ringkasan); }
-    public function updatedFilterEnd(): void   { unset($this->entriesPerTab, $this->ringkasan); }
+    public function updatedFilterStart(): void { unset($this->kategoriList, $this->entriesPerTab, $this->ringkasan); }
+    public function updatedFilterEnd(): void   { unset($this->kategoriList, $this->entriesPerTab, $this->ringkasan); }
     public function setTab(string $tab): void  { $this->activeTab = $tab; }
+
+    #[Computed]
+    public function kategoriList(): array
+    {
+        $used = KasHarian::whereDate('tanggal', '>=', $this->filterStart)
+            ->whereDate('tanggal', '<=', $this->filterEnd)
+            ->whereHas('akun', fn ($q) => $q->where('sub_kelompok', 'Operasional'))
+            ->whereNotNull('sub_kategori')
+            ->distinct()->orderBy('sub_kategori')
+            ->pluck('sub_kategori')
+            ->toArray();
+
+        return array_values(array_unique(array_merge(self::KATEGORI, $used)));
+    }
 
     #[Computed]
     public function entriesPerTab(): array
@@ -49,13 +63,13 @@ class PengeluaranOperasionalPage extends Page
         $rows = KasHarian::with('akun')
             ->whereDate('tanggal', '>=', $this->filterStart)
             ->whereDate('tanggal', '<=', $this->filterEnd)
-            ->whereIn('sub_kategori', self::KATEGORI)
+            ->whereIn('sub_kategori', $this->kategoriList)
             ->orderBy('tanggal')->orderBy('id')
             ->get();
 
         $grouped = [];
 
-        foreach (self::KATEGORI as $kat) {
+        foreach ($this->kategoriList as $kat) {
             $grouped[$kat] = [];
             $kumulatif = 0;
             $no = 1;
@@ -80,7 +94,7 @@ class PengeluaranOperasionalPage extends Page
     public function ringkasan(): array
     {
         $summary = [];
-        foreach (self::KATEGORI as $kat) {
+        foreach ($this->kategoriList as $kat) {
             $summary[$kat] = (float) KasHarian::whereDate('tanggal', '>=', $this->filterStart)
                 ->whereDate('tanggal', '<=', $this->filterEnd)
                 ->where('sub_kategori', $kat)

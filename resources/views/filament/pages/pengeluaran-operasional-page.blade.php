@@ -34,7 +34,7 @@
 
     {{-- ── RINGKASAN GRID ──────────────────────────────────────────────── --}}
     <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:0.75rem;">
-        @foreach(\App\Filament\Pages\PengeluaranOperasionalPage::KATEGORI as $kat)
+        @foreach($this->kategoriList as $kat)
             @php
                 $isActive  = $activeTab === $kat;
                 $hasValue  = ($this->ringkasan[$kat] ?? 0) > 0;
@@ -63,7 +63,7 @@
 
         {{-- Tab bar --}}
         <div style="display:flex;overflow-x:auto;border-bottom:1px solid #f3f4f6;background:#fafafa;scrollbar-width:thin;">
-            @foreach(\App\Filament\Pages\PengeluaranOperasionalPage::KATEGORI as $kat)
+            @foreach($this->kategoriList as $kat)
                 @php $isActive = $activeTab === $kat; @endphp
                 <button wire:click="setTab('{{ $kat }}')"
                     style="
