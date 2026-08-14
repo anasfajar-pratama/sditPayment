@@ -905,9 +905,11 @@ protected static ?string $navigationIcon  = 'heroicon-o-banknotes';
                     if ($jumlahBulan < 1) $jumlahBulan = 1;
                 }
 
+                $tipe = $this->isDaftarUlang($tagihan) ? 'du' : ($this->isDaftarMasuk($tagihan) ? 'bp' : 'spp');
+
                 return [
                     '_tagihan_id'       => $tagihan->id,
-                    '_is_du'            => $this->isDaftarUlang($tagihan),
+                    '_tipe'             => $tipe,
                     '_jumlah_bulan'     => $jumlahBulan,
                     '_bulan_label'      => $tagihan->bulan
                         ? $this->getBulanLabel($tagihan->bulan) . ' ' . $tagihan->tahun
@@ -917,24 +919,34 @@ protected static ?string $navigationIcon  = 'heroicon-o-banknotes';
             })
             ->form([
                 Hidden::make('_tagihan_id'),
-                Hidden::make('_is_du'),
+                Hidden::make('_tipe'),
                 Hidden::make('_jumlah_bulan'),
                 Hidden::make('_bulan_label'),
 
                 Placeholder::make('_info')
                     ->label('Tagihan')
-                    ->content(fn (Get $get) => ($get('_is_du') ? 'Daftar Ulang — ' : 'SPP — ') . $get('_bulan_label')
-                        . ((int) $get('_jumlah_bulan') > 1 ? ' (× ' . $get('_jumlah_bulan') . ' bulan)' : '')),
+                    ->content(fn (Get $get) => match ($get('_tipe')) {
+                        'du' => 'Daftar Ulang — ' . $get('_bulan_label'),
+                        'bp' => 'Biaya Pendaftaran — ' . $get('_bulan_label'),
+                        default => 'SPP — ' . $get('_bulan_label')
+                            . ((int) $get('_jumlah_bulan') > 1 ? ' (× ' . $get('_jumlah_bulan') . ' bulan)' : ''),
+                    }),
 
                 TextInput::make('nominal_per_bulan')
-                    ->label(fn (Get $get) => $get('_is_du') ? 'Nominal Daftar Ulang (Rp)' : 'Nominal SPP per Bulan (Rp)')
+                    ->label(fn (Get $get) => match ($get('_tipe')) {
+                        'du' => 'Nominal Daftar Ulang (Rp)',
+                        'bp' => 'Nominal Biaya Pendaftaran (Rp)',
+                        default => 'Nominal SPP per Bulan (Rp)',
+                    })
                     ->numeric()->prefix('Rp')->required()
                     ->live()
-                    ->helperText(fn (Get $get) => $get('_is_du')
-                        ? 'Total Daftar Ulang (sudah termasuk SPP Juli)'
-                        : ((int) $get('_jumlah_bulan') > 1
+                    ->helperText(fn (Get $get) => match ($get('_tipe')) {
+                        'du' => 'Total Daftar Ulang (sudah termasuk SPP Juli)',
+                        'bp' => 'Total Biaya Pendaftaran',
+                        default => ((int) $get('_jumlah_bulan') > 1
                             ? 'Akan dikalikan ' . $get('_jumlah_bulan') . ' bulan'
-                            : 'Nominal untuk 1 bulan SPP')),
+                            : 'Nominal untuk 1 bulan SPP'),
+                    }),
 
                 Placeholder::make('_total')
                     ->label('Total Tagihan (di tabel)')
@@ -950,7 +962,7 @@ protected static ?string $navigationIcon  = 'heroicon-o-banknotes';
                 if (! $this->canEditTagihan($tagihan)) {
                     Notification::make()
                         ->title('Tagihan tidak dapat diedit')
-                        ->body('Hanya tagihan SPP, atau Daftar Ulang yang belum pernah dibayar/cicil, yang bisa diubah nominalnya.')
+                        ->body('Hanya tagihan SPP, atau Daftar Ulang / Biaya Pendaftaran yang belum pernah dibayar/cicil, yang bisa diubah nominalnya.')
                         ->danger()->send();
                     $this->halt();
                     return;
@@ -958,7 +970,8 @@ protected static ?string $navigationIcon  = 'heroicon-o-banknotes';
 
                 $jumlahBulan = max(1, (int) ($data['_jumlah_bulan'] ?? 1));
                 $perBulan    = (float) ($data['nominal_per_bulan'] ?? 0);
-                $isDu        = (bool) ($data['_is_du'] ?? false);
+                $tipe        = (string) ($data['_tipe'] ?? 'spp');
+                $isOneTime   = in_array($tipe, ['du', 'bp']);
 
                 if ($perBulan <= 0) {
                     Notification::make()
@@ -969,30 +982,35 @@ protected static ?string $navigationIcon  = 'heroicon-o-banknotes';
                     return;
                 }
 
-                $total = $isDu ? $perBulan : ($perBulan * $jumlahBulan);
+                $total = $isOneTime ? $perBulan : ($perBulan * $jumlahBulan);
 
-                if (! $isDu) {
-                    $detail = $tagihan->detail ?? [];
-                    if (count($detail) > 0) {
-                        foreach ($detail as &$item) {
-                            if (strtoupper($item['jenis'] ?? '') === 'SPP') {
-                                $item['nominal'] = $perBulan;
-                            }
+                $detail = $tagihan->detail ?? [];
+                if (count($detail) > 0) {
+                    $targetJenis = match ($tipe) {
+                        'du' => ['DAFTAR ULANG'],
+                        'bp' => ['BIAYA PENDAFTARAN', 'DAFTAR MASUK'],
+                        default => ['SPP'],
+                    };
+                    foreach ($detail as &$item) {
+                        if (in_array(strtoupper($item['jenis'] ?? ''), $targetJenis)) {
+                            $item['nominal'] = $perBulan;
                         }
-                        unset($item);
-                        $tagihan->detail = $detail;
                     }
+                    unset($item);
+                    $tagihan->detail = $detail;
                 }
 
                 $tagihan->fill(['nominal_tagihan' => $total])->save();
 
                 unset($this->tagihans, $this->history, $this->riwayatPerTahun, $this->sppMatrixKelas);
 
-                $body = $isDu
-                    ? 'Daftar Ulang: Rp ' . number_format($total, 0, ',', '.')
-                    : 'SPP: Rp ' . number_format($perBulan, 0, ',', '.')
+                $body = match ($tipe) {
+                    'du' => 'Daftar Ulang: Rp ' . number_format($total, 0, ',', '.'),
+                    'bp' => 'Biaya Pendaftaran: Rp ' . number_format($total, 0, ',', '.'),
+                    default => 'SPP: Rp ' . number_format($perBulan, 0, ',', '.')
                         . ($jumlahBulan > 1 ? ' × ' . $jumlahBulan . ' bulan' : '')
-                        . ' — Total: Rp ' . number_format($total, 0, ',', '.');
+                        . ' — Total: Rp ' . number_format($total, 0, ',', '.'),
+                };
 
                 Notification::make()
                     ->title('Nominal tagihan diperbarui ✓')
@@ -1793,13 +1811,25 @@ public function buatTagihanBulanAction(): Action
         return $this->isDaftarUlangByJenis($tagihan->jenisPembayaran?->nama);
     }
 
+    public function isDaftarMasukByJenis(?string $nama): bool
+    {
+        return strtolower($nama ?? '') === 'daftar masuk';
+    }
+
+    public function isDaftarMasuk(Tagihan $tagihan): bool
+    {
+        return $this->isDaftarMasukByJenis($tagihan->jenisPembayaran?->nama);
+    }
+
     public function canEditTagihan(Tagihan $tagihan): bool
     {
         if ($this->isPureSpp($tagihan)) {
             return true;
         }
 
-        if ($this->isDaftarUlang($tagihan)) {
+        $oneTime = $this->isDaftarUlang($tagihan) || $this->isDaftarMasuk($tagihan);
+
+        if ($oneTime) {
             return ! Pembayaran::where('tagihan_id', $tagihan->id)->exists();
         }
 
