@@ -212,7 +212,7 @@
             <div style="padding:1rem 1.5rem;border-bottom:1px solid #f1f5f9;
                         display:flex;align-items:center;justify-content:space-between;gap:0.5rem;flex-wrap:wrap;">
                 <h2 style="font-size:1rem;font-weight:700;color:#1f2937;margin:0;">
-                    Kas Harian &mdash; {{ $this->judulPeriode }}
+                    Kas Gabungan &mdash; {{ $this->judulPeriode }}
                 </h2>
                 <span style="font-size:0.75rem;color:#9ca3af;">
                     {{ count($this->entries) }} transaksi

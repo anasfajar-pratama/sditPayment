@@ -38,7 +38,7 @@
             'transfer'    => ['label' => 'Transfer',     'value' => $this->totalTransfer],
             'cash'        => ['label' => 'Cash',         'value' => $this->totalCash],
             'pengeluaran' => ['label' => 'Pengeluaran',  'value' => $this->totalKredit],
-            'gabungan'    => ['label' => 'Kas Hari Ini', 'value' => $this->kasHariIni],
+            'gabungan'    => ['label' => 'Kas Hari Ini - Admin (Cash - Pengeluaran)', 'value' => $this->kasHariIni],
         ];
     @endphp
 

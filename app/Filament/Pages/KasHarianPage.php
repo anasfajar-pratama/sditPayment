@@ -35,8 +35,8 @@ class KasHarianPage extends Page
 
     protected static ?string $navigationIcon  = 'heroicon-o-book-open';
     protected static ?string $navigationGroup = 'Keuangan';
-    protected static ?string $navigationLabel = 'Kas Harian';
-    protected static ?string $title           = 'Kas Harian';
+    protected static ?string $navigationLabel = 'Kas Gabungan';
+    protected static ?string $title           = 'Kas Gabungan';
     protected static ?int    $navigationSort  = 20;
 
     protected static string $view = 'filament.pages.kas-harian-page';
