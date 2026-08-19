@@ -54,7 +54,7 @@
             </div>
         @else
             <div class="overflow-x-auto">
-                <table class="w-full text-sm text-left">
+                <table class="w-full text-sm text-left k-grid-table">
                     <thead>
                         <tr class="border-b border-gray-200 dark:border-gray-700">
                             <th class="pb-2 pr-4 font-semibold text-gray-600 dark:text-gray-300 w-36">Tgl Donasi</th>

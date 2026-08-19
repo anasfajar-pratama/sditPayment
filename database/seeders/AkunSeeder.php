@@ -20,6 +20,7 @@ class AkunSeeder extends Seeder
             ['kode_akun' => '4102', 'nama_akun' => 'Pendapatan Daftar Ulang', 'kelompok' => 'Pendapatan', 'tipe' => 'KREDIT','is_active' => 2],
             ['kode_akun' => '4103', 'nama_akun' => 'Pendapatan Pendaftaran Siswa Baru', 'kelompok' => 'Pendapatan', 'tipe' => 'KREDIT'],
             ['kode_akun' => '4104', 'nama_akun' => 'Pendapatan Donasi', 'kelompok' => 'Pendapatan', 'tipe' => 'KREDIT'],
+            ['kode_akun' => '4110', 'nama_akun' => 'Pendapatan Kas Tampungan', 'kelompok' => 'Pendapatan', 'tipe' => 'KREDIT'],
 
             // BEBAN / PENGELUARAN
             ['kode_akun' => '6101', 'nama_akun' => 'Beban Gaji & Upah', 'kelompok' => 'Beban', 'tipe' => 'DEBIT'],

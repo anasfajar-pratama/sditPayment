@@ -54,7 +54,7 @@
                 <div class="py-6 text-center text-gray-400">Tidak ada transaksi.</div>
             @else
                 <div class="overflow-x-auto">
-                    <table class="w-full text-sm">
+                    <table class="w-full text-sm k-grid-table">
                         <thead>
                             <tr class="border-b border-gray-200 text-xs font-semibold uppercase text-gray-500">
                                 <th class="pb-3 pr-3 text-center w-10">✓</th>
@@ -335,7 +335,7 @@
                 <div class="py-6 text-center text-gray-400">Belum ada log perubahan.</div>
             @else
                 <div class="overflow-x-auto">
-                    <table class="w-full text-sm">
+                    <table class="w-full text-sm k-grid-table">
                         <thead>
                             <tr class="border-b border-gray-200 text-xs font-semibold uppercase text-gray-500">
                                 <th class="pb-3 pr-3 text-left">Waktu</th>

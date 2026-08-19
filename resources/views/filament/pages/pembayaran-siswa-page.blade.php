@@ -180,7 +180,7 @@
                 </div>
             @else
                 <div class="overflow-x-auto">
-                    <table class="w-full text-sm">
+                    <table class="w-full text-sm k-grid-table">
                         <thead>
                             <tr class="border-b border-gray-200 dark:border-gray-700 text-xs font-semibold uppercase text-gray-500">
                                 <th class="pb-3 pr-4 text-left">Jenis Pembayaran</th>
@@ -250,7 +250,7 @@
         @if ($this->history->isNotEmpty())
             <x-filament::section heading="History Pembayaran Terbaru">
                 <div class="overflow-x-auto">
-                    <table class="w-full text-sm">
+                    <table class="w-full text-sm k-grid-table">
                         <thead>
                             <tr class="border-b border-gray-200 dark:border-gray-700 text-xs font-semibold uppercase text-gray-500">
                                 <th class="pb-3 pr-4 text-left">Jenis</th>
@@ -383,7 +383,7 @@
                             </summary>
 
                             <div style="padding:0.75rem 1.25rem;">
-                                <table style="width:100%;border-collapse:collapse;font-size:0.8rem;">
+                                <table class="k-grid-table" style="width:100%;border-collapse:collapse;font-size:0.8rem;">
                                     <thead>
                                         <tr style="border-bottom:1px solid #f1f5f9;">
                                             <th style="padding:0.4rem 0.75rem 0.4rem 0;text-align:left;color:#9ca3af;font-size:0.68rem;font-weight:600;text-transform:uppercase;">Jenis</th>
@@ -517,7 +517,7 @@
         <div style="background:#fff;border-radius:1rem;border:1px solid #f1f5f9;
                     box-shadow:0 1px 4px rgba(0,0,0,.06);overflow:hidden;">
             <div style="overflow-x:auto;">
-                <table style="width:100%;border-collapse:collapse;font-size:0.78rem;min-width:1200px;">
+                <table class="k-grid-table" style="width:100%;border-collapse:collapse;font-size:0.78rem;min-width:1200px;">
                     <thead>
                         @php
                             $months     = $matrix['months'];

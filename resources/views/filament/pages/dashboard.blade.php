@@ -384,7 +384,7 @@
             </div>
         @else
         <div class="overflow-x-auto">
-            <table style="width:100%; border-collapse:collapse; font-size:13px;">
+            <table class="k-grid-table" style="width:100%; border-collapse:collapse; font-size:13px;">
                 <thead>
                     <tr style="border-bottom:1px solid #f3f4f6;">
                         <th style="padding:6px 12px 8px 0; text-align:left; font-size:10px;

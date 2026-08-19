@@ -19,7 +19,7 @@
         </div>
     @endif
 
-    <table style="width:100%;border-collapse:collapse;font-size:0.8rem;">
+    <table class="k-grid-table" style="width:100%;border-collapse:collapse;font-size:0.8rem;">
         <thead>
             <tr style="background:#f3f4f6;border-bottom:2px solid #e5e7eb;">
                 <th style="padding:0.5rem 0.75rem;text-align:left;font-weight:600;">Kelas Asal</th>

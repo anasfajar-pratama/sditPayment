@@ -98,7 +98,7 @@
             </div>
         @else
             <div style="overflow-x:auto;">
-                <table style="width:100%;border-collapse:collapse;font-size:0.875rem;">
+                <table class="k-grid-table" style="width:100%;border-collapse:collapse;font-size:0.875rem;">
                     <thead>
                         <tr style="background:#1f2937;color:#fff;">
                             <th style="padding:0.65rem 1rem;text-align:center;width:2.5rem;font-size:0.7rem;font-weight:600;letter-spacing:0.05em;">NO</th>

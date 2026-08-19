@@ -226,7 +226,7 @@
                 </div>
             @else
                 <div style="overflow-x:auto;">
-                    <table style="width:100%;border-collapse:collapse;font-size:0.8125rem;">
+                    <table class="k-grid-table" style="width:100%;border-collapse:collapse;font-size:0.8125rem;">
                         <thead>
                             <tr style="background:#1f2937;color:#fff;">
                                 <th style="padding:0.75rem 1rem;text-align:center;font-size:0.7rem;
@@ -252,14 +252,16 @@
                                 <th style="padding:0.75rem 1rem;text-align:right;font-size:0.7rem;
                                            font-weight:600;letter-spacing:0.05em;text-transform:uppercase;
                                            width:9rem;">Saldo</th>
-                                <th style="padding:0.75rem 1rem;width:4rem;"></th>
+                                <th style="padding:0.75rem 1rem;text-align:center;font-size:0.7rem;
+                                           font-weight:600;letter-spacing:0.05em;text-transform:uppercase;
+                                           width:4rem;">Aksi</th>
                             </tr>
                         </thead>
                         <tbody>
                             @foreach ($this->entries as $i => $e)
                                 @php $isPembayaran = $e['source'] === 'pembayaran'; @endphp
-                                <tr style="border-bottom:1px solid #f8fafc;
-                                           {{ $isPembayaran ? 'background:#fefce8;' : 'background:#fff;' }}"
+<tr style="border-bottom:1px solid #e5e7eb;
+                                   {{ $isPembayaran ? 'background:#fefce8;' : 'background:#fff;' }}"
                                     onmouseover="this.style.background='#f9fafb'"
                                     onmouseout="this.style.background='{{ $isPembayaran ? '#fefce8' : '#fff' }}'">
 
@@ -435,7 +437,7 @@
                 </div>
             @else
                 <div style="overflow-x:auto;">
-                    <table style="width:100%;border-collapse:collapse;font-size:0.8rem;">
+                    <table class="k-grid-table" style="width:100%;border-collapse:collapse;font-size:0.8rem;">
                         <thead>
                             <tr style="background:#f8fafc;">
                                 <th style="padding:0.6rem 1rem;text-align:left;font-size:0.68rem;
