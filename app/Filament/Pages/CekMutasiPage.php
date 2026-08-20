@@ -28,6 +28,7 @@ class CekMutasiPage extends Page
     public string $filterRekening = '';
     public string $tanggalDari = '';
     public string $tanggalSampai = '';
+    public string $filterStatus = 'all';
 
     public array $selectedIds = [];
     public bool $selectAll = false;
@@ -46,6 +47,7 @@ class CekMutasiPage extends Page
         $this->filterRekening = '';
         $this->tanggalDari = '';
         $this->tanggalSampai = '';
+        $this->filterStatus = 'all';
         unset($this->transaksiPending, $this->transaksiTerverifikasi, $this->summaryPerRekening);
     }
 

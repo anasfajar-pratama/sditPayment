@@ -19,6 +19,10 @@
         </div>
 
         <div style="display:flex;align-items:center;gap:0.75rem;">
+            <a href="{{ route('export.upah', ['start' => $filterStart, 'end' => $filterEnd, 'tab' => $activeTab]) }}"
+                style="display:inline-flex;align-items:center;gap:0.5rem;background:#059669;color:#fff;border-radius:0.5rem;padding:0.5rem 1rem;font-size:0.8rem;font-weight:600;text-decoration:none;border:none;cursor:pointer;">
+                <span style="font-size:1rem;">⬇</span> Export CSV
+            </a>
             <a href="{{ route('upah.pdf', ['start' => $filterStart, 'end' => $filterEnd]) }}" target="_blank"
                 style="display:inline-flex;align-items:center;gap:0.5rem;background:#ef4444;color:#fff;border-radius:0.5rem;padding:0.5rem 1rem;font-size:0.8rem;font-weight:600;text-decoration:none;border:none;cursor:pointer;">
                 <span style="font-size:1rem;">📄</span> Cetak PDF

@@ -2,6 +2,7 @@
 
 namespace App\Filament\Pages;
 
+use App\Filament\Traits\ManagesInputJurnal;
 use App\Models\KasHarian;
 use Filament\Pages\Page;
 use Illuminate\Support\Collection;
@@ -10,6 +11,7 @@ use Livewire\Attributes\Url;
 
 class RingkasanKasHarianPage extends Page
 {
+    use ManagesInputJurnal;
     protected static ?string $navigationIcon  = 'heroicon-o-banknotes';
     protected static ?string $navigationGroup = 'Keuangan';
     protected static ?string $navigationLabel = 'Rekap Kas Harian';
@@ -45,6 +47,13 @@ class RingkasanKasHarianPage extends Page
         $this->activeTab = $tab;
     }
 
+    protected function getHeaderActions(): array
+    {
+        return [
+            $this->inputJurnalAction(),
+        ];
+    }
+
     private function clearCache(): void
     {
         unset(
@@ -57,6 +66,8 @@ class RingkasanKasHarianPage extends Page
             $this->entriesCash,
             $this->entriesKredit,
             $this->entriesGabungan,
+            $this->entriesKasHariIni,
+            $this->totalGabungan,
         );
     }
 
@@ -102,6 +113,12 @@ class RingkasanKasHarianPage extends Page
     }
 
     #[Computed]
+    public function totalGabungan(): float
+    {
+        return $this->totalTransfer + $this->totalCash - $this->totalKredit;
+    }
+
+    #[Computed]
     public function entriesTransfer(): array
     {
         $rows = $this->rows
@@ -135,7 +152,7 @@ class RingkasanKasHarianPage extends Page
     }
 
     #[Computed]
-    public function entriesGabungan(): array
+    public function entriesKasHariIni(): array
     {
         $saldo = 0.0;
         $entries = [];
@@ -146,6 +163,32 @@ class RingkasanKasHarianPage extends Page
             $isCash = $r->rekening_tujuan === null || $r->rekening_tujuan === 'Cash';
 
             if ($debit > 0 && $isCash) {
+                $saldo += $debit;
+                $entry = $this->mapRow($r, 'kashariini', 'Masuk', $debit, $saldo);
+                $entry['no'] = count($entries) + 1;
+                $entries[] = $entry;
+            } elseif ($kredit > 0) {
+                $saldo -= $kredit;
+                $entry = $this->mapRow($r, 'kashariini', 'Keluar', $kredit, $saldo);
+                $entry['no'] = count($entries) + 1;
+                $entries[] = $entry;
+            }
+        }
+
+        return $entries;
+    }
+
+    #[Computed]
+    public function entriesGabungan(): array
+    {
+        $saldo = 0.0;
+        $entries = [];
+
+        foreach ($this->rows as $r) {
+            $debit  = (float) ($r->debit  ?? 0);
+            $kredit = (float) ($r->kredit ?? 0);
+
+            if ($debit > 0) {
                 $saldo += $debit;
                 $entry = $this->mapRow($r, 'gabungan', 'Masuk', $debit, $saldo);
                 $entry['no'] = count($entries) + 1;
@@ -177,9 +220,10 @@ class RingkasanKasHarianPage extends Page
         $kredit = (float) ($r->kredit ?? 0);
 
         $jumlah = match ($mode) {
-            'kredit'   => $kredit,
-            'gabungan' => $jumlah ?: ($debit > 0 ? $debit : $kredit),
-            default    => $debit,
+            'kredit'      => $kredit,
+            'gabungan',
+            'kashariini'  => $jumlah ?: ($debit > 0 ? $debit : $kredit),
+            default       => $debit,
         };
 
         return [
@@ -192,7 +236,7 @@ class RingkasanKasHarianPage extends Page
             'pengirim'     => $r->nama_rekening_pengirim,
             'tipe'         => $tipe ?: ($mode === 'kredit' ? 'Keluar' : 'Masuk'),
             'jumlah'       => $jumlah,
-            'saldo'        => $mode === 'gabungan' ? $saldo : null,
+            'saldo'        => in_array($mode, ['gabungan', 'kashariini']) ? $saldo : null,
             'id'           => $r->id,
         ];
     }

@@ -65,6 +65,7 @@
                 <div>
                     <label class="block text-xs font-medium text-gray-500 mb-1">Cari (No. Ref / Pengirim / Uraian)</label>
                     <input type="text" wire:model.live.debounce.500ms="searchGlobal" placeholder="Ketik kata kunci..."
+                        autocomplete="off"
                         class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm">
                 </div>
                 <div>
@@ -78,11 +79,29 @@
                     </select>
                 </div>
             </div>
-            <div class="mt-3">
+            <div class="mt-3 flex flex-wrap items-center gap-3">
                 <button wire:click="resetFilter"
                     class="rounded-lg border border-gray-300 px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 transition">
                     &#x21bb; Reset Pencarian
                 </button>
+
+                <select wire:model.live="filterStatus"
+                    class="rounded-lg border border-gray-300 px-3 py-2 text-sm">
+                    <option value="all">Semua Status</option>
+                    <option value="pending">Belum Verifikasi</option>
+                    <option value="verified">Terverifikasi</option>
+                </select>
+
+                <a href="{{ route('export.cek-mutasi', [
+                        'tanggal_dari'   => $tanggalDari,
+                        'tanggal_sampai' => $tanggalSampai,
+                        'q'              => $searchGlobal,
+                        'rekening'       => $filterRekening,
+                        'status'         => $filterStatus,
+                    ]) }}"
+                    style="display:inline-flex;align-items:center;gap:0.5rem;background:#059669;color:#fff;border-radius:0.5rem;padding:0.5rem 1rem;font-size:0.8rem;font-weight:600;text-decoration:none;border:none;cursor:pointer;">
+                    <span style="font-size:1rem;">⬇</span> Export CSV
+                </a>
             </div>
         </x-filament::section>
         
@@ -175,7 +194,7 @@
                             <tr class="border-b border-gray-200 text-xs font-semibold uppercase text-gray-500">
                                 <th class="pb-3 pr-3 text-left">Tgl Verifikasi</th>
                                 <th class="pb-3 pr-3 text-left">Tanggal Bayar</th>
-                                <th class="pb-3 pr-3 text-left">No. Ref</th>
+                                <!-- <th class="pb-3 pr-3 text-left">No. Ref</th> -->
                                 <th class="pb-3 pr-3 text-left">Rek. Tujuan</th>
                                 <th class="pb-3 pr-3 text-left">Pengirim</th>
                                 <th class="pb-3 pr-3 text-center">Bukti</th>
@@ -265,6 +284,7 @@
             <label class="block text-xs font-medium text-gray-500 mb-1">Password</label>
             <input type="password" wire:model="verifPassword"
                 class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                autocomplete="new-password"
                 wire:keydown.enter="submitVerifikasiMassal">
             @if ($verifError)
                 <p class="mt-1 text-xs" style="color:#dc2626;">{{ $verifError }}</p>

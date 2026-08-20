@@ -4,12 +4,14 @@ namespace App\Http\Controllers;
 
 use App\Models\Akun;
 use App\Models\KasHarian;
+use App\Traits\ExportsCsv;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 
 class PendapatanController extends Controller
 {
+    use ExportsCsv;
     public function cetakPdf(Request $request)
     {
         $start = $request->query('start', now()->toDateString());
@@ -42,6 +44,42 @@ class PendapatanController extends Controller
 
         $pdf = Pdf::loadView('pdf.pendapatan', $data)->setPaper('a4', 'landscape');
         return $pdf->stream('pendapatan-' . $start . '-to-' . $end . '.pdf');
+    }
+
+    public function exportCsv(Request $request)
+    {
+        $start = $request->query('start', now()->toDateString());
+        $end   = $request->query('end', now()->toDateString());
+        $tab   = $request->query('tab', '');
+
+        $query = KasHarian::with('akun')
+            ->whereDate('tanggal', '>=', $start)
+            ->whereDate('tanggal', '<=', $end)
+            ->where('debit', '>', 0);
+
+        if ($tab !== '' && ctype_digit((string) $tab)) {
+            $query->where('akun_id', (int) $tab);
+        }
+
+        $rows = $query->orderBy('tanggal')->orderBy('id')->get();
+
+        $out = [];
+        $no  = 1;
+        foreach ($rows as $r) {
+            $out[] = [
+                $no++,
+                $r->tanggal->format('d M Y'),
+                $r->uraian,
+                $r->akun?->nama_akun ?? '—',
+                $r->rekening_tujuan ?? '',
+                $r->nama_rekening_pengirim ?? '',
+                (float) $r->debit,
+            ];
+        }
+
+        $headers = ['No', 'Tanggal', 'Keterangan', 'Akun', 'Rekening Tujuan', 'Pengirim', 'Jumlah'];
+
+        return $this->streamCsv('pendapatan-' . $start . '-to-' . $end . '.csv', $headers, $out);
     }
 
     private function akunList(Collection $rows): array

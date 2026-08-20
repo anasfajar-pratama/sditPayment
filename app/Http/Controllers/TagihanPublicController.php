@@ -64,6 +64,8 @@ class TagihanPublicController extends Controller
     public function exportCsv(Request $request): \Symfony\Component\HttpFoundation\StreamedResponse
     {
         $query = Tagihan::with(['siswa', 'siswa.kelasSaatIni', 'jenisPembayaran'])
+            ->withSum('pembayarans', 'nominal')
+            ->withSum('pembayarans', 'potongan')
             ->orderBy('tahun')
             ->orderBy('bulan')
             ->orderBy('created_at');
@@ -111,8 +113,8 @@ class TagihanPublicController extends Controller
                 'Tahun',
                 'Nominal',
                 'Status',
-                'Link PDF Tagihan / Kuitansi',
-                'Link Share Wali Murid',
+                // 'Link PDF Tagihan / Kuitansi',
+                // 'Link Share Wali Murid',
             ]);
 
             foreach ($tagihans as $t) {
@@ -125,6 +127,10 @@ class TagihanPublicController extends Controller
                 $token     = self::encryptId($t->id);
                 $linkShare = url("/tagihan/share/{$token}");
 
+                $nominalTampil = $t->status === 'lunas'
+                    ? (float) ($t->pembayarans_sum_nominal ?? 0) + (float) ($t->pembayarans_sum_potongan ?? 0)
+                    : (float) $t->nominal_tagihan;
+
                 fputcsv($file, [
                     $t->siswa->nis    ?? '-',
                     $t->siswa->nama   ?? '-',
@@ -133,10 +139,10 @@ class TagihanPublicController extends Controller
                     $t->jenisPembayaran?->nama ?? '-',
                     self::$namaBulan[$t->bulan] ?? $t->bulan,
                     $t->tahun,
-                    $t->nominal_tagihan,
+                    $nominalTampil,
                     $t->status === 'lunas' ? 'Lunas' : 'Belum Bayar',
-                    $linkPdf,
-                    $linkShare,
+                    // $linkPdf,
+                    // $linkShare,
                 ]);
             }
 
@@ -151,6 +157,8 @@ class TagihanPublicController extends Controller
     public function exportPdf(Request $request): \Illuminate\Http\Response
     {
         $query = Tagihan::with(['siswa', 'siswa.kelasSaatIni', 'jenisPembayaran'])
+            ->withSum('pembayarans', 'nominal')
+            ->withSum('pembayarans', 'potongan')
             ->orderBy('tahun')
             ->orderBy('bulan')
             ->orderBy('created_at');
@@ -278,6 +286,10 @@ class TagihanPublicController extends Controller
                 $token     = self::encryptId($t->id);
                 $linkShare = url("/tagihan/share/{$token}");
 
+                $nominalTampil = $t->status === 'lunas'
+                    ? (float) ($t->pembayarans_sum_nominal ?? 0) + (float) ($t->pembayarans_sum_potongan ?? 0)
+                    : (float) $t->nominal_tagihan;
+
                 fputcsv($file, [
                     $t->siswa->nis    ?? '-',
                     $t->siswa->nama   ?? '-',
@@ -286,7 +298,7 @@ class TagihanPublicController extends Controller
                     $t->jenisPembayaran?->nama ?? '-',
                     self::$namaBulan[$t->bulan] ?? $t->bulan,
                     $t->tahun,
-                    $t->nominal_tagihan,
+                    $nominalTampil,
                     $t->status === 'lunas' ? 'Lunas' : 'Belum Bayar',
                     $linkPdf,
                     $linkShare,

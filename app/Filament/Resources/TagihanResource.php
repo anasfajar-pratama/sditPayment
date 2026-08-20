@@ -131,7 +131,10 @@ class TagihanResource extends Resource
                 Tables\Columns\TextColumn::make('tahun'),
                 Tables\Columns\TextColumn::make('nominal_tagihan')
                     ->money('IDR')
-                    ->label('Nominal'),
+                    ->label('Nominal')
+                    ->formatStateUsing(fn ($record) => $record->status === 'lunas'
+                        ? (float) ($record->pembayarans_sum_nominal ?? 0) + (float) ($record->pembayarans_sum_potongan ?? 0)
+                        : (float) $record->nominal_tagihan),
                 Tables\Columns\BadgeColumn::make('status')
                     ->colors([
                         'danger'  => 'belum_bayar',
@@ -140,6 +143,7 @@ class TagihanResource extends Resource
             ])
             ->defaultSort('created_at', 'desc')
             ->searchable()
+            ->modifyQueryUsing(fn ($query) => $query->withSum('pembayarans', 'nominal')->withSum('pembayarans', 'potongan'))
 
             // ── Filter di atas tabel ──────────────────────────────────────────
             ->filtersLayout(FiltersLayout::AboveContent)
@@ -173,6 +177,7 @@ class TagihanResource extends Resource
                         'belum_bayar' => 'Belum Bayar',
                     ])
                     ->placeholder('Semua Status')
+                    ->default('belum_bayar')
                     ->native(false),
 
                 Tables\Filters\SelectFilter::make('jenis_pembayaran_id')
