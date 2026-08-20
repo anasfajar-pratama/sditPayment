@@ -37,6 +37,8 @@ class SupervisiKasPage extends Page
     public string $editNominal = '';
     public string $editPotongan = '';
     public string $editNominalAwal = '';
+    public string $editSisaTagihan = '';
+    public bool $editIsCicilan = false;
     public string $editPassword = '';
     public ?string $editError = null;
     public ?int $logDetailId = null;
@@ -179,13 +181,28 @@ class SupervisiKasPage extends Page
         if ($row->source === 'pembayaran' && $row->source_id) {
             $pembayaran = Pembayaran::find($row->source_id);
             if ($pembayaran) {
-                $this->editPotongan = (string) ((int) ($pembayaran->potongan ?? 0));
+                $this->editIsCicilan = $pembayaran->status === 'cicilan';
+                $this->editPotongan = $this->editIsCicilan ? '0' : (string) ((int) ($pembayaran->potongan ?? 0));
                 $this->editNominalAwal = (string) ((int) ($pembayaran->nominal + $pembayaran->potongan));
+
+                if ($pembayaran->tagihan_id) {
+                    $tagihan = Tagihan::find($pembayaran->tagihan_id);
+                    if ($tagihan) {
+                        $allBayar = Pembayaran::where('tagihan_id', $pembayaran->tagihan_id)->get();
+                        $totalOriginal = (float) $tagihan->nominal_tagihan + $allBayar->sum('nominal');
+                        $this->editSisaTagihan = (string) ((int) max(0, $totalOriginal));
+                    } else {
+                        $this->editSisaTagihan = '0';
+                    }
+                } else {
+                    $this->editSisaTagihan = '0';
+                }
                 return;
             }
         }
         $this->editPotongan = '0';
         $this->editNominalAwal = $this->editNominal;
+        $this->editSisaTagihan = '0';
     }
 
     public function closeEdit(): void
@@ -195,6 +212,8 @@ class SupervisiKasPage extends Page
         $this->editError = null;
         $this->editPotongan = '';
         $this->editNominalAwal = '';
+        $this->editSisaTagihan = '';
+        $this->editIsCicilan = false;
         $this->editSource = null;
         $this->showResetConfirm = false;
         $this->resetPassword = '';
@@ -257,7 +276,7 @@ class SupervisiKasPage extends Page
 
         if ($tagihanId) {
             $allPembayaran = Pembayaran::where('tagihan_id', $tagihanId)->get();
-            $totalRestore = $allPembayaran->sum('nominal');
+            $totalRestore = $allPembayaran->sum('nominal') + $allPembayaran->sum('potongan');
 
             $tagihan = Tagihan::find($tagihanId);
             if ($tagihan) {
@@ -314,6 +333,35 @@ class SupervisiKasPage extends Page
 
         $row = KasHarian::findOrFail($this->editId);
 
+        if ($row->source === 'pembayaran' && $row->source_id) {
+            $pembayaran = Pembayaran::find($row->source_id);
+            $nominalBaru = (float) ($this->editNominal ?? 0);
+            $potonganBaru = (float) ($this->editPotongan ?? 0);
+
+            if ($pembayaran && $pembayaran->tagihan_id) {
+                $tagihan = Tagihan::find($pembayaran->tagihan_id);
+                if ($tagihan) {
+                    $oldNominal = (float) $pembayaran->nominal;
+                    $maxAllowed = (float) $tagihan->nominal_tagihan + $oldNominal;
+                    if (($nominalBaru + $potonganBaru) > $maxAllowed && abs(($nominalBaru + $potonganBaru) - $maxAllowed) > 1) {
+                        $this->editError = 'Nominal bayar (Rp ' . number_format($nominalBaru, 0, ',', '.')
+                            . ') + potongan (Rp ' . number_format($potonganBaru, 0, ',', '.')
+                            . ') melebihi batas maksimal (Rp ' . number_format($maxAllowed, 0, ',', '.')
+                            . ') untuk pembayaran ini.';
+                        return;
+                    }
+                }
+            } else {
+                $nominalAwal = (float) ($this->editNominalAwal ?? 0);
+                if (abs(($nominalBaru + $potonganBaru) - $nominalAwal) > 1) {
+                    $this->editError = 'Nominal bayar (Rp ' . number_format($nominalBaru, 0, ',', '.')
+                        . ') + potongan (Rp ' . number_format($potonganBaru, 0, ',', '.')
+                        . ') harus sama dengan total tagihan (Rp ' . number_format($nominalAwal, 0, ',', '.') . ').';
+                    return;
+                }
+            }
+        }
+
         $potonganLama = 0;
         if ($row->source === 'pembayaran' && $row->source_id) {
             $pembayaran = Pembayaran::find($row->source_id);
@@ -356,6 +404,33 @@ class SupervisiKasPage extends Page
                 'nominal'               => (float) $this->editNominal,
                 'potongan'              => (float) ($this->editPotongan ?? 0),
             ]);
+
+            $pembayaranFresh = Pembayaran::find($row->source_id);
+            if ($pembayaranFresh && $pembayaranFresh->tagihan_id) {
+                $tagihan = Tagihan::find($pembayaranFresh->tagihan_id);
+                if ($tagihan) {
+                    $oldNominal = (float) ($dataLama['nominal'] ?? 0);
+                    $newNominal = (float) $pembayaranFresh->nominal;
+                    $newPotongan = (float) ($pembayaranFresh->potongan ?? 0);
+
+                    $nominalTagihanBaru = (float) $tagihan->nominal_tagihan + $oldNominal - $newNominal;
+
+                    if ($nominalTagihanBaru <= 0) {
+                        $tagihan->update([
+                            'nominal_tagihan' => 0,
+                            'status'          => 'lunas',
+                        ]);
+                        if ($pembayaranFresh->status !== 'lunas') {
+                            $pembayaranFresh->update(['status' => 'lunas']);
+                        }
+                    } else {
+                        $tagihan->update([
+                            'nominal_tagihan' => $nominalTagihanBaru,
+                            'status'          => 'belum_bayar',
+                        ]);
+                    }
+                }
+            }
         } elseif ($row->source === 'donasi' && $row->source_id) {
             \App\Models\Donasi::where('id', $row->source_id)->update([
                 'no_ref'                => $this->editNoRef ?: null,
