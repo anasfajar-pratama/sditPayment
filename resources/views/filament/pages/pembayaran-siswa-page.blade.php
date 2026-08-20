@@ -209,14 +209,14 @@
                                     <td class="py-3 text-center">
                                         @role('admin')
                                         <div class="inline-flex items-center gap-1.5">
-                                            @if ($this->isPureSpp($tagihan))
+                                            @if ($this->canEditTagihan($tagihan))
                                             <x-filament::icon-button
                                                 wire:click="mountAction('editNominal', { tagihan_id: {{ $tagihan->id }} })"
                                                 wire:loading.attr="disabled"
                                                 wire:target="mountAction"
                                                 icon="heroicon-o-pencil-square"
                                                 color="gray"
-                                                tooltip="Ubah Nominal SPP per Bulan" />
+                                                tooltip="Ubah Nominal" />
                                             @endif
                                             <x-filament::button
                                                 wire:click="mountAction('bayar', { tagihan_id: {{ $tagihan->id }} })"

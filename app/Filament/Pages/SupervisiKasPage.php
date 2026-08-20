@@ -11,8 +11,12 @@ use Filament\Notifications\Notification;
 use Filament\Pages\Page;
 use Illuminate\Support\Facades\Hash;
 use Livewire\Attributes\Computed;
+use Livewire\WithPagination;
+
 class SupervisiKasPage extends Page
 {
+    use WithPagination;
+
 
     protected static ?string $navigationIcon    = 'heroicon-o-shield-check';
     protected static ?string $navigationGroup   = 'Pembayaran';

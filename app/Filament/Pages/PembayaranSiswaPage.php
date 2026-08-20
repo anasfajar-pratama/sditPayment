@@ -241,9 +241,7 @@ protected static ?string $navigationIcon  = 'heroicon-o-banknotes';
         $jenisDuId  = JenisPembayaran::whereRaw('LOWER(nama) = ?', ['daftar ulang'])->value('id');
         $jenisBpId  = 1; // Daftar Masuk (Biaya Pendaftaran)
 
-        $isNewEntry = $this->filterJenisSekolah === 'PAUD'
-            || ($this->filterJenisSekolah === 'SD'  && str_starts_with($this->filterKelas, '1'))
-            || ($this->filterJenisSekolah === 'SMP' && str_starts_with($this->filterKelas, '7'));
+        $isNewEntry = $this->isNewEntryMatrix();
 
         // 11 bulan: Agustus s/d Juni (Juli digabung dgn BP/DU)
         $months = [];
@@ -765,9 +763,11 @@ protected static ?string $navigationIcon  = 'heroicon-o-banknotes';
 
                     Placeholder::make('_info_direct')
                         ->label('Pembayaran')
-                        ->content(fn (Get $get) => $isDu($get)
-                            ? 'Daftar Ulang + Juli ' . $get('_tahun')
-                            : 'SPP — ' . $this->getBulanLabel($get('_bulan_dari')) . ' ' . $get('_tahun')),
+                        ->content(fn (Get $get) => match ($get('_jenis')) {
+                            'daftar_masuk' => 'Biaya Pendaftaran — ' . $get('_tahun'),
+                            'daftar_ulang' => 'Daftar Ulang + Juli ' . $get('_tahun'),
+                            default        => 'SPP — ' . $this->getBulanLabel($get('_bulan_dari')) . ' ' . $get('_tahun'),
+                        }),
 
                     // ── SPP: pilihan sampai bulan ──
                     Select::make('sampai_bulan')
@@ -890,7 +890,7 @@ protected static ?string $navigationIcon  = 'heroicon-o-banknotes';
     {
         return Action::make('editNominal')
             ->visible(fn () => auth()->user()->hasRole('admin'))
-            ->modalHeading('Ubah Nominal SPP')
+            ->modalHeading('Ubah Nominal Tagihan')
             ->modalWidth('sm')
             ->modalSubmitActionLabel('Simpan Perubahan')
             ->fillForm(function (array $arguments): array {
@@ -905,8 +905,11 @@ protected static ?string $navigationIcon  = 'heroicon-o-banknotes';
                     if ($jumlahBulan < 1) $jumlahBulan = 1;
                 }
 
+                $tipe = $this->isDaftarUlang($tagihan) ? 'du' : ($this->isDaftarMasuk($tagihan) ? 'bp' : 'spp');
+
                 return [
                     '_tagihan_id'       => $tagihan->id,
+                    '_tipe'             => $tipe,
                     '_jumlah_bulan'     => $jumlahBulan,
                     '_bulan_label'      => $tagihan->bulan
                         ? $this->getBulanLabel($tagihan->bulan) . ' ' . $tagihan->tahun
@@ -916,21 +919,34 @@ protected static ?string $navigationIcon  = 'heroicon-o-banknotes';
             })
             ->form([
                 Hidden::make('_tagihan_id'),
+                Hidden::make('_tipe'),
                 Hidden::make('_jumlah_bulan'),
                 Hidden::make('_bulan_label'),
 
                 Placeholder::make('_info')
                     ->label('Tagihan')
-                    ->content(fn (Get $get) => 'SPP — ' . $get('_bulan_label')
-                        . ((int) $get('_jumlah_bulan') > 1 ? ' (× ' . $get('_jumlah_bulan') . ' bulan)' : '')),
+                    ->content(fn (Get $get) => match ($get('_tipe')) {
+                        'du' => 'Daftar Ulang — ' . $get('_bulan_label'),
+                        'bp' => 'Biaya Pendaftaran — ' . $get('_bulan_label'),
+                        default => 'SPP — ' . $get('_bulan_label')
+                            . ((int) $get('_jumlah_bulan') > 1 ? ' (× ' . $get('_jumlah_bulan') . ' bulan)' : ''),
+                    }),
 
                 TextInput::make('nominal_per_bulan')
-                    ->label('Nominal SPP per Bulan (Rp)')
+                    ->label(fn (Get $get) => match ($get('_tipe')) {
+                        'du' => 'Nominal Daftar Ulang (Rp)',
+                        'bp' => 'Nominal Biaya Pendaftaran (Rp)',
+                        default => 'Nominal SPP per Bulan (Rp)',
+                    })
                     ->numeric()->prefix('Rp')->required()
                     ->live()
-                    ->helperText(fn (Get $get) => (int) $get('_jumlah_bulan') > 1
-                        ? 'Akan dikalikan ' . $get('_jumlah_bulan') . ' bulan'
-                        : 'Nominal untuk 1 bulan SPP'),
+                    ->helperText(fn (Get $get) => match ($get('_tipe')) {
+                        'du' => 'Total Daftar Ulang (sudah termasuk SPP Juli)',
+                        'bp' => 'Total Biaya Pendaftaran',
+                        default => ((int) $get('_jumlah_bulan') > 1
+                            ? 'Akan dikalikan ' . $get('_jumlah_bulan') . ' bulan'
+                            : 'Nominal untuk 1 bulan SPP'),
+                    }),
 
                 Placeholder::make('_total')
                     ->label('Total Tagihan (di tabel)')
@@ -943,10 +959,10 @@ protected static ?string $navigationIcon  = 'heroicon-o-banknotes';
             ->action(function (array $data): void {
                 $tagihan = Tagihan::with('jenisPembayaran')->findOrFail($data['_tagihan_id']);
 
-                if (! $this->isPureSpp($tagihan)) {
+                if (! $this->canEditTagihan($tagihan)) {
                     Notification::make()
                         ->title('Tagihan tidak dapat diedit')
-                        ->body('Hanya tagihan SPP yang bisa diubah nominalnya.')
+                        ->body('Hanya tagihan SPP, atau Daftar Ulang / Biaya Pendaftaran yang belum pernah dibayar/cicil, yang bisa diubah nominalnya.')
                         ->danger()->send();
                     $this->halt();
                     return;
@@ -954,22 +970,29 @@ protected static ?string $navigationIcon  = 'heroicon-o-banknotes';
 
                 $jumlahBulan = max(1, (int) ($data['_jumlah_bulan'] ?? 1));
                 $perBulan    = (float) ($data['nominal_per_bulan'] ?? 0);
+                $tipe        = (string) ($data['_tipe'] ?? 'spp');
+                $isOneTime   = in_array($tipe, ['du', 'bp']);
 
                 if ($perBulan <= 0) {
                     Notification::make()
                         ->title('Nominal tidak valid')
-                        ->body('Nominal per bulan harus lebih dari 0.')
+                        ->body('Nominal harus lebih dari 0.')
                         ->danger()->send();
                     $this->halt();
                     return;
                 }
 
-                $total = $perBulan * $jumlahBulan;
+                $total = $isOneTime ? $perBulan : ($perBulan * $jumlahBulan);
 
                 $detail = $tagihan->detail ?? [];
                 if (count($detail) > 0) {
+                    $targetJenis = match ($tipe) {
+                        'du' => ['DAFTAR ULANG'],
+                        'bp' => ['BIAYA PENDAFTARAN', 'DAFTAR MASUK'],
+                        default => ['SPP'],
+                    };
                     foreach ($detail as &$item) {
-                        if (strtoupper($item['jenis'] ?? '') === 'SPP') {
+                        if (in_array(strtoupper($item['jenis'] ?? ''), $targetJenis)) {
                             $item['nominal'] = $perBulan;
                         }
                     }
@@ -981,11 +1004,17 @@ protected static ?string $navigationIcon  = 'heroicon-o-banknotes';
 
                 unset($this->tagihans, $this->history, $this->riwayatPerTahun, $this->sppMatrixKelas);
 
+                $body = match ($tipe) {
+                    'du' => 'Daftar Ulang: Rp ' . number_format($total, 0, ',', '.'),
+                    'bp' => 'Biaya Pendaftaran: Rp ' . number_format($total, 0, ',', '.'),
+                    default => 'SPP: Rp ' . number_format($perBulan, 0, ',', '.')
+                        . ($jumlahBulan > 1 ? ' × ' . $jumlahBulan . ' bulan' : '')
+                        . ' — Total: Rp ' . number_format($total, 0, ',', '.'),
+                };
+
                 Notification::make()
                     ->title('Nominal tagihan diperbarui ✓')
-                    ->body('SPP: Rp ' . number_format($perBulan, 0, ',', '.')
-                        . ($jumlahBulan > 1 ? ' × ' . $jumlahBulan . ' bulan' : '')
-                        . ' — Total: Rp ' . number_format($total, 0, ',', '.'))
+                    ->body($body)
                     ->success()->send();
             });
     }
@@ -1259,9 +1288,7 @@ protected static ?string $navigationIcon  = 'heroicon-o-banknotes';
         $jenisDuId  = JenisPembayaran::whereRaw('LOWER(nama) = ?', ['daftar ulang'])->value('id');
         $unpaid     = [];
 
-        $isNewEntry = $this->filterJenisSekolah === 'PAUD'
-            || ($this->filterJenisSekolah === 'SD'  && str_starts_with($this->filterKelas, '1'))
-            || ($this->filterJenisSekolah === 'SMP' && str_starts_with($this->filterKelas, '7'));
+        $isNewEntry = $this->isNewEntryMatrix();
 
         if ($isNewEntry) {
             $bpPaid = Pembayaran::where('siswa_id', $siswaId)
@@ -1533,10 +1560,15 @@ protected static ?string $navigationIcon  = 'heroicon-o-banknotes';
                     ];
                 }
 
-                $jenisNama = collect($detail)->contains('jenis', 'SPP')
-                    ? 'spp'
-                    : strtolower($detail[0]['jenis'] ?? 'spp');
-                $jenisPembayaranId = JenisPembayaran::whereRaw('LOWER(nama) = ?', [$jenisNama])->value('id');
+                $hasSpp = collect($detail)->contains(fn ($item) => strtoupper($item['jenis'] ?? '') === 'SPP');
+
+                if ($hasSpp) {
+                    $jenisPembayaranId = JenisPembayaran::whereRaw('LOWER(nama) = ?', ['spp'])->value('id');
+                } elseif ($isNewEntry) {
+                    $jenisPembayaranId = 1; // Daftar Masuk (Biaya Pendaftaran)
+                } else {
+                    $jenisPembayaranId = JenisPembayaran::whereRaw('LOWER(nama) = ?', ['daftar ulang'])->value('id');
+                }
 
                 $bulanTagihan = null;
                 foreach ($detail as $item) {
@@ -1616,7 +1648,7 @@ public function buatTagihanBulanAction(): Action
                     ->label('Jenis')
                     ->content(fn (Get $get) => $get('bulan')
                         ? $this->getBulanLabel($get('bulan')) . ' ' . $get('tahun')
-                        : 'Daftar Ulang ' . $get('tahun'))
+                        : ($this->isNewEntryMatrix() ? 'Biaya Pendaftaran ' . $get('tahun') : 'Daftar Ulang ' . $get('tahun')))
                     ->extraAttributes(['class' => '!font-semibold']),
 
                 Placeholder::make('_kelas')
@@ -1624,7 +1656,9 @@ public function buatTagihanBulanAction(): Action
                     ->content(fn () => $this->filterJenisSekolah . ' — ' . $this->filterKelas),
 
                 TextInput::make('nominal')
-                    ->label(fn (Get $get) => $get('bulan') ? 'Nominal SPP (Rp)' : 'Nominal Daftar Ulang (Rp)')
+                    ->label(fn (Get $get) => $get('bulan')
+                        ? 'Nominal SPP (Rp)'
+                        : ($this->isNewEntryMatrix() ? 'Nominal Biaya Pendaftaran (Rp)' : 'Nominal Daftar Ulang (Rp)'))
                     ->numeric()
                     ->prefix('Rp')
                     ->required()
@@ -1642,7 +1676,9 @@ public function buatTagihanBulanAction(): Action
                     return;
                 }
 
-                $jenisNama = $isDu ? 'daftar ulang' : 'spp';
+                $isNewEntry = $this->isNewEntryMatrix();
+
+                $jenisNama = $isDu ? ($isNewEntry ? 'daftar masuk' : 'daftar ulang') : 'spp';
                 $jenisId   = JenisPembayaran::whereRaw('LOWER(nama) = ?', [$jenisNama])->value('id');
 
                 $siswaIds = Siswa::where('status_aktif', true)
@@ -1695,7 +1731,9 @@ public function buatTagihanBulanAction(): Action
 
                 unset($this->sppMatrixKelas);
 
-                $label   = $isDu ? 'Daftar Ulang ' . $tahun : $this->getBulanLabel($bulan) . ' ' . $tahun;
+                $label   = $isDu
+                    ? ($isNewEntry ? 'Biaya Pendaftaran ' . $tahun : 'Daftar Ulang ' . $tahun)
+                    : $this->getBulanLabel($bulan) . ' ' . $tahun;
                 $jumlah  = count($needTagihanIds);
 
                 Notification::make()
@@ -1734,6 +1772,13 @@ public function buatTagihanBulanAction(): Action
         return $now->month >= 7 ? $now->year : $now->year - 1;
     }
 
+    protected function isNewEntryMatrix(): bool
+    {
+        return $this->filterJenisSekolah === 'PAUD'
+            || ($this->filterJenisSekolah === 'SD'  && str_starts_with($this->filterKelas, '1'))
+            || ($this->filterJenisSekolah === 'SMP' && str_starts_with($this->filterKelas, '7'));
+    }
+
     public function isSpp(Tagihan $tagihan): bool
     {
         return $this->isSppByJenis($tagihan->jenisPembayaran?->nama);
@@ -1754,6 +1799,41 @@ public function buatTagihanBulanAction(): Action
 
         return collect($detail)
             ->every(fn ($item) => strtoupper($item['jenis'] ?? '') === 'SPP');
+    }
+
+    public function isDaftarUlangByJenis(?string $nama): bool
+    {
+        return strtolower($nama ?? '') === 'daftar ulang';
+    }
+
+    public function isDaftarUlang(Tagihan $tagihan): bool
+    {
+        return $this->isDaftarUlangByJenis($tagihan->jenisPembayaran?->nama);
+    }
+
+    public function isDaftarMasukByJenis(?string $nama): bool
+    {
+        return strtolower($nama ?? '') === 'daftar masuk';
+    }
+
+    public function isDaftarMasuk(Tagihan $tagihan): bool
+    {
+        return $this->isDaftarMasukByJenis($tagihan->jenisPembayaran?->nama);
+    }
+
+    public function canEditTagihan(Tagihan $tagihan): bool
+    {
+        if ($this->isPureSpp($tagihan)) {
+            return true;
+        }
+
+        $oneTime = $this->isDaftarUlang($tagihan) || $this->isDaftarMasuk($tagihan);
+
+        if ($oneTime) {
+            return ! Pembayaran::where('tagihan_id', $tagihan->id)->exists();
+        }
+
+        return false;
     }
 
     public function getBulanLabel(string $bulan): string

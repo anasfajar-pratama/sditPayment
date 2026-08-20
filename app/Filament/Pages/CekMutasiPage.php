@@ -9,9 +9,12 @@ use Filament\Pages\Page;
 use Illuminate\Support\Facades\Hash;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\On;
+use Livewire\WithPagination;
 
 class CekMutasiPage extends Page
 {
+    use WithPagination;
+
     protected static ?string $navigationIcon    = 'heroicon-o-clipboard-document-list';
     protected static ?string $navigationGroup   = 'Pembayaran';
     protected static ?string $navigationLabel   = 'Cek Mutasi';

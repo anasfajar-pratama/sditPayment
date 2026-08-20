@@ -311,16 +311,16 @@ class KasHarianPage extends Page
 
         $subKelompok = $akun->sub_kelompok ?? 'Operasional';
 
-        if ($subKelompok === 'Upah') {
-            return KasHarian::whereNotNull('sub_kategori')
-                ->whereHas('akun', fn ($q) => $q->where('sub_kelompok', 'Upah'))
-                ->distinct()->orderBy('sub_kategori')
-                ->pluck('sub_kategori')
-                ->mapWithKeys(fn ($v) => [$v => $v])
-                ->toArray();
-        }
-
         $opts = static::SUB_KATEGORI[$subKelompok] ?? [];
+
+        $used = KasHarian::whereNotNull('sub_kategori')
+            ->whereHas('akun', fn ($q) => $q->where('sub_kelompok', $subKelompok))
+            ->distinct()->orderBy('sub_kategori')
+            ->pluck('sub_kategori')
+            ->toArray();
+
+        $opts = array_values(array_unique(array_merge($opts, $used)));
+
         return array_combine($opts, $opts);
     }
 
@@ -397,11 +397,13 @@ class KasHarianPage extends Page
                     ->visible(fn (Get $get) => Akun::find($get('akun_id'))?->kelompok === 'Beban')
                     ->live()
                     ->searchable()
-                    ->createOptionForm(fn (Get $get) => Akun::find($get('akun_id'))?->sub_kelompok === 'Upah'
-                        ? [TextInput::make('nama')->label('Nama Sub Kategori Baru')->required()->placeholder('Contoh: SD, SMP, PAUD')]
-                        : []
-                    )
-                    ->createOptionUsing(fn (array $data) => $data['nama'])
+                    ->createOptionForm([
+                        TextInput::make('nama')
+                            ->label('Nama Sub Kategori Baru')
+                            ->required()
+                            ->placeholder('Contoh: KEGIATAN TAHUNAN, OPERASIONAL LAIN'),
+                    ])
+                    ->createOptionUsing(fn (array $data) => data_get($data, 'nama'))
                     ->nullable(),
 
                 Textarea::make('uraian')
@@ -626,11 +628,13 @@ class KasHarianPage extends Page
                         ->visible(fn (Get $get) => Akun::find($get('akun_id'))?->kelompok === 'Beban')
                         ->live()
                         ->searchable()
-                        ->createOptionForm(fn (Get $get) => Akun::find($get('akun_id'))?->sub_kelompok === 'Upah'
-                            ? [TextInput::make('nama')->label('Nama Sub Kategori Baru')->required()->placeholder('Contoh: SD, SMP, PAUD')]
-                            : []
-                        )
-                        ->createOptionUsing(fn (array $data) => $data['nama'])
+                        ->createOptionForm([
+                            TextInput::make('nama')
+                                ->label('Nama Sub Kategori Baru')
+                                ->required()
+                                ->placeholder('Contoh: KEGIATAN TAHUNAN, OPERASIONAL LAIN'),
+                        ])
+                        ->createOptionUsing(fn (array $data) => data_get($data, 'nama'))
                         ->nullable(),
 
                     Textarea::make('uraian')
