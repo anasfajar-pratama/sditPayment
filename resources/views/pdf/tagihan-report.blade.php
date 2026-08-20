@@ -129,6 +129,9 @@
                 @php
                     $siswa = $t->siswa;
                     $namaSiswa = $siswa->nama ?? '-';
+                    $nominalTampil = $t->status === 'lunas'
+                        ? (float) ($t->pembayarans_sum_nominal ?? 0) + (float) ($t->pembayarans_sum_potongan ?? 0)
+                        : (float) $t->nominal_tagihan;
                 @endphp
                 <tr>
                     <td>{{ $loop->iteration }}</td>
@@ -139,7 +142,7 @@
                     <td>{{ $t->jenisPembayaran?->nama ?? '-' }}</td>
                     <td>{{ $bulanLabels[$t->bulan] ?? $t->bulan }}</td>
                     <td>{{ $t->tahun }}</td>
-                    <td class="text-right">Rp {{ number_format($t->nominal_tagihan, 0, ',', '.') }}</td>
+                    <td class="text-right">Rp {{ number_format($nominalTampil, 0, ',', '.') }}</td>
                     <td class="text-center">
                         <span class="{{ $t->status === 'lunas' ? 'badge-lunas' : 'badge-belum' }}">
                             {{ $t->status === 'lunas' ? 'Lunas' : 'Belum Bayar' }}
@@ -155,7 +158,9 @@
     </table>
 
     @php
-        $totalNominal = $tagihans->sum('nominal_tagihan');
+        $totalNominal = $tagihans->sum(fn ($t) => $t->status === 'lunas'
+            ? (float) ($t->pembayarans_sum_nominal ?? 0) + (float) ($t->pembayarans_sum_potongan ?? 0)
+            : (float) $t->nominal_tagihan);
         $countLunas = $tagihans->where('status', 'lunas')->count();
         $countBelum = $tagihans->where('status', 'belum_bayar')->count();
     @endphp

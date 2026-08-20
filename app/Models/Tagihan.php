@@ -54,4 +54,9 @@ class Tagihan extends Model
         // atau kalau ada kolom status di pembayaran:
         // return $this->hasOne(Pembayaran::class)->where('status', 'lunas');
     }
+
+    public function pembayarans()
+    {
+        return $this->hasMany(Pembayaran::class);
+    }
 }
