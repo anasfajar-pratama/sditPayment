@@ -1427,10 +1427,23 @@ protected static ?string $navigationIcon  = 'heroicon-o-banknotes';
                     ];
                 }
 
+                $jenisNama = collect($detail)->contains('jenis', 'SPP')
+                    ? 'spp'
+                    : strtolower($detail[0]['jenis'] ?? 'spp');
+                $jenisPembayaranId = JenisPembayaran::whereRaw('LOWER(nama) = ?', [$jenisNama])->value('id');
+
+                $bulanTagihan = null;
+                foreach ($detail as $item) {
+                    if (($item['jenis'] ?? '') === 'SPP' && !empty($item['bulan'])) {
+                        $bulanTagihan = $item['bulan'];
+                        break;
+                    }
+                }
+
                 $tagihan = Tagihan::create([
                     'siswa_id'            => $siswaId,
-                    'jenis_pembayaran_id' => null,
-                    'bulan'               => null,
+                    'jenis_pembayaran_id' => $jenisPembayaranId,
+                    'bulan'               => $bulanTagihan,
                     'tahun'               => $tahun,
                     'nominal_tagihan'     => $total,
                     'status'              => 'belum_bayar',
