@@ -91,4 +91,9 @@ class PengeluaranSosialPage extends Page
     {
         return array_sum($this->ringkasan);
     }
+
+    public static function canAccess(): bool
+    {
+        return auth()->user()->hasRole('admin');
+    }
 }

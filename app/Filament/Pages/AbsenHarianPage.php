@@ -133,4 +133,9 @@ class AbsenHarianPage extends Page
                  'Wednesday'=>'Rabu','Thursday'=>'Kamis','Friday'=>'Jumat','Saturday'=>'Sabtu'];
         return ($hari[$tgl->format('l')] ?? '') . ', ' . $tgl->format('d F Y');
     }
+
+    public static function canAccess(): bool
+    {
+        return auth()->user()->hasRole('admin');
+    }
 }

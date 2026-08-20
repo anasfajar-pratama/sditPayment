@@ -402,4 +402,9 @@ class SupervisiKasPage extends Page
         if (! $this->logDetailId) return null;
         return LogDanaMasuk::find($this->logDetailId);
     }
+
+    public static function canAccess(): bool
+    {
+        return auth()->user()->hasRole('admin');
+    }
 }

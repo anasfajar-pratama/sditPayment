@@ -250,4 +250,9 @@ protected static ?string $navigationIcon    = 'heroicon-o-home';
             '09' => 'Sep', '10' => 'Okt', '11' => 'Nov', '12' => 'Des',
         ][$bulan] ?? $bulan;
     }
+
+    public static function canAccess(): bool
+    {
+        return auth()->user()->hasRole('admin');
+    }
 }

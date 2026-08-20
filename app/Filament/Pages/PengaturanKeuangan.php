@@ -119,4 +119,9 @@ class PengaturanKeuangan extends Page implements HasForms, HasTable
                 DeleteAction::make('hapusRekening'),
             ]);
     }
+
+    public static function canAccess(): bool
+    {
+        return auth()->user()->hasRole('admin');
+    }
 }

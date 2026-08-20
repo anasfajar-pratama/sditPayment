@@ -127,4 +127,9 @@ class DonaturResource extends Resource
             'detail' => Pages\DetailDonatur::route('/{record}/detail'),
         ];
     }
+
+    public static function canAccess(): bool
+    {
+        return auth()->user()->hasRole('admin');
+    }
 }

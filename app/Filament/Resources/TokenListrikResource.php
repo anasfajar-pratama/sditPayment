@@ -198,4 +198,9 @@ class TokenListrikResource extends Resource
             'detail' => Pages\DetailTokenListrik::route('/{record}/detail'),
         ];
     }
+
+    public static function canAccess(): bool
+    {
+        return auth()->user()->hasRole('admin');
+    }
 }

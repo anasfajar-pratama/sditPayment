@@ -313,4 +313,9 @@ class KaryawanResource extends Resource
             'edit'   => Pages\EditKaryawan::route('/{record}/edit'),
         ];
     }
+
+    public static function canAccess(): bool
+    {
+        return auth()->user()->hasRole('admin');
+    }
 }

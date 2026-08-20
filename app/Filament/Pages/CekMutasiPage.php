@@ -192,4 +192,9 @@ class CekMutasiPage extends Page
 
         Notification::make()->title("{$updated} transaksi berhasil diverifikasi")->success()->send();
     }
+
+    public static function canAccess(): bool
+    {
+        return auth()->user()->hasRole('admin');
+    }
 }

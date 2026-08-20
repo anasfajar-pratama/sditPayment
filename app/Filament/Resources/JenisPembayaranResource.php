@@ -62,4 +62,9 @@ class JenisPembayaranResource extends Resource
             'edit' => Pages\EditJenisPembayaran::route('/{record}/edit'),
         ];
     }
+
+    public static function canAccess(): bool
+    {
+        return auth()->user()->hasRole('admin');
+    }
 }

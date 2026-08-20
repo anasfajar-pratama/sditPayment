@@ -398,4 +398,9 @@ class KenaikanKelasPage extends Page
 
         return $actions;
     }
+
+    public static function canAccess(): bool
+    {
+        return auth()->user()->hasRole('admin');
+    }
 }
