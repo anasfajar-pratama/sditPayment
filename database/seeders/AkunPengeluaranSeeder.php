@@ -63,6 +63,8 @@ class AkunPengeluaranSeeder extends Seeder
             ['kode_akun' => '4106', 'nama_akun' => 'Pendapatan Token AC Sosial',    'kelompok' => 'Pendapatan', 'tipe' => 'KREDIT', 'is_active' => 1],
             ['kode_akun' => '4105', 'nama_akun' => 'Pendapatan Koperasi & Atribut', 'kelompok' => 'Pendapatan', 'tipe' => 'KREDIT', 'is_active' => 1],
             ['kode_akun' => '4107', 'nama_akun' => 'Pendapatan CATERING', 'kelompok' => 'Pendapatan', 'tipe' => 'KREDIT', 'is_active' => 1],
+            ['kode_akun' => '4108', 'nama_akun' => 'Pendapatan Donasi Sosial', 'kelompok' => 'Pendapatan', 'tipe' => 'KREDIT', 'is_active' => 1],
+            ['kode_akun' => '4109', 'nama_akun' => 'Pendapatan Administrasi DTA', 'kelompok' => 'Pendapatan', 'tipe' => 'KREDIT', 'is_active' => 1],
         ];
 
         foreach ($newAkun as $a) {
