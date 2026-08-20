@@ -136,7 +136,7 @@
                     <td>{{ $namaSiswa }}</td>
                     <td>{{ optional($siswa->kelasSaatIni)->jenis_sekolah ?? optional($siswa)->calon_jenis ?? '-' }}</td>
                     <td>{{ optional($siswa->kelasSaatIni)->kelas ?? '-' }}</td>
-                    <td>{{ $t->jenisPembayaran->nama ?? '-' }}</td>
+                    <td>{{ $t->jenisPembayaran?->nama ?? '-' }}</td>
                     <td>{{ $bulanLabels[$t->bulan] ?? $t->bulan }}</td>
                     <td>{{ $t->tahun }}</td>
                     <td class="text-right">Rp {{ number_format($t->nominal_tagihan, 0, ',', '.') }}</td>

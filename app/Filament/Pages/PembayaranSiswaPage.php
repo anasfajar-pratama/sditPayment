@@ -896,7 +896,7 @@ protected static ?string $navigationIcon  = 'heroicon-o-banknotes';
             $tagihan->update(['nominal_tagihan' => $tagihan->nominal_tagihan - $nominal]);
         }
 
-        $jenisNama  = $tagihan->jenisPembayaran->nama;
+        $jenisNama  = $tagihan->jenisPembayaran?->nama ?? '—';
         $bulanLabel = $tagihan->bulan ? " ({$this->getBulanLabel($tagihan->bulan)})" : '';
 
         Notification::make()
@@ -1130,7 +1130,7 @@ protected static ?string $navigationIcon  = 'heroicon-o-banknotes';
     {
         $namaBulan = fn ($b) => $this->getBulanLabel($b);
         $rekap = function (Get $get, Set $set) {
-            $nominalDu    = (float) ($get('nominal_du') ?? 0);
+            $nominalDu    = $get('du_checked') ? (float) ($get('nominal_du') ?? 0) : 0;
             $sppPerBulan  = (float) ($get('nominal_spp_per_bulan') ?? 0);
             $checkedCount = 0;
             foreach (['08','09','10','11','12','01','02','03','04','05','06'] as $b) {
@@ -1147,15 +1147,43 @@ protected static ?string $navigationIcon  = 'heroicon-o-banknotes';
             ->fillForm(function (array $arguments): array {
                 $siswa = Siswa::with('kelasSaatIni')->findOrFail($arguments['siswa_id']);
                 $tahunMulai = $this->akademikTahunMulai();
+
+                $kelas   = $siswa->kelasSaatIni?->kelas ?? '';
+                $jenjang = $siswa->kelasSaatIni?->jenis_sekolah ?? $siswa->calon_jenis ?? '';
+                $isNewEntry = $siswa->is_calon
+                    || $jenjang === 'PAUD'
+                    || ($jenjang === 'SD'  && str_starts_with($kelas, '1'))
+                    || ($jenjang === 'SMP' && str_starts_with($kelas, '7'));
+
+                $jenisDuId = JenisPembayaran::whereRaw('LOWER(nama) = ?', ['daftar ulang'])->value('id');
+                $bpPaid   = Pembayaran::where('siswa_id', $siswa->id)->where('jenis_pembayaran_id', 1)->whereIn('status', ['lunas', 'cicilan'])->exists();
+                $duPaid   = Pembayaran::where('siswa_id', $siswa->id)->where('jenis_pembayaran_id', $jenisDuId)->where('tahun', $tahunMulai)->whereIn('status', ['lunas', 'cicilan'])->exists();
+                $duBpPaid = $isNewEntry ? $bpPaid : $duPaid;
+
+                $jenisSppId = JenisPembayaran::whereRaw('LOWER(nama) = ?', ['spp'])->value('id');
+                $sppPaid = [];
+                foreach (['08','09','10','11','12','01','02','03','04','05','06'] as $b) {
+                    $t = (int) $b <= 6 ? $tahunMulai + 1 : $tahunMulai;
+                    $sppPaid['bulan_' . $b] = Pembayaran::where('siswa_id', $siswa->id)
+                        ->where('jenis_pembayaran_id', $jenisSppId)
+                        ->where('bulan', $b)
+                        ->where('tahun', (string) $t)
+                        ->whereIn('status', ['lunas', 'cicilan'])
+                        ->exists();
+                }
+
                 $data = [
                     '_siswa_id' => $siswa->id,
                     '_tahun'    => (string) $tahunMulai,
                     '_total_tagihan' => 0,
+                    '_is_new_entry' => $isNewEntry,
+                    '_du_bp_paid' => $duBpPaid,
                     'nominal_du' => null,
                     'nominal_spp_per_bulan' => null,
                 ];
                 foreach (['08','09','10','11','12','01','02','03','04','05','06'] as $b) {
                     $data['bulan_' . $b] = false;
+                    $data['_spp_paid_' . $b] = $sppPaid['bulan_' . $b];
                 }
                 $data['du_checked'] = false;
                 return $data;
@@ -1164,6 +1192,19 @@ protected static ?string $navigationIcon  = 'heroicon-o-banknotes';
                 Hidden::make('_siswa_id'),
                 Hidden::make('_tahun'),
                 Hidden::make('_total_tagihan'),
+                Hidden::make('_is_new_entry'),
+                Hidden::make('_du_bp_paid'),
+                Hidden::make('_spp_paid_08'),
+                Hidden::make('_spp_paid_09'),
+                Hidden::make('_spp_paid_10'),
+                Hidden::make('_spp_paid_11'),
+                Hidden::make('_spp_paid_12'),
+                Hidden::make('_spp_paid_01'),
+                Hidden::make('_spp_paid_02'),
+                Hidden::make('_spp_paid_03'),
+                Hidden::make('_spp_paid_04'),
+                Hidden::make('_spp_paid_05'),
+                Hidden::make('_spp_paid_06'),
 
                 Placeholder::make('_info_siswa')
                     ->label('Siswa')
@@ -1171,33 +1212,33 @@ protected static ?string $navigationIcon  = 'heroicon-o-banknotes';
 
                 \Filament\Forms\Components\Section::make('Pilih Tagihan')
                     ->schema([
-                        // DU checkbox
                         \Filament\Forms\Components\Checkbox::make('du_checked')
-                            ->label('Daftar Ulang + Juli')
+                            ->label(fn (Get $get) => $get('_is_new_entry') ? 'Biaya Pendaftaran' : 'Daftar Ulang + Juli')
                             ->live()
-                            ->afterStateUpdated($rekap),
+                            ->afterStateUpdated($rekap)
+                            ->visible(fn (Get $get) => !$get('_du_bp_paid')),
 
                         TextInput::make('nominal_du')
-                            ->label('Nominal Daftar Ulang (Rp)')
+                            ->label(fn (Get $get) => $get('_is_new_entry') ? 'Nominal Biaya Pendaftaran (Rp)' : 'Nominal Daftar Ulang (Rp)')
                             ->numeric()->prefix('Rp')->default(null)
-                            ->visible(fn (Get $get) => $get('du_checked'))
+                            ->visible(fn (Get $get) => $get('du_checked') && !$get('_du_bp_paid'))
                             ->lazy()
                             ->afterStateUpdated($rekap)
-                            ->helperText('Sudah termasuk SPP Juli'),
+                            ->helperText(fn (Get $get) => $get('_is_new_entry') ? '' : 'Sudah termasuk SPP Juli'),
 
                         \Filament\Forms\Components\Grid::make(4)
                             ->schema([
-                                \Filament\Forms\Components\Checkbox::make('bulan_08')->label('Agu')->live()->afterStateUpdated($rekap),
-                                \Filament\Forms\Components\Checkbox::make('bulan_09')->label('Sep')->live()->afterStateUpdated($rekap),
-                                \Filament\Forms\Components\Checkbox::make('bulan_10')->label('Okt')->live()->afterStateUpdated($rekap),
-                                \Filament\Forms\Components\Checkbox::make('bulan_11')->label('Nov')->live()->afterStateUpdated($rekap),
-                                \Filament\Forms\Components\Checkbox::make('bulan_12')->label('Des')->live()->afterStateUpdated($rekap),
-                                \Filament\Forms\Components\Checkbox::make('bulan_01')->label('Jan')->live()->afterStateUpdated($rekap),
-                                \Filament\Forms\Components\Checkbox::make('bulan_02')->label('Feb')->live()->afterStateUpdated($rekap),
-                                \Filament\Forms\Components\Checkbox::make('bulan_03')->label('Mar')->live()->afterStateUpdated($rekap),
-                                \Filament\Forms\Components\Checkbox::make('bulan_04')->label('Apr')->live()->afterStateUpdated($rekap),
-                                \Filament\Forms\Components\Checkbox::make('bulan_05')->label('Mei')->live()->afterStateUpdated($rekap),
-                                \Filament\Forms\Components\Checkbox::make('bulan_06')->label('Jun')->live()->afterStateUpdated($rekap),
+                                \Filament\Forms\Components\Checkbox::make('bulan_08')->label('Agu')->live()->afterStateUpdated($rekap)->visible(fn (Get $get) => !$get('_spp_paid_08')),
+                                \Filament\Forms\Components\Checkbox::make('bulan_09')->label('Sep')->live()->afterStateUpdated($rekap)->visible(fn (Get $get) => !$get('_spp_paid_09')),
+                                \Filament\Forms\Components\Checkbox::make('bulan_10')->label('Okt')->live()->afterStateUpdated($rekap)->visible(fn (Get $get) => !$get('_spp_paid_10')),
+                                \Filament\Forms\Components\Checkbox::make('bulan_11')->label('Nov')->live()->afterStateUpdated($rekap)->visible(fn (Get $get) => !$get('_spp_paid_11')),
+                                \Filament\Forms\Components\Checkbox::make('bulan_12')->label('Des')->live()->afterStateUpdated($rekap)->visible(fn (Get $get) => !$get('_spp_paid_12')),
+                                \Filament\Forms\Components\Checkbox::make('bulan_01')->label('Jan')->live()->afterStateUpdated($rekap)->visible(fn (Get $get) => !$get('_spp_paid_01')),
+                                \Filament\Forms\Components\Checkbox::make('bulan_02')->label('Feb')->live()->afterStateUpdated($rekap)->visible(fn (Get $get) => !$get('_spp_paid_02')),
+                                \Filament\Forms\Components\Checkbox::make('bulan_03')->label('Mar')->live()->afterStateUpdated($rekap)->visible(fn (Get $get) => !$get('_spp_paid_03')),
+                                \Filament\Forms\Components\Checkbox::make('bulan_04')->label('Apr')->live()->afterStateUpdated($rekap)->visible(fn (Get $get) => !$get('_spp_paid_04')),
+                                \Filament\Forms\Components\Checkbox::make('bulan_05')->label('Mei')->live()->afterStateUpdated($rekap)->visible(fn (Get $get) => !$get('_spp_paid_05')),
+                                \Filament\Forms\Components\Checkbox::make('bulan_06')->label('Jun')->live()->afterStateUpdated($rekap)->visible(fn (Get $get) => !$get('_spp_paid_06')),
                             ]),
 
                         TextInput::make('nominal_spp_per_bulan')
@@ -1219,7 +1260,9 @@ protected static ?string $navigationIcon  = 'heroicon-o-banknotes';
                                     if ($get('bulan_' . $b)) $jmlBulan++;
                                 }
                                 $parts = [];
-                                if ($get('du_checked')) $parts[] = 'DU';
+                                if ($get('du_checked')) {
+                                    $parts[] = $get('_is_new_entry') ? 'BP' : 'DU';
+                                }
                                 if ($jmlBulan > 0) $parts[] = $jmlBulan . ' bln SPP';
                                 $label = count($parts) > 0 ? implode(' + ', $parts) : '(belum ada pilihan)';
                                 return 'Rp ' . number_format($total, 0, ',', '.') . ' — ' . $label;
@@ -1230,6 +1273,7 @@ protected static ?string $navigationIcon  = 'heroicon-o-banknotes';
                 $siswaId   = (int) $data['_siswa_id'];
                 $tahun     = $data['_tahun'];
                 $total     = (float) ($data['_total_tagihan'] ?? 0);
+                $isNewEntry = $data['_is_new_entry'] ?? false;
 
                 if ($total <= 0) {
                     Notification::make()->title('Pilih item dan isi nominal terlebih dahulu')->danger()->send();
@@ -1237,15 +1281,17 @@ protected static ?string $navigationIcon  = 'heroicon-o-banknotes';
                     return;
                 }
 
-                // ── Cek duplikasi ──
+                $namaDuBp = $isNewEntry ? 'Biaya Pendaftaran' : 'Daftar Ulang';
+
                 $duplicated = [];
                 if ($data['du_checked'] ?? false) {
+                    $jpIdDuCheck = $isNewEntry ? 1 : JenisPembayaran::whereRaw('LOWER(nama) = ?', ['daftar ulang'])->value('id');
                     $exists = Tagihan::where('siswa_id', $siswaId)
-                        ->where('jenis_pembayaran_id', JenisPembayaran::whereRaw('LOWER(nama) = ?', ['daftar ulang'])->value('id'))
+                        ->where('jenis_pembayaran_id', $jpIdDuCheck)
                         ->where('tahun', $tahun)
                         ->where('status', 'belum_bayar')
                         ->exists();
-                    if ($exists) $duplicated[] = 'Daftar Ulang';
+                    if ($exists) $duplicated[] = $namaDuBp;
                 }
 
                 $checkedMonths = [];
@@ -1273,13 +1319,12 @@ protected static ?string $navigationIcon  = 'heroicon-o-banknotes';
                     return;
                 }
 
-                // ── Build detail JSON ──
                 $detail = [];
 
                 if ($data['du_checked'] ?? false) {
                     $nominalDu = (float) ($data['nominal_du'] ?? 0);
                     $detail[] = [
-                        'jenis'   => 'Daftar Ulang',
+                        'jenis'   => $namaDuBp,
                         'bulan'   => null,
                         'tahun'   => $tahun,
                         'nominal' => $nominalDu,
@@ -1342,6 +1387,138 @@ protected static ?string $navigationIcon  = 'heroicon-o-banknotes';
                     ->send();
 
                 unset($this->sppMatrixKelas);
+            });
+    }
+
+    // ─── Action: Buat Tagihan per bulan dari baris rekap ───────────────────
+public function buatTagihanBulanAction(): Action
+    {
+        return Action::make('buatTagihanBulan')
+            ->modalHeading('Buat Tagihan Bulanan')
+            ->modalWidth('sm')
+            ->modalSubmitActionLabel('Buat & Cetak PDF')
+            ->fillForm(function (array $arguments): array {
+                return [
+                    'bulan'   => $arguments['bulan'],
+                    'tahun'   => $arguments['tahun'],
+                    'nominal' => 0,
+                ];
+            })
+            ->form([
+                \Filament\Forms\Components\Hidden::make('bulan'),
+                \Filament\Forms\Components\Hidden::make('tahun'),
+
+                Placeholder::make('_info')
+                    ->label('Jenis')
+                    ->content(fn (Get $get) => $get('bulan')
+                        ? $this->getBulanLabel($get('bulan')) . ' ' . $get('tahun')
+                        : 'Daftar Ulang ' . $get('tahun'))
+                    ->extraAttributes(['class' => '!font-semibold']),
+
+                Placeholder::make('_kelas')
+                    ->label('Kelas')
+                    ->content(fn () => $this->filterJenisSekolah . ' — ' . $this->filterKelas),
+
+                TextInput::make('nominal')
+                    ->label(fn (Get $get) => $get('bulan') ? 'Nominal SPP (Rp)' : 'Nominal Daftar Ulang (Rp)')
+                    ->numeric()
+                    ->prefix('Rp')
+                    ->required()
+                    ->default(0),
+            ])
+            ->action(function (array $data): void {
+                $bulan   = $data['bulan'];
+                $tahun   = $data['tahun'];
+                $nominal = (float) $data['nominal'];
+                $isDu    = empty($bulan);
+
+                if ($nominal <= 0) {
+                    Notification::make()->title('Nominal tidak valid')->danger()->send();
+                    $this->halt();
+                    return;
+                }
+
+                $jenisNama = $isDu ? 'daftar ulang' : 'spp';
+                $jenisId   = JenisPembayaran::whereRaw('LOWER(nama) = ?', [$jenisNama])->value('id');
+
+                $siswaIds = Siswa::where('status_aktif', true)
+                    ->whereHas('kelasSaatIni', fn($q) => $q
+                        ->where('jenis_sekolah', $this->filterJenisSekolah)
+                        ->where('kelas', $this->filterKelas))
+                    ->pluck('id');
+
+                $queryPaid = Pembayaran::whereIn('siswa_id', $siswaIds)
+                    ->where('jenis_pembayaran_id', $jenisId);
+                if ($isDu) {
+                    $queryPaid->where('tahun', $tahun);
+                } else {
+                    $queryPaid->where('bulan', $bulan)->where('tahun', $tahun);
+                }
+                $paidIds = $queryPaid->whereIn('status', ['lunas', 'cicilan'])
+                    ->pluck('siswa_id')
+                    ->unique();
+
+                $queryExisting = Tagihan::whereIn('siswa_id', $siswaIds)
+                    ->where('jenis_pembayaran_id', $jenisId)
+                    ->where('status', 'belum_bayar');
+                if ($isDu) {
+                    $queryExisting->where('tahun', $tahun);
+                } else {
+                    $queryExisting->where('bulan', $bulan)->where('tahun', $tahun);
+                }
+                $existingTagihanIds = $queryExisting->pluck('siswa_id');
+
+                $needTagihanIds = $siswaIds->diff($paidIds)->diff($existingTagihanIds);
+
+                if ($needTagihanIds->isEmpty()) {
+                    Notification::make()
+                        ->title('Semua siswa sudah memiliki tagihan')
+                        ->warning()
+                        ->send();
+                    return;
+                }
+
+                foreach ($needTagihanIds as $siswaId) {
+                    Tagihan::create([
+                        'siswa_id'            => $siswaId,
+                        'jenis_pembayaran_id' => $jenisId,
+                        'bulan'               => $isDu ? null : $bulan,
+                        'tahun'               => $tahun,
+                        'nominal_tagihan'     => $nominal,
+                        'status'              => 'belum_bayar',
+                    ]);
+                }
+
+                unset($this->sppMatrixKelas);
+
+                $label   = $isDu ? 'Daftar Ulang ' . $tahun : $this->getBulanLabel($bulan) . ' ' . $tahun;
+                $jumlah  = count($needTagihanIds);
+
+                Notification::make()
+                    ->title($jumlah . ' tagihan berhasil dibuat ✓')
+                    ->body($label . ' — Rp ' . number_format($nominal, 0, ',', '.') . ' x ' . $jumlah . ' siswa')
+                    ->success()
+                    ->actions([
+                        \Filament\Notifications\Actions\Action::make('cetak_pdf')
+                            ->label('Cetak PDF')
+                            ->url(route('tagihan.matrix.pdf', [
+                                'jenis_sekolah' => $this->filterJenisSekolah,
+                                'kelas'         => $this->filterKelas,
+                                'bulan'         => $bulan,
+                                'tahun'         => $tahun,
+                            ]), shouldOpenInNewTab: true)
+                            ->color('warning'),
+                        \Filament\Notifications\Actions\Action::make('cetak_csv')
+                            ->label('Cetak CSV')
+                            ->url(route('tagihan.matrix.csv', [
+                                'jenis_sekolah' => $this->filterJenisSekolah,
+                                'kelas'         => $this->filterKelas,
+                                'bulan'         => $bulan,
+                                'tahun'         => $tahun,
+                            ]), shouldOpenInNewTab: true)
+                            ->color('success'),
+                    ])
+                    ->send();
             });
     }
 
