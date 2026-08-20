@@ -24,6 +24,7 @@ use Filament\Forms\Get;
 use Filament\Forms\Set;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
+use Illuminate\Support\Facades\Hash;
 use Livewire\Attributes\Computed;
 
 class PembayaranSiswaPage extends Page
@@ -242,11 +243,15 @@ protected static ?string $navigationIcon  = 'heroicon-o-banknotes';
         $jenisBpId  = 1; // Daftar Masuk (Biaya Pendaftaran)
 
         $isNewEntry = $this->isNewEntryMatrix();
+        $isDta      = strtoupper($this->filterJenisSekolah) === 'DTA';
 
-        // 11 bulan: Agustus s/d Juni (Juli digabung dgn BP/DU)
+        // DTA: 12 bulan Juli s/d Juni (tanpa DU, Juli sebagai SPP biasa)
+        // Lainnya: 11 bulan Agustus s/d Juni (Juli digabung dgn BP/DU)
+        $bulanMulai  = $isDta ? 7 : 8;
+        $jumlahBulan = $isDta ? 12 : 11;
         $months = [];
-        for ($i = 1; $i <= 11; $i++) {
-            $m       = (($i + 6) % 12) + 1;
+        for ($i = 0; $i < $jumlahBulan; $i++) {
+            $m       = (($bulanMulai - 1 + $i) % 12) + 1;
             $t       = $m <= 6 ? $tahunMulai + 1 : $tahunMulai;
             $months[] = [
                 'bulan' => str_pad($m, 2, '0', STR_PAD_LEFT),
@@ -312,10 +317,16 @@ protected static ?string $navigationIcon  = 'heroicon-o-banknotes';
             ->get()
             ->keyBy('siswa_id');
 
-        // ── Batch load BP (Biaya Pendaftaran) tagihan & pembayaran (new entry only) ──
+        // ── Siswa "baru masuk" (kelas entry ATAU punya tagihan BP) → kolom pertama BP ──
+        $baruIds = Tagihan::where('jenis_pembayaran_id', $jenisBpId)
+            ->whereIn('siswa_id', $siswaIds)
+            ->pluck('siswa_id')
+            ->flip();
+
+        // ── Batch load BP (Biaya Pendaftaran) tagihan & pembayaran ──
         $bpTagihan = collect();
         $bpPembayaran = collect();
-        if ($isNewEntry) {
+        if ($isNewEntry || $baruIds->isNotEmpty()) {
             $bpPembayaran = Pembayaran::where('jenis_pembayaran_id', $jenisBpId)
                 ->whereIn('siswa_id', $siswaIds)
                 ->get()
@@ -357,19 +368,23 @@ protected static ?string $navigationIcon  = 'heroicon-o-banknotes';
             $cells          = [];
             $tunggakan      = 0;
             $lunas          = 0;
-            $belumDibayar   = 0;
-            $adaBelumBayar  = false;
+            $belumDibayar  = 0;
+            $adaBelumBayar = false;
+            $isBaruSiswa   = $isNewEntry || isset($baruIds[$siswa->id]);
 
-            // ── Cell BP / Daftar Ulang + Juli ──
-            if ($isNewEntry) {
+            // ── Cell BP / Daftar Ulang + Juli ── (DTA tanpa DU/BP)
+            if ($isDta) {
+                $firstCell = null;
+            } elseif ($isBaruSiswa) {
                 $bpBayarList = $bpPembayaran->get($siswa->id);
                 $bpTagih = $bpTagihan->get($siswa->id);
 
                 if ($bpBayarList && $bpBayarList->isNotEmpty()) {
                     $totalNominal = (float) $bpBayarList->sum('nominal');
                     $latestBayar = $bpBayarList->sortByDesc('tanggal_bayar')->first();
-                    $allLunas = $bpBayarList->every(fn ($p) => $p->status === 'lunas')
-                        || $totalNominal >= ($bpTagih?->nominal_tagihan ?? 0);
+                    $allLunas = $bpTagih
+                        ? $bpTagih->status === 'lunas'
+                        : $bpBayarList->every(fn ($p) => $p->status === 'lunas');
 
                     $firstCell = [
                         'status'  => $allLunas ? 'lunas' : 'cicilan',
@@ -411,8 +426,9 @@ protected static ?string $navigationIcon  = 'heroicon-o-banknotes';
                 if ($duBayarList && $duBayarList->isNotEmpty()) {
                     $totalNominal = (float) $duBayarList->sum('nominal');
                     $latestBayar = $duBayarList->sortByDesc('tanggal_bayar')->first();
-                    $allLunas = $duBayarList->every(fn ($p) => $p->status === 'lunas')
-                        || $totalNominal >= ($duTagih?->nominal_tagihan ?? 0);
+                    $allLunas = $duTagih
+                        ? $duTagih->status === 'lunas'
+                        : $duBayarList->every(fn ($p) => $p->status === 'lunas');
 
                     $firstCell = [
                         'status'  => $allLunas ? 'lunas' : 'cicilan',
@@ -506,6 +522,7 @@ protected static ?string $navigationIcon  = 'heroicon-o-banknotes';
                 'nama'                 => $siswa->nama,
                 'kelas'                => $siswa->kelasSaatIni?->kelas ?? '-',
                 'siswa_id'             => $siswa->id,
+                'is_new_entry'         => $isBaruSiswa,
                 'first_cell'           => $firstCell,
                 'cells'                => $cells,
                 'lunas_count'          => $lunas,
@@ -530,7 +547,7 @@ protected static ?string $navigationIcon  = 'heroicon-o-banknotes';
             $summary[] = ['lunas' => $l, 'tunggakan' => $tk, 'belum_dibayar' => $bd];
         }
 
-        return ['months' => $months, 'rows' => $rows, 'summary' => $summary, 'is_new_entry' => $isNewEntry];
+        return ['months' => $months, 'rows' => $rows, 'summary' => $summary, 'is_new_entry' => $isNewEntry, 'is_dta' => $isDta];
     }
 
     // ─── Action: Bayar (modal dengan form lengkap) ────────────────────────────
@@ -715,7 +732,7 @@ protected static ?string $navigationIcon  = 'heroicon-o-banknotes';
                 $tahunAwal = $this->akademikTahunMulai();
 
                 $startJan = 1;
-                if ($bulanDari >= 8) {
+                if ($bulanDari >= 7) {
                     for ($b = $bulanDari; $b <= 12; $b++) {
                         $label = $this->getBulanLabel(str_pad($b, 2, '0', STR_PAD_LEFT)) . ' ' . $tahunAwal;
                         $bulanOptions[str_pad($b, 2, '0', STR_PAD_LEFT)] = $label;
@@ -968,6 +985,8 @@ protected static ?string $navigationIcon  = 'heroicon-o-banknotes';
                     return;
                 }
 
+                $sebelumEdit = $tagihan->getOriginal();
+
                 $jumlahBulan = max(1, (int) ($data['_jumlah_bulan'] ?? 1));
                 $perBulan    = (float) ($data['nominal_per_bulan'] ?? 0);
                 $tipe        = (string) ($data['_tipe'] ?? 'spp');
@@ -1002,6 +1021,15 @@ protected static ?string $navigationIcon  = 'heroicon-o-banknotes';
 
                 $tagihan->fill(['nominal_tagihan' => $total])->save();
 
+                $sesudahEdit = $tagihan->getAttributes();
+                \App\Models\TagihanLog::catat(
+                    aksi: 'edit',
+                    tagihanId: $tagihan->id,
+                    sebelum: $sebelumEdit,
+                    sesudah: $sesudahEdit,
+                    keterangan: $this->tagihanLogKeterangan($tagihan, 'Edit tagihan'),
+                );
+
                 unset($this->tagihans, $this->history, $this->riwayatPerTahun, $this->sppMatrixKelas);
 
                 $body = match ($tipe) {
@@ -1015,6 +1043,68 @@ protected static ?string $navigationIcon  = 'heroicon-o-banknotes';
                 Notification::make()
                     ->title('Nominal tagihan diperbarui ✓')
                     ->body($body)
+                    ->success()->send();
+            });
+    }
+
+    // ─── Action: Hapus tagihan (verifikasi sandi + belum pernah dibayar) ─────
+
+    public function hapusTagihanAction(): Action
+    {
+        return Action::make('hapusTagihan')
+            ->visible(fn () => auth()->user()->hasRole('admin'))
+            ->modalHeading('Hapus Tagihan')
+            ->modalDescription('Tindakan ini tidak dapat dibatalkan. Hanya bisa dihapus jika tagihan belum dibayar sama sekali.')
+            ->modalSubmitActionLabel('Ya, Hapus')
+            ->color('danger')
+            ->modalWidth('sm')
+            ->fillForm(function (array $arguments): array {
+                $tagihan = Tagihan::with('jenisPembayaran', 'siswa')->findOrFail($arguments['tagihan_id']);
+                return [
+                    '_tagihan_id' => $tagihan->id,
+                    '_info'       => $this->tagihanLogKeterangan($tagihan, 'Tagihan'),
+                    'sandi'       => '',
+                ];
+            })
+            ->form([
+                Hidden::make('_tagihan_id'),
+
+                Placeholder::make('_info')
+                    ->label('Tagihan yang akan dihapus')
+                    ->content(fn (Get $get) => $get('_info')),
+
+                TextInput::make('sandi')
+                    ->label('Konfirmasi Sandi')
+                    ->password()
+                    ->required()
+                    ->helperText('Masukkan sandi akun Anda untuk mengonfirmasi'),
+            ])
+            ->action(function (array $data): void {
+                $tagihan = Tagihan::findOrFail($data['_tagihan_id']);
+
+                if (! Hash::check((string) ($data['sandi'] ?? ''), auth()->user()->password)) {
+                    Notification::make()->title('Sandi salah')->danger()->send();
+                    $this->halt();
+                    return;
+                }
+
+                if (Pembayaran::where('tagihan_id', $tagihan->id)->exists()) {
+                    Notification::make()
+                        ->title('Tagihan tidak bisa dihapus')
+                        ->body('Tagihan ini sudah memiliki pembayaran/cicilan.')
+                        ->danger()->send();
+                    $this->halt();
+                    return;
+                }
+
+                $keterangan = $this->tagihanLogKeterangan($tagihan, 'Hapus tagihan');
+                $tagihan->delete();
+
+                unset($this->tagihans, $this->history, $this->riwayatPerTahun, $this->sppMatrixKelas);
+
+                Notification::make()
+                    ->title('Tagihan dihapus ✓')
+                    ->body($keterangan . ' — tercatat di log tagihan.')
                     ->success()->send();
             });
     }
@@ -1283,28 +1373,34 @@ protected static ?string $navigationIcon  = 'heroicon-o-banknotes';
     protected function checkPreviousUnpaid(int $siswaId, string $bulan, string $tahun): ?string
     {
         $tahunMulai = (int) $bulan <= 6 ? (int) $tahun - 1 : (int) $tahun;
-        $allMonths  = ['08','09','10','11','12','01','02','03','04','05','06'];
+        $isDta      = strtoupper($this->filterJenisSekolah) === 'DTA';
+        $allMonths  = $isDta
+            ? ['07','08','09','10','11','12','01','02','03','04','05','06']
+            : ['08','09','10','11','12','01','02','03','04','05','06'];
         $jenisSppId = JenisPembayaran::whereRaw('LOWER(nama) = ?', ['spp'])->value('id');
         $jenisDuId  = JenisPembayaran::whereRaw('LOWER(nama) = ?', ['daftar ulang'])->value('id');
         $unpaid     = [];
 
-        $isNewEntry = $this->isNewEntryMatrix();
+        $isNewEntry = $this->isNewEntryMatrix()
+            || Tagihan::where('siswa_id', $siswaId)->where('jenis_pembayaran_id', 1)->exists();
 
-        if ($isNewEntry) {
-            $bpPaid = Pembayaran::where('siswa_id', $siswaId)
-                ->where('jenis_pembayaran_id', 1)
-                ->where('status', 'lunas')
-                ->exists();
-            if (!$bpPaid) {
-                $unpaid[] = 'Biaya Pendaftaran';
-            }
-        } else {
-            $duPaid = Pembayaran::where('siswa_id', $siswaId)
-                ->where('jenis_pembayaran_id', $jenisDuId)
-                ->where('tahun', (string) $tahunMulai)
-                ->exists();
-            if (!$duPaid) {
-                $unpaid[] = 'Daftar Ulang ' . $tahunMulai . '/' . ($tahunMulai + 1);
+        if (!$isDta) {
+            if ($isNewEntry) {
+                $bpPaid = Pembayaran::where('siswa_id', $siswaId)
+                    ->where('jenis_pembayaran_id', 1)
+                    ->whereIn('status', ['lunas', 'cicilan'])
+                    ->exists();
+                if (!$bpPaid) {
+                    $unpaid[] = 'Biaya Pendaftaran';
+                }
+            } else {
+                $duPaid = Pembayaran::where('siswa_id', $siswaId)
+                    ->where('jenis_pembayaran_id', $jenisDuId)
+                    ->where('tahun', (string) $tahunMulai)
+                    ->exists();
+                if (!$duPaid) {
+                    $unpaid[] = 'Daftar Ulang ' . $tahunMulai . '/' . ($tahunMulai + 1);
+                }
             }
         }
 
@@ -1370,7 +1466,8 @@ protected static ?string $navigationIcon  = 'heroicon-o-banknotes';
                 $isNewEntry = $siswa->is_calon
                     || $jenjang === 'PAUD'
                     || ($jenjang === 'SD'  && str_starts_with($kelas, '1'))
-                    || ($jenjang === 'SMP' && str_starts_with($kelas, '7'));
+                    || ($jenjang === 'SMP' && str_starts_with($kelas, '7'))
+                    || Tagihan::where('siswa_id', $siswa->id)->where('jenis_pembayaran_id', 1)->exists();
 
                 $jenisDuId = JenisPembayaran::whereRaw('LOWER(nama) = ?', ['daftar ulang'])->value('id');
                 $bpPaid   = Pembayaran::where('siswa_id', $siswa->id)->where('jenis_pembayaran_id', 1)->whereIn('status', ['lunas', 'cicilan'])->exists();
@@ -1687,6 +1784,13 @@ public function buatTagihanBulanAction(): Action
                         ->where('kelas', $this->filterKelas))
                     ->pluck('id');
 
+                if ($isDu && !$isNewEntry) {
+                    $baruIds = Tagihan::where('jenis_pembayaran_id', 1)
+                        ->whereIn('siswa_id', $siswaIds)
+                        ->pluck('siswa_id');
+                    $siswaIds = $siswaIds->diff($baruIds);
+                }
+
                 $queryPaid = Pembayaran::whereIn('siswa_id', $siswaIds)
                     ->where('jenis_pembayaran_id', $jenisId);
                 if ($isDu) {
@@ -1834,6 +1938,29 @@ public function buatTagihanBulanAction(): Action
         }
 
         return false;
+    }
+
+    public function canHapusTagihan(Tagihan $tagihan): bool
+    {
+        if ($tagihan->status !== 'belum_bayar') {
+            return false;
+        }
+
+        return ! Pembayaran::where('tagihan_id', $tagihan->id)->exists();
+    }
+
+    protected function tagihanLogKeterangan(Tagihan $tagihan, string $prefix): string
+    {
+        $detail = $tagihan->detail ?? [];
+        $jenis  = count($detail) > 0
+            ? 'Multi (' . count($detail) . ' item)'
+            : ($tagihan->jenisPembayaran?->nama ?? '—');
+
+        $periode = $tagihan->bulan
+            ? $this->getBulanLabel($tagihan->bulan) . ' ' . $tagihan->tahun
+            : (string) $tagihan->tahun;
+
+        return "{$prefix}: {$jenis} — {$periode} — {$tagihan->siswa?->nama} ({$tagihan->siswa?->nis})";
     }
 
     public function getBulanLabel(string $bulan): string

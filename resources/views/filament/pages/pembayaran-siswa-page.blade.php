@@ -218,6 +218,15 @@
                                                 color="gray"
                                                 tooltip="Ubah Nominal" />
                                             @endif
+                                            @if ($this->canHapusTagihan($tagihan))
+                                            <x-filament::icon-button
+                                                wire:click="mountAction('hapusTagihan', { tagihan_id: {{ $tagihan->id }} })"
+                                                wire:loading.attr="disabled"
+                                                wire:target="mountAction"
+                                                icon="heroicon-o-trash"
+                                                color="danger"
+                                                tooltip="Hapus Tagihan" />
+                                            @endif
                                             <x-filament::button
                                                 wire:click="mountAction('bayar', { tagihan_id: {{ $tagihan->id }} })"
                                                 wire:loading.attr="disabled"
@@ -497,9 +506,11 @@
                 <span style="display:inline-flex;align-items:center;gap:0.35rem;font-size:0.72rem;color:#374151;">
                     <span style="width:0.9rem;height:0.9rem;border-radius:0.2rem;background:#f3f4f6;border:1px solid #e5e7eb;display:inline-block;"></span>Belum Dibayar
                 </span>
+                @if(!($matrix['is_dta'] ?? false))
                 <span style="display:inline-flex;align-items:center;gap:0.35rem;font-size:0.72rem;color:#374151;">
                     <span style="width:0.9rem;height:0.9rem;border-radius:0.2rem;background:#4338ca;border:1px solid #5b5bd6;display:inline-block;"></span>DU + Juli
                 </span>
+                @endif
             </div>
         </div>
 
@@ -515,16 +526,20 @@
                                 $t = $m['tahun'];
                                 $yearGroups[$t] = ($yearGroups[$t] ?? 0) + 1;
                             }
+                            $hasBpRow = collect($matrix['rows'])->contains(fn ($r) => ($r['is_new_entry'] ?? false));
+                            $hasDuRow = collect($matrix['rows'])->contains(fn ($r) => !($r['is_new_entry'] ?? false));
                         @endphp
                         <tr style="background:#1f2937;color:#fff;">
                             <th colspan="3" style="padding:0.6rem 0.75rem;text-align:center;font-size:0.7rem;
                                                    font-weight:600;letter-spacing:0.05em;text-transform:uppercase;
                                                    border-right:1px solid #374151;">Siswa</th>
+                            @if(!($matrix['is_dta'] ?? false))
                             <th style="background:#4338ca;color:#fff;padding:0.6rem 0.75rem;text-align:center;
                                        font-size:0.7rem;font-weight:600;letter-spacing:0.05em;text-transform:uppercase;
                                        border-right:1px solid #5b5bd6;min-width:7rem;">
-                                {{ $matrix['is_new_entry'] ? 'Biaya Daftar' : 'DU + Juli' }}
+                                {{ $hasBpRow && $hasDuRow ? 'BP / DU + Juli' : ($hasBpRow ? 'Biaya Daftar' : 'DU + Juli') }}
                             </th>
+                            @endif
                             @foreach ($yearGroups as $tahun => $span)
                                 <th colspan="{{ $span }}"
                                     style="padding:0.5rem 0.75rem;text-align:center;font-weight:700;font-size:0.8rem;
@@ -539,9 +554,11 @@
                             <th style="padding:0.5rem 0.6rem;text-align:center;font-size:0.68rem;font-weight:600;width:2rem;border-right:1px solid #4b5563;">No</th>
                             <th style="padding:0.5rem 0.75rem;text-align:left;font-size:0.68rem;font-weight:600;border-right:1px solid #4b5563;">Nama</th>
                             <th style="padding:0.5rem 0.6rem;text-align:center;font-size:0.68rem;font-weight:600;width:3rem;border-right:1px solid #4b5563;">Kls</th>
+                            @if(!($matrix['is_dta'] ?? false))
                             <th style="background:#4338ca;color:#fff;padding:0.5rem 0.4rem;text-align:center;font-size:0.68rem;font-weight:600;min-width:7rem;border-right:1px solid #5b5bd6;">
-                                {{ $matrix['is_new_entry'] ? 'BP' : 'DU' }}
+                                {{ $hasBpRow && $hasDuRow ? 'BP / DU' : ($hasBpRow ? 'BP' : 'DU') }}
                             </th>
+                            @endif
                             @foreach ($months as $m)
                                 <th style="padding:0.5rem 0.4rem;text-align:center;font-size:0.68rem;font-weight:600;
                                            white-space:nowrap;min-width:5.5rem;border-right:1px solid #4b5563;">
@@ -563,6 +580,7 @@
                                 <td style="padding:0.5rem 0.6rem;text-align:center;color:#6b7280;font-size:0.72rem;font-weight:600;border-right:1px solid #f1f5f9;">{{ $row['kelas'] }}</td>
 
                                 {{-- ── Cell pertama: BP (new entry) atau Daftar Ulang + Juli ── --}}
+                                @if(!($matrix['is_dta'] ?? false))
                                 @php $fc = $row['first_cell']; @endphp
                                     @php
                                         $fcBg = match($fc['status']) {
@@ -613,7 +631,7 @@
                                                     onmouseout="this.style.background='#dc2626'">Bayar</button>
                                             @endif
                                         @else
-                                            @php $jenisBayar = $matrix['is_new_entry'] ? 'daftar_masuk' : 'daftar_ulang'; @endphp
+                                            @php $jenisBayar = ($row['is_new_entry'] ?? false) ? 'daftar_masuk' : 'daftar_ulang'; @endphp
                                             <div style="font-size:0.65rem;color:#9ca3af;">⚪ Belum</div>
                                             <button wire:click="mountAction('bayar', { siswa_id: {{ $row['siswa_id'] }}, bulan: '', tahun: '{{ $tahunMulai }}', jenis: '{{ $jenisBayar }}' })"
                                                 style="margin-top:0.25rem;font-size:0.6rem;background:#4338ca;color:#fff;
@@ -622,6 +640,7 @@
                                                 onmouseout="this.style.background='#4338ca'">Bayar</button>
                                         @endif
                                 </td>
+                                @endif
 
                                 {{-- ── Cell bulan (Agu–Jun) ── --}}
                                 @foreach ($row['cells'] as $cell)
@@ -728,6 +747,7 @@
         }
     @endphp
     <td colspan="3" style="padding:0.6rem 0.75rem;font-size:0.72rem;font-weight:700;color:#374151;border-right:1px solid #e5e7eb;">Rekap</td>
+    @if(!($matrix['is_dta'] ?? false))
     <td style="padding:0.4rem 0.3rem;text-align:center;border:1px solid #e5e7eb;">
         @if ($duLunas > 0)<div style="font-size:0.65rem;color:#15803d;font-weight:700;">{{ $duLunas }}✓</div>@endif
         @if ($duTunggakan > 0)<div style="font-size:0.65rem;color:#dc2626;font-weight:700;">{{ $duTunggakan }}✗</div>@endif
@@ -745,6 +765,7 @@
             </div>
         @endif
     </td>
+    @endif
     @foreach ($matrix['summary'] as $idx => $s)
         @php $m = $matrix['months'][$idx] ?? null; @endphp
         <td style="padding:0.4rem 0.3rem;text-align:center;border:1px solid #e5e7eb;">

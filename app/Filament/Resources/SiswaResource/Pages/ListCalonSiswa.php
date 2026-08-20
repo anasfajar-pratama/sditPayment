@@ -32,7 +32,9 @@ class ListCalonSiswa extends ListRecords
 
     protected function getTableQuery(): Builder
     {
-        return Siswa::query()->where('is_calon', 1);
+        return Siswa::query()
+            ->where('is_calon', 1)
+            ->with(['tagihanPendaftaran.pembayaran']);
     }
 
     public function table(Table $table): Table
@@ -69,16 +71,23 @@ class ListCalonSiswa extends ListRecords
                 TextColumn::make('tagihan_status')
                     ->label('Status Pembayaran Biaya Masuk')
                     ->badge()
-                    ->state(fn (Siswa $record): string => $record->tagihanPendaftaran?->status ?? 'belum_bayar')
+                    ->state(function (Siswa $record): string {
+                        $t = $record->tagihanPendaftaran;
+                        if (! $t) return 'belum_bayar';
+                        if ($t->status === 'lunas') return 'lunas';
+                        return $t->pembayaran ? 'cicilan' : 'belum_bayar';
+                    })
                     ->color(fn (string $state): string => match ($state) {
-                        'lunas'      => 'success',
-                        'belum_bayar'=> 'danger',
-                        default      => 'warning',
+                        'lunas'       => 'success',
+                        'cicilan'     => 'warning',
+                        'belum_bayar' => 'danger',
+                        default       => 'warning',
                     })
                     ->formatStateUsing(fn (string $state): string => match ($state) {
-                        'lunas'      => 'Lunas',
-                        'belum_bayar'=> 'Belum Bayar',
-                        default      => ucfirst($state),
+                        'lunas'       => 'Lunas',
+                        'cicilan'     => 'Cicilan (Sebagian)',
+                        'belum_bayar' => 'Belum Bayar',
+                        default       => ucfirst($state),
                     }),
             ])
             ->defaultSort('nama', 'asc');
@@ -149,7 +158,7 @@ class ListCalonSiswa extends ListRecords
                 ->color('success')
                 ->icon('heroicon-o-arrow-right-circle')
                 ->modalHeading('Proses Masuk Kelas')
-                ->modalDescription('Pilih jenjang, lalu tentukan kelas tujuan untuk setiap calon siswa yang sudah lunas.')
+                ->modalDescription('Pilih jenjang, lalu tentukan kelas tujuan untuk setiap calon siswa yang sudah membayar biaya masuk (lunas atau sebagian). Calon yang kelasnya dikosongkan akan tetap berada di antrean calon.')
                 ->modalWidth('3xl')
                 ->form([
                     Select::make('calon_jenis')
@@ -164,7 +173,7 @@ class ListCalonSiswa extends ListRecords
                             if ($state) {
                                 $calonList = Siswa::where('is_calon', 1)
                                     ->where('calon_jenis', $state)
-                                    ->whereHas('tagihanPendaftaran', fn ($q) => $q->where('status', 'lunas'))
+                                    ->whereHas('tagihanPendaftaran', fn ($q) => $q->whereHas('pembayaran'))
                                     ->orderBy('nama')
                                     ->get(['id', 'nama', 'calon_tingkat']);
                                 foreach ($calonList as $c) {
@@ -181,7 +190,7 @@ class ListCalonSiswa extends ListRecords
                         }),
 
                     Repeater::make('calon_items')
-                        ->label('Calon Siswa yang sudah Lunas')
+                        ->label('Calon Siswa yang sudah membayar Biaya Masuk')
                         ->schema([
                             Hidden::make('calon_id'),
                             Hidden::make('calon_tingkat'),
@@ -199,7 +208,6 @@ class ListCalonSiswa extends ListRecords
                                     return $this->getKelasForTingkat($jenjang, (int) $tingkat);
                                 })
                                 ->native(false)
-                                ->required()
                                 ->placeholder('Pilih kelas'),
                         ])
                         ->columns(2)
@@ -266,6 +274,10 @@ class ListCalonSiswa extends ListRecords
                 ? (int) $siswa->calon_tingkat
                 : (int) $kelas;
 
+            $isEntryKelas = $jenisSekolah === 'PAUD'
+                || ($jenisSekolah === 'SD'  && str_starts_with($kelas, '1'))
+                || ($jenisSekolah === 'SMP' && str_starts_with($kelas, '7'));
+
             $siswa->update(['is_calon' => false]);
 
             SiswaKelasHistory::create([
@@ -275,12 +287,19 @@ class ListCalonSiswa extends ListRecords
                 'jenis_sekolah' => $jenisSekolah,
                 'tahun_ajaran'  => $tahunAjaran,
                 'tahun_mulai'   => $tahunMulai,
-                'mutasi'        => 'naik',
+                'mutasi'        => $isEntryKelas ? 'naik' : 'pindah_masuk',
                 'is_current'    => true,
                 'created_by'    => auth()->id() ?? 1,
             ]);
 
             $sukses++;
+        }
+
+        if ($sukses === 0) {
+            Notification::make()
+                ->title('Tidak ada kelas yang dipilih, tidak ada calon yang diproses')
+                ->warning()->send();
+            return;
         }
 
         Notification::make()
