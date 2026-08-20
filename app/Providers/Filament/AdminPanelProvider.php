@@ -43,6 +43,19 @@ class AdminPanelProvider extends PanelProvider
                 ')
             )
             ->renderHook(
+                \Filament\View\PanelsRenderHook::BODY_START,
+                fn () => request()->is('admin/donaturs') || request()->is('admin/donaturs/*')
+                    ? new \Illuminate\Support\HtmlString('
+                        <style>
+                            /* Tabel bergaris (trial): pembatas vertikal tipis antar kolom + header halus */
+                            .fi-ta-table th + th,
+                            .fi-ta-table td + td { border-left: 1px solid #e5e7eb; }
+                            .fi-ta-header-cell { background: #f9fafb; }
+                        </style>
+                    ')
+                    : '',
+            )
+            ->renderHook(
                 \Filament\View\PanelsRenderHook::AUTH_LOGIN_FORM_BEFORE,
                 fn() => new \Illuminate\Support\HtmlString('
                     <div style="text-align:center; margin-bottom:1.5rem;">
@@ -79,6 +92,8 @@ class AdminPanelProvider extends PanelProvider
                 \App\Filament\Pages\Dashboard::class,
                 \App\Filament\Pages\PembayaranSiswaPage::class,
                 \App\Filament\Pages\KasHarianPage::class,
+                \App\Filament\Pages\RingkasanKasHarianPage::class,
+                \App\Filament\Pages\PendapatanPage::class,
                 \App\Filament\Pages\RekapBulananPage::class,  
                 \App\Filament\Pages\PengeluaranOperasionalPage::class,  
                 \App\Filament\Pages\PengeluaranSosialPage::class,       

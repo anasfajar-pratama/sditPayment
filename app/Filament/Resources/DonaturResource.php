@@ -67,7 +67,14 @@ class DonaturResource extends Resource
     public static function table(Table $table): Table
     {
         return $table
+            ->striped()
             ->columns([
+                Tables\Columns\TextColumn::make('index')
+                    ->label('No')
+                    ->rowIndex()
+                    ->alignCenter()
+                    ->width('3rem'),
+
                 Tables\Columns\TextColumn::make('nama')
                     ->label('Nama Orang Tua Asuh')
                     ->searchable()

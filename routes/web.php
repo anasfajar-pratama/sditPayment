@@ -9,6 +9,8 @@ use App\Http\Controllers\KasHarianPrintController;
 use App\Http\Controllers\KaryawanPdfController;
 use App\Http\Controllers\SlipGajiController;
 use App\Http\Controllers\OperasionalController;
+use App\Http\Controllers\KasRingkasanController;
+use App\Http\Controllers\PendapatanController;
 
 
 Route::get('/', function () {
@@ -40,6 +42,12 @@ Route::middleware('auth')->group(function () {
 
     Route::get('/operasional/pdf', [OperasionalController::class, 'cetakPdf'])
         ->name('operasional.pdf');
+
+    Route::get('/kas-ringkasan/pdf', [KasRingkasanController::class, 'cetakPdf'])
+        ->name('kas-ringkasan.pdf');
+
+    Route::get('/pendapatan/pdf', [PendapatanController::class, 'cetakPdf'])
+        ->name('pendapatan.pdf');
 
     Route::get('/sosial/pdf', [OperasionalController::class, 'sosialPdf'])
         ->name('sosial.pdf');
