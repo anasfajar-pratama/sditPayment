@@ -92,7 +92,7 @@
         {{-- ══ TABEL MAPPING ════════════════════════════════════════════════════ --}}
         <div style="background:#fff;border-radius:1rem;border:1px solid #f1f5f9;
                     box-shadow:0 1px 4px rgba(0,0,0,.06);overflow:hidden;">
-            <table style="width:100%;border-collapse:collapse;font-size:0.825rem;">
+            <table class="k-grid-table" style="width:100%;border-collapse:collapse;font-size:0.825rem;">
                 <thead>
                     <tr style="background:#1f2937;color:#fff;">
                         <th style="padding:0.7rem 1rem;text-align:center;font-size:0.68rem;font-weight:600;

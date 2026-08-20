@@ -82,6 +82,10 @@ class TokenListrikResource extends Resource
 
         return $table
             ->columns([
+                Tables\Columns\TextColumn::make('No')
+                    ->rowIndex()
+                    ->label('No'),
+
                 Tables\Columns\TextColumn::make('nama_ruangan')
                     ->label('Nama Ruangan')
                     ->searchable()

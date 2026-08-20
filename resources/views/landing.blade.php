@@ -1,10 +1,13 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="id">
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>SDIT Bunga Cempaka — Mendidik Generasi Cerdas & Berakhlak</title>
     <meta name="description" content="SDIT Bunga Cempaka — Sekolah Dasar Islam Terpadu unggulan di Bekasi. Mendidik generasi cerdas, berakhlak mulia, dan berprestasi dengan program tahfidz, pembinaan rohani, dan pembelajaran aktif." />
+
+    <link rel="icon" type="image/x-icon" href="{{ asset('favicon.ico') }}">
+    <link rel="icon" type="image/png" href="{{ asset('favicon.png') }}">
 
     {{-- Google Fonts --}}
     <link rel="preconnect" href="https://fonts.googleapis.com" />

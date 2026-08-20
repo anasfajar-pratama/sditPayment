@@ -109,6 +109,9 @@ class TagihanResource extends Resource
     {
         return $table
             ->columns([
+                Tables\Columns\TextColumn::make('No')
+                    ->rowIndex()
+                    ->label('No'),
                 Tables\Columns\TextColumn::make('siswa.nis')
                     ->label('NIS')
                     ->searchable(),

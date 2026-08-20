@@ -103,7 +103,7 @@
                 </div>
             @else
                 <div style="overflow-x:auto;">
-                    <table style="width:100%;border-collapse:collapse;font-size:0.8125rem;">
+                    <table class="k-grid-table" style="width:100%;border-collapse:collapse;font-size:0.8125rem;">
                         <thead>
                             <tr style="background:#1f2937;color:#fff;">
                                 <th style="padding:0.75rem 1rem;text-align:center;font-size:0.7rem;

@@ -83,7 +83,15 @@
             width: 100%;
             border-collapse: collapse;
             font-size: 11.5px;
+            border: 1px solid #1f2937;
         }
+        thead th,
+        tbody td,
+        tfoot td {
+            border: 1px solid #d1d5db;
+        }
+        thead th { border-color: #1f2937; }
+        tfoot td { border-color: #1f2937; }
         thead tr {
             background: #1f2937;
             color: #fff;

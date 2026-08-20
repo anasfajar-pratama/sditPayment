@@ -44,16 +44,26 @@ class AdminPanelProvider extends PanelProvider
             )
             ->renderHook(
                 \Filament\View\PanelsRenderHook::BODY_START,
-                fn () => request()->is('admin/donaturs') || request()->is('admin/donaturs/*')
-                    ? new \Illuminate\Support\HtmlString('
-                        <style>
-                            /* Tabel bergaris (trial): pembatas vertikal tipis antar kolom + header halus */
-                            .fi-ta-table th + th,
-                            .fi-ta-table td + td { border-left: 1px solid #e5e7eb; }
-                            .fi-ta-header-cell { background: #f9fafb; }
-                        </style>
-                    ')
-                    : '',
+                fn () => new \Illuminate\Support\HtmlString('
+                    <style>
+                        .fi-ta-table th + th,
+                        .fi-ta-table td + td { border-left: 1px solid #e5e7eb; }
+                        .fi-ta-header-cell { background: #f9fafb; }
+                        .k-grid-table { border: 1px solid #e5e7eb; }
+                        .k-grid-table thead th { border-right: 1px solid rgba(255,255,255,0.14); }
+                        .k-grid-table tbody td { border-right: 1px solid #e5e7eb; border-bottom: 1px solid #e5e7eb; }
+                        .k-grid-table th:last-child,
+                        .k-grid-table td:last-child { border-right: none; }
+                        .k-grid-table tbody tr:last-child td { border-bottom: none; }
+                        .fi-sidebar-header .mx-auto.fi-icon-btn { height: 2.5rem; width: 2.5rem; }
+                        .fi-sidebar-header .mx-auto.fi-icon-btn .fi-icon-btn-icon {
+                            height: 2rem !important;
+                            width: 2rem !important;
+                            object-fit: contain;
+                            border-radius: 9999px;
+                        }
+                    </style>
+                '),
             )
             ->renderHook(
                 \Filament\View\PanelsRenderHook::AUTH_LOGIN_FORM_BEFORE,
@@ -72,6 +82,12 @@ class AdminPanelProvider extends PanelProvider
                 ')
             )
             ->login()
+            ->favicon(asset('favicon.png'))
+            ->sidebarCollapsibleOnDesktop()
+            ->icons([
+                'panels::sidebar.expand-button' => asset('images/logo-sit.png'),
+                'panels::sidebar.expand-button.rtl' => asset('images/logo-sit.png'),
+            ])
             ->colors([
                 'primary' => Color::Amber,
             ])
