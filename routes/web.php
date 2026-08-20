@@ -11,6 +11,7 @@ use App\Http\Controllers\SlipGajiController;
 use App\Http\Controllers\OperasionalController;
 use App\Http\Controllers\KasRingkasanController;
 use App\Http\Controllers\PendapatanController;
+use App\Http\Controllers\CekMutasiController;
 
 
 Route::get('/', function () {
@@ -54,6 +55,28 @@ Route::middleware('auth')->group(function () {
 
     Route::get('/upah/pdf', [OperasionalController::class, 'upahPdf'])
         ->name('upah.pdf');
+
+    // ── Export CSV (berdasarkan filter halaman) ──────────────────────────────
+    Route::get('/export/ringkasan', [KasRingkasanController::class, 'exportCsv'])
+        ->name('export.ringkasan');
+
+    Route::get('/export/kas-harian', [KasHarianPrintController::class, 'exportCsv'])
+        ->name('export.kas-harian');
+
+    Route::get('/export/pendapatan', [PendapatanController::class, 'exportCsv'])
+        ->name('export.pendapatan');
+
+    Route::get('/export/cek-mutasi', [CekMutasiController::class, 'exportCsv'])
+        ->name('export.cek-mutasi');
+
+    Route::get('/export/operasional', [OperasionalController::class, 'exportCsv'])
+        ->name('export.operasional');
+
+    Route::get('/export/sosial', [OperasionalController::class, 'sosialCsv'])
+        ->name('export.sosial');
+
+    Route::get('/export/upah', [OperasionalController::class, 'upahCsv'])
+        ->name('export.upah');
 });
 
 Route::get('/slip-gaji/share/{karyawanId}/{bulan}/{tahun}', [SlipGajiController::class, 'share'])

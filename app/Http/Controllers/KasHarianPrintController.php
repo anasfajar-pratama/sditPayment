@@ -5,11 +5,14 @@ namespace App\Http\Controllers;
 
 use App\Models\KasHarian;
 use App\Models\SaldoAwalBulan;
+use App\Traits\ExportsCsv;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 
 class KasHarianPrintController extends Controller
 {
+    use ExportsCsv;
+
     public function __invoke(Request $request)
     {
         $mode    = $request->input('mode', 'bulanan');
@@ -21,29 +24,7 @@ class KasHarianPrintController extends Controller
 
         // ─── Build query ──────────────────────────────────────────────────────
 
-        $query = KasHarian::with('akun');
-
-        switch ($mode) {
-            case 'harian':
-                $query->whereDate('tanggal', $tanggal);
-                break;
-
-            case '7hari':
-                $start = Carbon::parse($tanggal);
-                $query->whereBetween('tanggal', [
-                    $start->toDateString(),
-                    $start->copy()->addDays(6)->toDateString(),
-                ]);
-                break;
-
-            case 'range':
-                $query->whereBetween('tanggal', [$dari, $sampai]);
-                break;
-
-            default: // bulanan
-                $query->whereYear('tanggal', $tahun)->whereMonth('tanggal', (int) $bulan);
-                break;
-        }
+        $query = $this->periodQuery($mode, $bulan, $tahun, $tanggal, $dari, $sampai);
 
         $rows = $query->orderBy('tanggal')->orderBy('id')->get();
 
@@ -136,5 +117,92 @@ class KasHarianPrintController extends Controller
             'todayKredit',
             'kasHariIni',
         ));
+    }
+
+    public function exportCsv(Request $request)
+    {
+        $mode    = $request->input('mode', 'bulanan');
+        $bulan   = $request->input('bulan',   now()->format('m'));
+        $tahun   = $request->input('tahun',   now()->format('Y'));
+        $tanggal = $request->input('tanggal', now()->toDateString());
+        $dari    = $request->input('dari',    now()->startOfMonth()->toDateString());
+        $sampai  = $request->input('sampai',  now()->toDateString());
+
+        $rows = $this->periodQuery($mode, $bulan, $tahun, $tanggal, $dari, $sampai)
+            ->orderBy('tanggal')->orderBy('id')
+            ->get();
+
+        if ($mode === 'bulanan') {
+            $saldo = SaldoAwalBulan::getSaldo($bulan, $tahun);
+        } else {
+            $startDate = match($mode) {
+                'harian' => $tanggal,
+                '7hari'  => $tanggal,
+                'range'  => $dari,
+                default  => $tanggal,
+            };
+
+            $start = Carbon::parse($startDate);
+            $saldo = SaldoAwalBulan::getSaldo($start->format('m'), $start->format('Y'));
+
+            $before = KasHarian::whereYear('tanggal', $start->format('Y'))
+                ->whereMonth('tanggal', $start->format('m'))
+                ->whereDate('tanggal', '<', $startDate);
+
+            $saldo += (float) (clone $before)->sum('debit');
+            $saldo -= (float) (clone $before)->sum('kredit');
+        }
+
+        $out = [];
+        $no  = 1;
+        foreach ($rows as $row) {
+            $saldo += (float) ($row->debit  ?? 0);
+            $saldo -= (float) ($row->kredit ?? 0);
+
+            $out[] = [
+                $no++,
+                $row->tanggal->format('d M Y'),
+                $row->uraian,
+                $row->akun?->nama_akun ?? '—',
+                $row->sub_kategori ?? '',
+                (float) ($row->debit  ?? 0),
+                (float) ($row->kredit ?? 0),
+                $saldo,
+                $row->source ?? '',
+            ];
+        }
+
+        $headers = ['No', 'Tanggal', 'Uraian', 'Akun', 'Sub Kategori', 'Debit', 'Kredit', 'Saldo', 'Sumber'];
+
+        return $this->streamCsv('kas-gabungan-' . $dari . '-to-' . $sampai . '.csv', $headers, $out);
+    }
+
+    private function periodQuery(string $mode, string $bulan, string $tahun, string $tanggal, string $dari, string $sampai): \Illuminate\Database\Eloquent\Builder
+    {
+        $query = KasHarian::with('akun');
+
+        switch ($mode) {
+            case 'harian':
+                $query->whereDate('tanggal', $tanggal);
+                break;
+
+            case '7hari':
+                $start = Carbon::parse($tanggal);
+                $query->whereBetween('tanggal', [
+                    $start->toDateString(),
+                    $start->copy()->addDays(6)->toDateString(),
+                ]);
+                break;
+
+            case 'range':
+                $query->whereBetween('tanggal', [$dari, $sampai]);
+                break;
+
+            default: // bulanan
+                $query->whereYear('tanggal', $tahun)->whereMonth('tanggal', (int) $bulan);
+                break;
+        }
+
+        return $query;
     }
 }

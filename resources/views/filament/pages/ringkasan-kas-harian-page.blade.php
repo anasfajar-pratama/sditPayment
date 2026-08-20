@@ -19,14 +19,20 @@
         </div>
 
         <div style="display:flex;align-items:center;gap:0.75rem;">
+            <a href="{{ route('export.ringkasan', ['start' => $filterStart, 'end' => $filterEnd, 'tab' => $activeTab]) }}"
+                style="display:inline-flex;align-items:center;gap:0.5rem;background:#059669;color:#fff;border-radius:0.5rem;padding:0.5rem 1rem;font-size:0.8rem;font-weight:600;text-decoration:none;border:none;cursor:pointer;">
+                <span style="font-size:1rem;">⬇</span> Export CSV
+            </a>
             <a href="{{ route('kas-ringkasan.pdf', ['start' => $filterStart, 'end' => $filterEnd]) }}" target="_blank"
                 style="display:inline-flex;align-items:center;gap:0.5rem;background:#ef4444;color:#fff;border-radius:0.5rem;padding:0.5rem 1rem;font-size:0.8rem;font-weight:600;text-decoration:none;border:none;cursor:pointer;">
                 <span style="font-size:1rem;">📄</span> Cetak PDF
             </a>
-            <div style="background:linear-gradient(135deg,#059669,#047857);color:#fff;border-radius:0.75rem;padding:0.6rem 1.25rem;text-align:right;min-width:180px;">
+            <div wire:click="setTab('kashariini')"
+                style="background:linear-gradient(135deg,#059669,#047857);color:#fff;border-radius:0.75rem;padding:0.6rem 1.25rem;text-align:right;min-width:180px;cursor:pointer;border:2px solid {{ $activeTab === 'kashariini' ? '#065f46' : 'transparent' }};transition:all 0.15s;">
                 <div style="font-size:0.65rem;text-transform:uppercase;letter-spacing:0.06em;opacity:0.85;margin-bottom:0.15rem;">Kas Hari Ini</div>
                 <div style="font-size:1.1rem;font-weight:800;font-variant-numeric:tabular-nums;">
-                    Rp {{ number_format($this->kasHariIni, 0, ',', '.') }}
+                    <!-- Rp {{ number_format($this->kasHariIni, 0, ',', '.') }} -->
+                    Rp {{ number_format($this->totalGabungan, 0, ',', '.') }}
                 </div>
             </div>
         </div>
@@ -35,14 +41,15 @@
     {{-- ── RINGKASAN GRID ──────────────────────────────────────────────── --}}
     @php
         $cards = [
-            'transfer'    => ['label' => 'Transfer',     'value' => $this->totalTransfer],
-            'cash'        => ['label' => 'Cash',         'value' => $this->totalCash],
-            'pengeluaran' => ['label' => 'Pengeluaran',  'value' => $this->totalKredit],
-            'gabungan'    => ['label' => 'Kas Hari Ini - Admin (Cash - Pengeluaran)', 'value' => $this->kasHariIni],
+            'transfer'    => ['label' => 'Transfer',           'value' => $this->totalTransfer],
+            'cash'        => ['label' => 'Cash',               'value' => $this->totalCash],
+            'pengeluaran' => ['label' => 'Pengeluaran',        'value' => $this->totalKredit],
+            'kashariini'  => ['label' => 'Kas Admin',          'value' => $this->kasHariIni],
+            'gabungan'    => ['label' => 'Gabungan (Semua)',   'value' => $this->totalGabungan],
         ];
     @endphp
 
-    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:0.75rem;">
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:0.75rem;">
         @foreach($cards as $key => $card)
             @php
                 $isActive = $activeTab === $key;
@@ -73,7 +80,8 @@
             'transfer'    => 'Transfer',
             'cash'        => 'Cash',
             'pengeluaran' => 'Pengeluaran',
-            'gabungan'    => 'Gabungan',
+            'kashariini'  => 'Kas Admin',
+            'gabungan'    => 'Gabungan (Semua)',
         ];
     @endphp
 
@@ -108,6 +116,7 @@
                 'transfer'    => $this->entriesTransfer,
                 'cash'        => $this->entriesCash,
                 'pengeluaran' => $this->entriesKredit,
+                'kashariini'  => $this->entriesKasHariIni,
                 'gabungan'    => $this->entriesGabungan,
                 default       => [],
             };
@@ -133,14 +142,14 @@
                             <th style="padding:0.65rem 1rem;text-align:left;width:7rem;font-size:0.7rem;font-weight:600;letter-spacing:0.05em;">TANGGAL</th>
                             <th style="padding:0.65rem 1rem;text-align:left;font-size:0.7rem;font-weight:600;letter-spacing:0.05em;">KETERANGAN</th>
                             <th style="padding:0.65rem 1rem;text-align:left;font-size:0.7rem;font-weight:600;letter-spacing:0.05em;">AKUN</th>
-                            @if($activeTab === 'transfer')
+                            @if(in_array($activeTab, ['transfer', 'gabungan']))
                                 <th style="padding:0.65rem 1rem;text-align:left;width:9rem;font-size:0.7rem;font-weight:600;letter-spacing:0.05em;">REKENING TUJUAN</th>
                             @endif
-                            @if($activeTab === 'gabungan')
+                            @if(in_array($activeTab, ['kashariini', 'gabungan']))
                                 <th style="padding:0.65rem 1rem;text-align:center;width:5.5rem;font-size:0.7rem;font-weight:600;letter-spacing:0.05em;">TIPE</th>
                             @endif
                             <th style="padding:0.65rem 1rem;text-align:right;width:10rem;font-size:0.7rem;font-weight:600;letter-spacing:0.05em;">JUMLAH</th>
-                            @if($activeTab === 'gabungan')
+                            @if(in_array($activeTab, ['kashariini', 'gabungan']))
                                 <th style="padding:0.65rem 1rem;text-align:right;width:10rem;font-size:0.7rem;font-weight:600;letter-spacing:0.05em;background:#374151;">SALDO</th>
                             @endif
                         </tr>
@@ -154,12 +163,12 @@
                                 <td style="padding:0.6rem 1rem;color:#374151;font-size:0.8rem;">
                                     {{ $row['akun'] }}{{ $row['sub_kategori'] ? ' — ' . $row['sub_kategori'] : '' }}
                                 </td>
-                                @if($activeTab === 'transfer')
+                                @if(in_array($activeTab, ['transfer', 'gabungan']))
                                     <td style="padding:0.6rem 1rem;color:#374151;font-size:0.8rem;">
                                         {{ $row['rekening'] }}{{ $row['pengirim'] ? ' (' . $row['pengirim'] . ')' : '' }}
                                     </td>
                                 @endif
-                                @if($activeTab === 'gabungan')
+                                @if(in_array($activeTab, ['kashariini', 'gabungan']))
                                     <td style="padding:0.6rem 1rem;text-align:center;font-size:0.75rem;font-weight:700;">
                                         <span style="display:inline-block;padding:0.15rem 0.6rem;border-radius:9999px;font-size:0.7rem;
                                             {{ $row['tipe'] === 'Masuk' ? 'background:#ecfdf5;color:#047857;' : 'background:#fef2f2;color:#b91c1c;' }}">
@@ -170,7 +179,7 @@
                                 <td style="padding:0.6rem 1rem;text-align:right;font-weight:600;color:{{ $row['tipe'] === 'Keluar' ? '#dc2626' : '#047857' }};font-variant-numeric:tabular-nums;">
                                     {{ number_format($row['jumlah'], 0, ',', '.') }}
                                 </td>
-                                @if($activeTab === 'gabungan')
+                                @if(in_array($activeTab, ['kashariini', 'gabungan']))
                                     <td style="padding:0.6rem 1rem;text-align:right;font-weight:700;color:#1f2937;font-variant-numeric:tabular-nums;background:#f9fafb;">
                                         {{ number_format($row['saldo'], 0, ',', '.') }}
                                     </td>
@@ -192,7 +201,8 @@
                         'transfer'    => $this->totalTransfer,
                         'cash'        => $this->totalCash,
                         'pengeluaran' => $this->totalKredit,
-                        default       => $this->kasHariIni,
+                        'kashariini'  => $this->kasHariIni,
+                        default       => $this->totalGabungan,
                     }, 0, ',', '.') }}
                 </span>
             </div>

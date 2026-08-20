@@ -180,9 +180,15 @@ it('renders RingkasanKasHarianPage dan menghitung transfer/cash/pengeluaran/kas 
     expect(count($component->get('entriesCash')))->toBe(2);
     expect(count($component->get('entriesKredit')))->toBe(1);
 
-    // Gabungan: 3 baris, saldo berjalan terakhir = kas hari ini
+    // Kas Admin (cash - pengeluaran): 3 baris, saldo berjalan terakhir = kas hari ini
+    $kasAdmin = $component->get('entriesKasHariIni');
+    expect(count($kasAdmin))->toBe(3);
+    expect(end($kasAdmin)['saldo'])->toBe(225000.0);
+
+    // Gabungan (transfer + cash + pengeluaran): 4 baris, saldo berjalan terakhir = kas hari ini + transfer
+    expect($component->get('totalGabungan'))->toBe(525000.0);
     $gabungan = $component->get('entriesGabungan');
-    expect(count($gabungan))->toBe(3);
+    expect(count($gabungan))->toBe(4);
     expect($gabungan[0]['tipe'])->toBe('Masuk');
-    expect(end($gabungan)['saldo'])->toBe(225000.0);
+    expect(end($gabungan)['saldo'])->toBe(525000.0);
 });
