@@ -12,6 +12,7 @@ use App\Models\SiswaKelasHistory;
 use App\Models\Tagihan;
 use Carbon\Carbon;
 use Filament\Actions\Action;
+use Filament\Forms\Components\Checkbox;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Hidden;
@@ -237,8 +238,13 @@ protected static ?string $navigationIcon  = 'heroicon-o-banknotes';
 
         $jenisSppId = JenisPembayaran::whereRaw('LOWER(nama) = ?', ['spp'])->value('id');
         $jenisDuId  = JenisPembayaran::whereRaw('LOWER(nama) = ?', ['daftar ulang'])->value('id');
+        $jenisBpId  = 1; // Daftar Masuk (Biaya Pendaftaran)
 
-        // 11 bulan: Agustus s/d Juni (Juli digabung dgn Daftar Ulang)
+        $isNewEntry = $this->filterJenisSekolah === 'PAUD'
+            || ($this->filterJenisSekolah === 'SD'  && str_starts_with($this->filterKelas, '1'))
+            || ($this->filterJenisSekolah === 'SMP' && str_starts_with($this->filterKelas, '7'));
+
+        // 11 bulan: Agustus s/d Juni (Juli digabung dgn BP/DU)
         $months = [];
         for ($i = 1; $i <= 11; $i++) {
             $m       = (($i + 6) % 12) + 1;
@@ -307,6 +313,20 @@ protected static ?string $navigationIcon  = 'heroicon-o-banknotes';
             ->get()
             ->keyBy('siswa_id');
 
+        // ── Batch load BP (Biaya Pendaftaran) tagihan & pembayaran (new entry only) ──
+        $bpTagihan = collect();
+        $bpPembayaran = collect();
+        if ($isNewEntry) {
+            $bpPembayaran = Pembayaran::where('jenis_pembayaran_id', $jenisBpId)
+                ->whereIn('siswa_id', $siswaIds)
+                ->get()
+                ->keyBy('siswa_id');
+            $bpTagihan = Tagihan::where('jenis_pembayaran_id', $jenisBpId)
+                ->whereIn('siswa_id', $siswaIds)
+                ->get()
+                ->keyBy('siswa_id');
+        }
+
         // ── Latest tagihan (for aksi column) ──
         $latestTagihan = Tagihan::whereIn('siswa_id', $siswaIds)
             ->whereIn('tahun', $tahunList)
@@ -341,34 +361,75 @@ protected static ?string $navigationIcon  = 'heroicon-o-banknotes';
             $belumDibayar   = 0;
             $adaBelumBayar  = false;
 
-            // ── Cell Daftar Ulang + Juli ──
-            $duBayar = $duPembayaran->get($siswa->id);
-            $duTagih = $duTagihanSemua->get($siswa->id);
-
-            if ($duBayar) {
-                $duCell = [
-                    'status'  => 'lunas',
-                    'tanggal' => Carbon::parse($duBayar->tanggal_bayar)->format('d-M-y'),
-                    'nominal' => (float) $duBayar->nominal,
-                ];
-            } elseif ($duTagih) {
-                $duCell = [
-                    'status'     => 'tunggakan',
-                    'nominal'    => (float) $duTagih->nominal_tagihan,
-                    'tagihan_id' => $duTagih->id,
-                ];
-                $tunggakan++;
-                $adaBelumBayar = true;
+            // ── Cell BP / Daftar Ulang + Juli ──
+            if ($isNewEntry) {
+                $bpBayar = $bpPembayaran->get($siswa->id);
+                $bpTagih = $bpTagihan->get($siswa->id);
+                if ($bpBayar && $bpBayar->status === 'lunas') {
+                    $firstCell = [
+                        'status'  => 'lunas',
+                        'tanggal' => Carbon::parse($bpBayar->tanggal_bayar)->format('d-M-y'),
+                        'nominal' => (float) $bpBayar->nominal,
+                        'tipe'    => 'bp',
+                    ];
+                    $lunas++;
+                } elseif ($bpTagih) {
+                    $firstCell = [
+                        'status'     => 'tunggakan',
+                        'nominal'    => (float) $bpTagih->nominal_tagihan,
+                        'tagihan_id' => $bpTagih->id,
+                        'tipe'       => 'bp',
+                    ];
+                    $tunggakan++;
+                    $adaBelumBayar = true;
+                } else {
+                    $firstCell = [
+                        'status' => 'belum_dibayar',
+                        'tipe'   => 'bp',
+                    ];
+                    $belumDibayar++;
+                    $adaBelumBayar = true;
+                }
             } else {
-                $duCell = [
-                    'status' => 'belum_dibayar',
-                    'tipe'   => 'daftar_ulang',
-                ];
-                $belumDibayar++;
-                $adaBelumBayar = true;
+                $duBayar = $duPembayaran->get($siswa->id);
+                $duTagih = $duTagihanSemua->get($siswa->id);
+
+                if ($duBayar && $duBayar->status === 'lunas') {
+                    $firstCell = [
+                        'status'  => 'lunas',
+                        'tanggal' => Carbon::parse($duBayar->tanggal_bayar)->format('d-M-y'),
+                        'nominal' => (float) $duBayar->nominal,
+                    ];
+                    $lunas++;
+                } elseif ($duBayar && $duBayar->status === 'cicilan' && $duTagih) {
+                    $firstCell = [
+                        'status'     => 'cicilan',
+                        'tanggal'    => Carbon::parse($duBayar->tanggal_bayar)->format('d-M-y'),
+                        'nominal'    => (float) $duBayar->nominal,
+                        'sisa'       => (float) $duTagih->nominal_tagihan,
+                        'tagihan_id' => $duTagih->id,
+                    ];
+                    $tunggakan++;
+                    $adaBelumBayar = true;
+                } elseif ($duTagih) {
+                    $firstCell = [
+                        'status'     => 'tunggakan',
+                        'nominal'    => (float) $duTagih->nominal_tagihan,
+                        'tagihan_id' => $duTagih->id,
+                    ];
+                    $tunggakan++;
+                    $adaBelumBayar = true;
+                } else {
+                    $firstCell = [
+                        'status' => 'belum_dibayar',
+                        'tipe'   => 'daftar_ulang',
+                    ];
+                    $belumDibayar++;
+                    $adaBelumBayar = true;
+                }
             }
 
-            // ── Cell bulan (Agu–Jun) ──
+            // ── Cell bulan (Jul–Jun untuk new entry, Agu–Jun untuk standard) ──
             foreach ($months as $m) {
                 $key       = "{$siswa->id}_{$m['bulan']}_{$m['tahun']}";
                 $bayarGrp  = $pembayaranAll->get($key);
@@ -376,16 +437,25 @@ protected static ?string $navigationIcon  = 'heroicon-o-banknotes';
 
                 if ($bayarGrp && $bayarGrp->isNotEmpty()) {
                     $p = $bayarGrp->sortByDesc('tanggal_bayar')->first();
+                    $sisaTagihan = $p->status === 'cicilan' && $tagGrp && $tagGrp->isNotEmpty()
+                        ? $tagGrp->first()
+                        : null;
                     $cells[] = [
                         'status'      => $p->status === 'lunas' ? 'lunas' : 'cicilan',
                         'tanggal'     => Carbon::parse($p->tanggal_bayar)->format('d-M-y'),
                         'nominal'     => (float) $p->nominal,
+                        'sisa'        => $sisaTagihan ? (float) $sisaTagihan->nominal_tagihan : 0,
                         'siswa_id'    => $siswa->id,
-                        'tagihan_id'  => $p->tagihan_id,
+                        'tagihan_id'  => $sisaTagihan?->id ?? $p->tagihan_id,
                         'bulan'       => $m['bulan'],
                         'tahun'       => $m['tahun'],
                     ];
-                    $lunas++;
+                    if ($sisaTagihan) {
+                        $tunggakan++;
+                        $adaBelumBayar = true;
+                    } else {
+                        $lunas++;
+                    }
                 } elseif ($tagGrp && $tagGrp->isNotEmpty()) {
                     $t = $tagGrp->first();
                     $cells[] = [
@@ -417,7 +487,7 @@ protected static ?string $navigationIcon  = 'heroicon-o-banknotes';
                 'nama'                 => $siswa->nama,
                 'kelas'                => $siswa->kelasSaatIni?->kelas ?? '-',
                 'siswa_id'             => $siswa->id,
-                'du_cell'              => $duCell,
+                'first_cell'           => $firstCell,
                 'cells'                => $cells,
                 'lunas_count'          => $lunas,
                 'tunggakan_count'      => $tunggakan,
@@ -441,7 +511,7 @@ protected static ?string $navigationIcon  = 'heroicon-o-banknotes';
             $summary[] = ['lunas' => $l, 'tunggakan' => $tk, 'belum_dibayar' => $bd];
         }
 
-        return ['months' => $months, 'rows' => $rows, 'summary' => $summary];
+        return ['months' => $months, 'rows' => $rows, 'summary' => $summary, 'is_new_entry' => $isNewEntry];
     }
 
     // ─── Action: Bayar (modal dengan form lengkap) ────────────────────────────
@@ -464,6 +534,7 @@ protected static ?string $navigationIcon  = 'heroicon-o-banknotes';
                             ? $this->getBulanLabel($tagihan->bulan) . ' ' . $tagihan->tahun
                             : (string) $tagihan->tahun),
                         '_is_spp'         => $this->isSppByJenis($tagihan->jenisPembayaran?->nama),
+                        'pakai_potongan'        => false,
                         'potongan'              => 0,
                         'nominal_bayar'         => (float) $tagihan->nominal_tagihan,
                         'tgl_bayar_struk'       => now()->toDateTimeString(),
@@ -487,6 +558,7 @@ protected static ?string $navigationIcon  = 'heroicon-o-banknotes';
                     'sampai_bulan'    => $bulanDari,
                     'nominal_spp_per_bulan' => null,
                     'nominal_awal'    => null,
+                    'pakai_potongan'  => false,
                     'potongan'              => 0,
                     'nominal_bayar'         => 0,
                     'tgl_bayar_struk'       => now()->toDateTimeString(),
@@ -516,17 +588,6 @@ protected static ?string $navigationIcon  = 'heroicon-o-banknotes';
                         Hidden::make('_periode'),
                         Hidden::make('_is_spp'),
 
-                        TextInput::make('potongan')
-                            ->label('Potongan / Diskon (Rp)')
-                            ->numeric()->prefix('Rp')->default(0)
-                            ->lazy()
-                            ->afterStateUpdated(function (Get $get, Set $set): void {
-                                $tagihan  = (float) $get('_nominal_tagihan');
-                                $potongan = (float) ($get('potongan') ?? 0);
-                                $set('nominal_bayar', max(0, $tagihan - $potongan));
-                            })
-                            ->helperText('Kosongkan atau isi 0 jika tidak ada potongan'),
-
                         TextInput::make('nominal_bayar')
                             ->label('Nominal Bayar (Rp)')
                             ->numeric()->prefix('Rp')->required()
@@ -535,6 +596,30 @@ protected static ?string $navigationIcon  = 'heroicon-o-banknotes';
                             ->helperText(fn (Get $get) => $this->isSppByJenis($get('_jenis'))
                                 ? 'SPP harus dibayar penuh (setelah potongan)'
                                 : 'Bisa diisi sebagian untuk cicilan'),
+
+                        Checkbox::make('pakai_potongan')
+                            ->label('Potongan / Diskon')
+                            ->default(false)
+                            ->live()
+                            ->hidden(fn (Get $get) => $this->isSppByJenis($get('_jenis'))),
+
+                        TextInput::make('potongan')
+                            ->label(fn (Get $get) => $this->isSppByJenis($get('_jenis'))
+                                ? 'Potongan / Diskon (Rp)' : 'Potongan (Rp)')
+                            ->numeric()->prefix('Rp')->default(0)
+                            ->lazy()
+                            ->afterStateUpdated(function (Get $get, Set $set): void {
+                                if ($this->isSppByJenis($get('_jenis'))) {
+                                    $tagihan  = (float) $get('_nominal_tagihan');
+                                    $potongan = (float) ($get('potongan') ?? 0);
+                                    $set('nominal_bayar', max(0, $tagihan - $potongan));
+                                }
+                            })
+                            ->hidden(fn (Get $get) => !$this->isSppByJenis($get('_jenis'))
+                                && !$get('pakai_potongan'))
+                            ->helperText(fn (Get $get) => $this->isSppByJenis($get('_jenis'))
+                                ? 'Kosongkan atau isi 0 jika tidak ada potongan'
+                                : 'Isi nominal potongan jika ada'),
 
                         TextInput::make('no_ref')
                             ->label('No. Referensi / Transfer')
@@ -575,7 +660,7 @@ protected static ?string $navigationIcon  = 'heroicon-o-banknotes';
                 }
 
                 // ── Mode: Direct Pay (tanpa tagihan) ──
-                $isDu = fn (Get $get) => $get('_jenis') === 'daftar_ulang';
+                $isDu = fn (Get $get) => in_array($get('_jenis'), ['daftar_ulang', 'daftar_masuk']);
 
                 $bulanOptions = [];
                 $bulanDari = (int) ($arguments['bulan'] ?? 8);
@@ -600,9 +685,9 @@ protected static ?string $navigationIcon  = 'heroicon-o-banknotes';
                     $jenis = $get('_jenis');
                     $potongan = (float) ($get('potongan') ?? 0);
 
-                    if ($jenis === 'daftar_ulang') {
+                    if (in_array($jenis, ['daftar_ulang', 'daftar_masuk'])) {
                         $nominalAwal = (float) ($get('nominal_awal') ?? 0);
-                        $set('nominal_bayar', max(0, $nominalAwal - $potongan));
+                        $set('nominal_bayar', max(0, $nominalAwal));
                     } else {
                         $bulanDari   = (int) $get('_bulan_dari');
                         $bulanSampai = (int) ($get('sampai_bulan') ?? $bulanDari);
@@ -650,20 +735,25 @@ protected static ?string $navigationIcon  = 'heroicon-o-banknotes';
                         ->afterStateUpdated($kalkulasiNominal)
                         ->helperText('Isi nominal SPP untuk satu bulan'),
 
-                    // ── DU: nominal awal ──
+                    // ── DU/BP: nominal awal ──
                     TextInput::make('nominal_awal')
-                        ->label('Nominal Daftar Ulang (Rp)')
+                        ->label(fn (Get $get) => $get('_jenis') === 'daftar_masuk'
+                            ? 'Nominal Biaya Pendaftaran (Rp)'
+                            : 'Nominal Daftar Ulang (Rp)')
                         ->visible($isDu)
                         ->numeric()->prefix('Rp')->default(0)
                         ->lazy()
                         ->afterStateUpdated($kalkulasiNominal)
-                        ->helperText('Nominal Daftar Ulang sudah termasuk SPP Juli'),
+                        ->helperText(fn (Get $get) => $get('_jenis') === 'daftar_masuk'
+                            ? 'Nominal Biaya Pendaftaran'
+                            : 'Nominal Daftar Ulang sudah termasuk SPP Juli'),
 
-                    // ── Potongan ──
+                    // ── Potongan (SPP) — selalu tampil ──
                     TextInput::make('potongan')
                         ->label('Potongan per Bulan (Rp)')
                         ->numeric()->prefix('Rp')->default(0)
                         ->lazy()
+                        ->hidden($isDu)
                         ->afterStateUpdated($kalkulasiNominal)
                         ->helperText('Potongan per bulan, dikalikan jumlah bulan'),
 
@@ -674,6 +764,20 @@ protected static ?string $navigationIcon  = 'heroicon-o-banknotes';
                         ->disabled()
                         ->dehydrated()
                         ->helperText('Hasil kalkulasi otomatis'),
+
+                    // ── DU: checkbox + potongan (setelah nominal_bayar) ──
+                    Checkbox::make('pakai_potongan')
+                        ->label('Potongan / Diskon')
+                        ->default(false)
+                        ->live()
+                        ->visible($isDu),
+
+                    TextInput::make('potongan_du')
+                        ->label('Potongan (Rp)')
+                        ->numeric()->prefix('Rp')->default(0)
+                        ->lazy()
+                        ->visible(fn (Get $get) => $isDu($get) && $get('pakai_potongan'))
+                        ->helperText('Isi nominal potongan jika ada'),
 
                     // ── Fields umum ──
                     TextInput::make('no_ref')
@@ -807,9 +911,10 @@ protected static ?string $navigationIcon  = 'heroicon-o-banknotes';
         $bulanDari = $data['_bulan_dari'];
         $tahun     = $data['_tahun'];
         $jenis     = $data['_jenis'];
-        $potongan  = (float) ($data['potongan'] ?? 0);
+        $isBiayaSekali = in_array($jenis, ['daftar_ulang', 'daftar_masuk']);
+        $potongan  = (float) ($data[$isBiayaSekali ? 'potongan_du' : 'potongan'] ?? 0);
 
-        if ($jenis === 'daftar_ulang') {
+        if ($isBiayaSekali) {
             $nominalBayar = (float) ($data['nominal_bayar'] ?? 0);
             if ($nominalBayar <= 0) {
                 Notification::make()->title('Nominal tidak valid')->danger()->send();
@@ -817,12 +922,13 @@ protected static ?string $navigationIcon  = 'heroicon-o-banknotes';
                 return;
             }
 
-            $jenisDuId = JenisPembayaran::whereRaw('LOWER(nama) = ?', ['daftar ulang'])->value('id');
-            $siswa     = Siswa::find($siswaId);
+            $isDaftarMasuk = $jenis === 'daftar_masuk';
+            $jpId = $isDaftarMasuk ? 1 : JenisPembayaran::whereRaw('LOWER(nama) = ?', ['daftar ulang'])->value('id');
+            $siswa = Siswa::find($siswaId);
 
             $pembayaran = Pembayaran::create([
                 'siswa_id'            => $siswaId,
-                'jenis_pembayaran_id' => $jenisDuId,
+                'jenis_pembayaran_id' => $jpId,
                 'tagihan_id'          => null,
                 'bulan'               => null,
                 'tahun'               => $tahun,
@@ -840,15 +946,15 @@ protected static ?string $navigationIcon  = 'heroicon-o-banknotes';
 
             if ($siswa) {
                 $pembayaran->setRelation('siswa', $siswa);
-                $pembayaran->setRelation('jenisPembayaran', JenisPembayaran::find($jenisDuId));
+                $pembayaran->setRelation('jenisPembayaran', JenisPembayaran::find($jpId));
             }
             KasHarian::postingDariPembayaran($pembayaran);
             $this->buatPdfLink($pembayaran->id);
 
-            Notification::make()
-                ->title('Pembayaran Daftar Ulang Lunas ✓')
-                ->body('Rp ' . number_format($nominalBayar, 0, ',', '.') . ' (sudah termasuk SPP Juli)')
-                ->success()->send();
+            $title = $isDaftarMasuk ? 'Pembayaran Biaya Pendaftaran Berhasil' : 'Pembayaran Daftar Ulang Lunas ✓';
+            $body = 'Rp ' . number_format($nominalBayar, 0, ',', '.')
+                . ($isDaftarMasuk ? '' : ' (sudah termasuk SPP Juli)');
+            Notification::make()->title($title)->body($body)->success()->send();
             return;
         }
 
@@ -873,6 +979,7 @@ protected static ?string $navigationIcon  = 'heroicon-o-banknotes';
         $siswa      = Siswa::find($siswaId);
         $totalNominal = 0;
         $firstPembayaran = null;
+        $batchUuid = (string) \Illuminate\Support\Str::uuid();
 
         foreach ($bulanRange as $i => $m) {
             $pembayaran = Pembayaran::create([
@@ -890,6 +997,7 @@ protected static ?string $navigationIcon  = 'heroicon-o-banknotes';
                 'bukti_bayar'           => $data['bukti_bayar'] ?? null,
                 'rekening_tujuan'       => $data['rekening_tujuan'] ?? null,
                 'nama_rekening_pengirim'=> $data['nama_rekening_pengirim'] ?? null,
+                'batch_uuid'            => $batchUuid,
                 'created_by'            => auth()->id(),
             ]);
 
@@ -962,12 +1070,26 @@ protected static ?string $navigationIcon  = 'heroicon-o-banknotes';
         $jenisDuId  = JenisPembayaran::whereRaw('LOWER(nama) = ?', ['daftar ulang'])->value('id');
         $unpaid     = [];
 
-        $duPaid = Pembayaran::where('siswa_id', $siswaId)
-            ->where('jenis_pembayaran_id', $jenisDuId)
-            ->where('tahun', (string) $tahunMulai)
-            ->exists();
-        if (!$duPaid) {
-            $unpaid[] = 'Daftar Ulang ' . $tahunMulai . '/' . ($tahunMulai + 1);
+        $isNewEntry = $this->filterJenisSekolah === 'PAUD'
+            || ($this->filterJenisSekolah === 'SD'  && str_starts_with($this->filterKelas, '1'))
+            || ($this->filterJenisSekolah === 'SMP' && str_starts_with($this->filterKelas, '7'));
+
+        if ($isNewEntry) {
+            $bpPaid = Pembayaran::where('siswa_id', $siswaId)
+                ->where('jenis_pembayaran_id', 1)
+                ->where('status', 'lunas')
+                ->exists();
+            if (!$bpPaid) {
+                $unpaid[] = 'Biaya Pendaftaran';
+            }
+        } else {
+            $duPaid = Pembayaran::where('siswa_id', $siswaId)
+                ->where('jenis_pembayaran_id', $jenisDuId)
+                ->where('tahun', (string) $tahunMulai)
+                ->exists();
+            if (!$duPaid) {
+                $unpaid[] = 'Daftar Ulang ' . $tahunMulai . '/' . ($tahunMulai + 1);
+            }
         }
 
         foreach ($allMonths as $m) {
@@ -1300,13 +1422,13 @@ protected static ?string $navigationIcon  = 'heroicon-o-banknotes';
             'sd'   => "Kelas {$tingkat}",
             'smp'  => "Kelas {$tingkat}",
             'dta'  => "Tingkat {$tingkat}",
-            'paud' => $tingkat === 1 ? 'TK-A' : ($tingkat === 2 ? 'TK-B' : 'Kelompok Bermain'),
-            'tk'   => $tingkat === 1 ? 'TK-A' : 'TK-B',
+            'paud' => $tingkat === 1 ? 'A' : 'B',
+            'tk'   => $tingkat === 1 ? 'A' : 'B',
             'SD'   => "Kelas {$tingkat}",
             'SMP'  => "Kelas {$tingkat}",
             'DTA'  => "Tingkat {$tingkat}",
-            'PAUD' => $tingkat === 1 ? 'TK-A' : ($tingkat === 2 ? 'TK-B' : 'Kelompok Bermain'),
-            'TK'   => $tingkat === 1 ? 'TK-A' : 'TK-B',
+            'PAUD' => $tingkat === 1 ? 'A' : 'B',
+            'TK'   => $tingkat === 1 ? 'A' : 'B',
             default => (string) $tingkat,
         };
     }

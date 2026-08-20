@@ -63,7 +63,7 @@ class TagihanPublicController extends Controller
      */
     public function exportCsv(Request $request): \Symfony\Component\HttpFoundation\StreamedResponse
     {
-        $query = Tagihan::with(['siswa', 'jenisPembayaran'])
+        $query = Tagihan::with(['siswa', 'siswa.kelasSaatIni', 'jenisPembayaran'])
             ->orderBy('tahun')
             ->orderBy('bulan')
             ->orderBy('created_at');
@@ -104,6 +104,8 @@ class TagihanPublicController extends Controller
             fputcsv($file, [
                 'NIS',
                 'Nama Siswa',
+                'Jenjang',
+                'Kelas',
                 'Jenis Pembayaran',
                 'Bulan',
                 'Tahun',
@@ -126,6 +128,8 @@ class TagihanPublicController extends Controller
                 fputcsv($file, [
                     $t->siswa->nis    ?? '-',
                     $t->siswa->nama   ?? '-',
+                    $t->siswa->kelasSaatIni?->jenis_sekolah ?? '-',
+                    $t->siswa->kelasSaatIni?->kelas ?? '-',
                     $t->jenisPembayaran->nama ?? '-',
                     self::$namaBulan[$t->bulan] ?? $t->bulan,
                     $t->tahun,
@@ -146,7 +150,7 @@ class TagihanPublicController extends Controller
 
     public function exportPdf(Request $request): \Illuminate\Http\Response
     {
-        $query = Tagihan::with(['siswa', 'jenisPembayaran'])
+        $query = Tagihan::with(['siswa', 'siswa.kelasSaatIni', 'jenisPembayaran'])
             ->orderBy('tahun')
             ->orderBy('bulan')
             ->orderBy('created_at');

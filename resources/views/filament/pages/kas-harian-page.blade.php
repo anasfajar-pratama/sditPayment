@@ -128,6 +128,52 @@
         </div>
 
         {{-- ══════════════════════════════════════════════════════════
+             CARD SUMMARY PER FILTER
+        ══════════════════════════════════════════════════════════════ --}}
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:0.75rem;margin-bottom:0.75rem;">
+            <div style="border-radius:0.75rem;border:1px solid #bfdbfe;background:#eff6ff;padding:0.75rem 1rem;">
+                <div style="font-size:0.65rem;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;color:#1d4ed8;margin-bottom:0.15rem;">
+                    Transfer
+                </div>
+                <div style="font-size:0.95rem;font-weight:800;font-variant-numeric:tabular-nums;color:#1e3a5f;">
+                    Rp {{ number_format($this->totalDebitTransfer, 0, ',', '.') }}
+                </div>
+                <div style="font-size:0.6rem;color:#60a5fa;margin-top:0.1rem;">{{ $this->judulPeriode }}</div>
+            </div>
+
+            <div style="border-radius:0.75rem;border:1px solid #bbf7d0;background:#f0fdf4;padding:0.75rem 1rem;">
+                <div style="font-size:0.65rem;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;color:#15803d;margin-bottom:0.15rem;">
+                    Cash
+                </div>
+                <div style="font-size:0.95rem;font-weight:800;font-variant-numeric:tabular-nums;color:#14532d;">
+                    Rp {{ number_format($this->totalDebitCash, 0, ',', '.') }}
+                </div>
+                <div style="font-size:0.6rem;color:#86efac;margin-top:0.1rem;">{{ $this->judulPeriode }}</div>
+            </div>
+
+            <div style="border-radius:0.75rem;border:1px solid #fecaca;background:#fff1f2;padding:0.75rem 1rem;">
+                <div style="font-size:0.65rem;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;color:#b91c1c;margin-bottom:0.15rem;">
+                    Pengeluaran
+                </div>
+                <div style="font-size:0.95rem;font-weight:800;font-variant-numeric:tabular-nums;color:#7f1d1d;">
+                    Rp {{ number_format($this->totalKredit, 0, ',', '.') }}
+                </div>
+                <div style="font-size:0.6rem;color:#fca5a5;margin-top:0.1rem;">{{ $this->judulPeriode }}</div>
+            </div>
+
+            <div style="border-radius:0.75rem;border:1px solid #e5e7eb;background:#f9fafb;padding:0.75rem 1rem;">
+                <div style="font-size:0.65rem;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;color:#374151;margin-bottom:0.15rem;">
+                    Saldo
+                </div>
+                @php $saldo = $this->saldoAkhir; $saldoPositif = $saldo >= 0; @endphp
+                <div style="font-size:0.95rem;font-weight:800;font-variant-numeric:tabular-nums;color:{{ $saldoPositif ? '#14532d' : '#7f1d1d' }};">
+                    {{ $saldoPositif ? '' : '−' }}Rp {{ number_format(abs($saldo), 0, ',', '.') }}
+                </div>
+                <div style="font-size:0.6rem;color:#9ca3af;margin-top:0.1rem;">{{ $this->judulPeriode }}</div>
+            </div>
+        </div>
+
+        {{-- ══════════════════════════════════════════════════════════
              SUMMARY KAS HARI INI
         ══════════════════════════════════════════════════════════════ --}}
         @php

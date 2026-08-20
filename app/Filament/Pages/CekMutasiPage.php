@@ -191,7 +191,5 @@ class CekMutasiPage extends Page
         unset($this->transaksiPending, $this->transaksiTerverifikasi, $this->summaryPerRekening);
 
         Notification::make()->title("{$updated} transaksi berhasil diverifikasi")->success()->send();
-
-        $this->redirect(request()->url());
     }
 }

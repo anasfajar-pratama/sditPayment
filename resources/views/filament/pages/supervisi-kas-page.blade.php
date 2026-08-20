@@ -58,13 +58,12 @@
                         <thead>
                             <tr class="border-b border-gray-200 text-xs font-semibold uppercase text-gray-500">
                                 <th class="pb-3 pr-3 text-center w-10">✓</th>
-                                <th class="pb-3 pr-3 text-center w-10"></th>
-                                <th class="pb-3 pr-3 text-left">Tanggal</th>
-                                <th class="pb-3 pr-3 text-left">No. Ref</th>
-                                <th class="pb-3 pr-3 text-left">Rek. Tujuan</th>
-                                <th class="pb-3 pr-3 text-left">Pengirim</th>
-                                <th class="pb-3 pr-3 text-left">Uraian</th>
-                                <th class="pb-3 pr-3 text-center">Bukti</th>
+                                <th class="pb-3 pr-3 text-center w-8"></th>
+                                <th class="pb-3 pr-3 text-left whitespace-nowrap w-28">Tanggal</th>
+                                <th class="pb-3 pr-3 text-left whitespace-nowrap w-36">Rek. Tujuan</th>
+                                <th class="pb-3 pr-3 text-left whitespace-nowrap w-36">Pengirim</th>
+                                <th class="pb-3 pr-3 text-left w-full min-w-[200px]">Uraian</th>
+                                <th class="pb-3 pr-3 text-center w-16">Bukti</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-gray-100">
@@ -90,12 +89,12 @@
                                             <x-heroicon-o-pencil-square class="w-4 h-4" />
                                         </button>
                                     </td>
-                                    <td class="py-2.5 pr-3 whitespace-nowrap">
+                                    <td class="py-2.5 pr-3 whitespace-nowrap w-28">
                                         {{ \Carbon\Carbon::parse($item->tanggal)->format('d M Y') }}
                                     </td>
-                                    <td class="py-2.5 pr-3 text-xs">{{ \App\Models\MasterRekeningTujuan::where('label', $item->rekening_tujuan)->value('bank') ?: ($item->rekening_tujuan ?: '—') }}</td>
-                                    <td class="py-2.5 pr-3">{{ $item->nama_rekening_pengirim ?: '—' }}</td>
-                                    <td class="py-2.5 pr-3 whitespace-normal break-words">
+                                    <td class="py-2.5 pr-3 text-xs whitespace-nowrap">{{ \App\Models\MasterRekeningTujuan::where('label', $item->rekening_tujuan)->value('bank') ?: ($item->rekening_tujuan ?: '—') }}</td>
+                                    <td class="py-2.5 pr-3 whitespace-nowrap">{{ $item->nama_rekening_pengirim ?: '—' }}</td>
+                                    <td class="py-2.5 pr-3 whitespace-normal break-words w-full min-w-[200px]">
                                         {{ $item->uraian }} — Rp {{ number_format($item->debit, 0, ',', '.') }}
                                     </td>
                                     <td class="py-2.5 pr-3 text-center">
@@ -122,10 +121,10 @@
 
         {{-- ═══ MODAL EDIT ══════════════════════════════════════════════════ --}}
         @if ($editId)
-            <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+            <div class="fixed inset-0 z-50 flex items-start justify-center bg-black/60 p-4 overflow-y-auto"
                 wire:click.self="closeEdit"
                 wire:key="edit-modal-{{ $editId }}">
-                <div class="w-full max-w-lg rounded-xl shadow-2xl p-6 space-y-4"
+                <div class="w-full max-w-lg rounded-xl shadow-2xl p-6 space-y-4 my-4"
                     style="background:#fff7ed;border:2px solid #f97316;"
                     wire:click.stop>
                     <h3 class="text-lg font-bold text-gray-800">Edit Data Transaksi</h3>
@@ -198,6 +197,55 @@
                             <p class="mt-1 text-xs" style="color:#dc2626;">{{ $editError }}</p>
                         @endif
                     </div>
+
+                    @if ($editSource === 'pembayaran')
+                        <div class="border-t border-gray-200 pt-4">
+                            @if (!$showResetConfirm)
+                                <button wire:click="confirmReset"
+                                    class="w-full rounded-lg border-2 px-4 py-2 text-sm hover:bg-red-50 transition font-medium"
+                                    style="color:#dc2626;border-color:#fca5a5;background:transparent;">
+                                    Reset Pembayaran
+                                </button>
+                            @else
+                                <div class="space-y-3 rounded-lg border border-red-300 bg-red-50 p-3">
+                                    <p class="text-sm font-medium text-red-700">
+                                        Reset akan menghapus data pembayaran ini beserta posting kas-nya.
+                                        @if ($editNoRef)
+                                            <br><span class="text-xs font-normal">No. Ref: {{ $editNoRef }}</span>
+                                        @endif
+                                    </p>
+                                    <p class="text-xs text-red-600">
+                                        Tindakan ini tidak bisa dibatalkan. Admin harus input ulang dari menu Pembayaran.
+                                    </p>
+                                    <div>
+                                        <label class="block text-xs font-medium text-red-700 mb-1">Konfirmasi Password</label>
+                                        <input type="password" wire:model="resetPassword"
+                                            class="w-full rounded-lg border border-red-300 px-3 py-2 text-sm"
+                                            wire:keydown.enter="executeReset">
+                                        @if ($resetError)
+                                            <p class="mt-1 text-xs" style="color:#dc2626;">{{ $resetError }}</p>
+                                        @endif
+                                    </div>
+                                    <div class="flex items-center justify-end gap-2">
+                                        <button wire:click="cancelReset"
+                                            class="rounded-lg border border-gray-300 px-3 py-1.5 text-xs text-gray-600 hover:bg-gray-100 transition">
+                                            Batal
+                                        </button>
+                                        <button wire:click="executeReset"
+                                            class="rounded-lg px-3 py-1.5 text-xs text-white transition inline-flex items-center gap-1"
+                                            style="background:#dc2626;"
+                                            onmouseover="this.style.background='#b91c1c'"
+                                            onmouseout="this.style.background='#dc2626'"
+                                            wire:loading.attr="disabled"
+                                            wire:target="executeReset">
+                                            <span wire:loading.remove wire:target="executeReset">Ya, Reset</span>
+                                            <span wire:loading wire:target="executeReset">&#x21bb; Memproses...</span>
+                                        </button>
+                                    </div>
+                                </div>
+                            @endif
+                        </div>
+                    @endif
 
                     <div class="flex items-center justify-end gap-2 pt-2">
                         <button wire:click="closeEdit"
@@ -297,12 +345,14 @@
                                                 'create'   => 'bg-success-100 text-success-700',
                                                 'update'   => 'bg-blue-100 text-blue-700',
                                                 'unverify' => 'bg-danger-100 text-danger-700',
+                                                'reset'    => 'bg-red-100 text-red-700',
                                                 default    => 'bg-gray-100 text-gray-600',
                                             };
                                             $actLabel = match($log->action) {
                                                 'create'   => 'CREATE',
                                                 'update'   => 'UPDATE',
                                                 'unverify' => 'UNVERIFY',
+                                                'reset'    => 'RESET',
                                                 default    => $log->action,
                                             };
                                         @endphp

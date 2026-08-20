@@ -115,6 +115,8 @@
                 <th>No</th>
                 <th>NIS</th>
                 <th>Nama Siswa</th>
+                <th>Jenjang</th>
+                <th>Kelas</th>
                 <th>Jenis Pembayaran</th>
                 <th>Bulan</th>
                 <th>Tahun</th>
@@ -126,18 +128,14 @@
             @forelse ($tagihans as $t)
                 @php
                     $siswa = $t->siswa;
-                    if ($siswa && $siswa->is_calon) {
-                        $namaSiswa = ($siswa->nama ?? '-') . ' / ' . (optional($siswa->kelasSaatIni)->jenis_sekolah ?? $siswa->calon_jenis ?? '-');
-                    } elseif ($siswa) {
-                        $namaSiswa = ($siswa->nama ?? '-') . ' / ' . (optional($siswa->kelasSaatIni)->kelas ?? '-') . ' / ' . (optional($siswa->kelasSaatIni)->jenis_sekolah ?? '-');
-                    } else {
-                        $namaSiswa = '-';
-                    }
+                    $namaSiswa = $siswa->nama ?? '-';
                 @endphp
                 <tr>
                     <td>{{ $loop->iteration }}</td>
                     <td class="no-wrap">{{ $t->siswa->nis ?? '-' }}</td>
                     <td>{{ $namaSiswa }}</td>
+                    <td>{{ optional($siswa->kelasSaatIni)->jenis_sekolah ?? optional($siswa)->calon_jenis ?? '-' }}</td>
+                    <td>{{ optional($siswa->kelasSaatIni)->kelas ?? '-' }}</td>
                     <td>{{ $t->jenisPembayaran->nama ?? '-' }}</td>
                     <td>{{ $bulanLabels[$t->bulan] ?? $t->bulan }}</td>
                     <td>{{ $t->tahun }}</td>
@@ -150,7 +148,7 @@
                 </tr>
             @empty
                 <tr>
-                    <td colspan="8" style="text-align:center;padding:24px;color:#9ca3af;">Tidak ada data tagihan.</td>
+                    <td colspan="10" style="text-align:center;padding:24px;color:#9ca3af;">Tidak ada data tagihan.</td>
                 </tr>
             @endforelse
         </tbody>

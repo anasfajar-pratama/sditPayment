@@ -6,6 +6,7 @@ use App\Models\KasHarian;
 use App\Models\LogDanaMasuk;
 use App\Models\MasterRekeningTujuan;
 use App\Models\Pembayaran;
+use App\Models\Tagihan;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
 use Illuminate\Support\Facades\Hash;
@@ -45,6 +46,11 @@ class SupervisiKasPage extends Page
     public bool $verifToggleTo = false;
     public string $verifPassword = '';
     public ?string $verifError = null;
+
+    public ?string $editSource = null;
+    public bool $showResetConfirm = false;
+    public string $resetPassword = '';
+    public ?string $resetError = null;
 
     protected function queryDasar()
     {
@@ -165,6 +171,10 @@ class SupervisiKasPage extends Page
         $this->editNominal = (string) ((int) ($row->debit ?? 0));
         $this->editPassword = '';
         $this->editError = null;
+        $this->editSource = $row->source;
+        $this->showResetConfirm = false;
+        $this->resetPassword = '';
+        $this->resetError = null;
 
         if ($row->source === 'pembayaran' && $row->source_id) {
             $pembayaran = Pembayaran::find($row->source_id);
@@ -185,6 +195,107 @@ class SupervisiKasPage extends Page
         $this->editError = null;
         $this->editPotongan = '';
         $this->editNominalAwal = '';
+        $this->editSource = null;
+        $this->showResetConfirm = false;
+        $this->resetPassword = '';
+        $this->resetError = null;
+    }
+
+    public function confirmReset(): void
+    {
+        $this->showResetConfirm = true;
+        $this->resetPassword = '';
+        $this->resetError = null;
+    }
+
+    public function cancelReset(): void
+    {
+        $this->showResetConfirm = false;
+        $this->resetPassword = '';
+        $this->resetError = null;
+    }
+
+    public function executeReset(): void
+    {
+        if (! Hash::check($this->resetPassword, auth()->user()->password)) {
+            $this->resetError = 'Password yang anda masukkan salah';
+            return;
+        }
+
+        $row = KasHarian::findOrFail($this->editId);
+
+        if ($row->source !== 'pembayaran') {
+            $this->resetError = 'Reset hanya tersedia untuk transaksi pembayaran';
+            return;
+        }
+
+        $pembayaran = Pembayaran::find($row->source_id);
+        if (! $pembayaran) {
+            $this->resetError = 'Data pembayaran tidak ditemukan';
+            return;
+        }
+
+        LogDanaMasuk::create([
+            'kas_harian_id' => $row->id,
+            'action'         => 'reset',
+            'uraian'         => $row->uraian,
+            'data_lama'      => [
+                'no_ref'                => $row->no_ref,
+                'rekening_tujuan'       => $row->rekening_tujuan,
+                'nama_rekening_pengirim'=> $row->nama_rekening_pengirim,
+                'tanggal'               => $row->tanggal?->format('Y-m-d'),
+                'nominal'               => (float) $row->debit,
+                'potongan'              => (float) ($pembayaran->potongan ?? 0),
+                'tagihan_id'            => $pembayaran->tagihan_id,
+                'batch_uuid'            => $pembayaran->batch_uuid,
+            ],
+            'data_baru'      => null,
+            'created_by'     => auth()->id(),
+        ]);
+
+        $tagihanId = $pembayaran->tagihan_id;
+
+        if ($tagihanId) {
+            $allPembayaran = Pembayaran::where('tagihan_id', $tagihanId)->get();
+            $totalRestore = $allPembayaran->sum('nominal');
+
+            $tagihan = Tagihan::find($tagihanId);
+            if ($tagihan) {
+                $tagihan->update([
+                    'nominal_tagihan' => $tagihan->nominal_tagihan + $totalRestore,
+                    'status'          => 'belum_bayar',
+                ]);
+            }
+
+            foreach ($allPembayaran as $p) {
+                KasHarian::where('source', 'pembayaran')
+                    ->where('source_id', $p->id)
+                    ->delete();
+                $p->delete();
+            }
+        } else {
+            $toDelete = $pembayaran->batch_uuid
+                ? Pembayaran::where('batch_uuid', $pembayaran->batch_uuid)->get()
+                : collect([$pembayaran]);
+
+            foreach ($toDelete as $p) {
+                KasHarian::where('source', 'pembayaran')
+                    ->where('source_id', $p->id)
+                    ->delete();
+                $p->delete();
+            }
+        }
+
+        $this->closeEdit();
+        $this->cancelReset();
+
+        Notification::make()
+            ->title('Transaksi berhasil di-reset')
+            ->body('Data pembayaran dan posting kas telah dihapus. Silakan input ulang dari menu Pembayaran.')
+            ->success()
+            ->send();
+
+        unset($this->transaksiList);
     }
 
     public function updatedEditPotongan($value): void
