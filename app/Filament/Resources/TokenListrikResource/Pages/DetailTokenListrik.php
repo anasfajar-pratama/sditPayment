@@ -85,7 +85,7 @@ class DetailTokenListrik extends Page implements HasForms
 
                     TextInput::make('nomor_token')
                         ->label('Nomor Token (pada struk)')
-                        ->required()
+                        // ->required()
                         ->maxLength(30)
                         ->placeholder('Contoh: 1234-5678-9012-3456-7890')
                         ->columnSpanFull(),
