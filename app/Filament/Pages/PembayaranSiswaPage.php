@@ -393,7 +393,7 @@ protected static ?string $navigationIcon  = 'heroicon-o-banknotes';
                         'tipe'    => 'bp',
                     ];
                     if (!$allLunas && $bpTagih) {
-                        $firstCell['sisa'] = (float) $bpTagih->nominal_tagihan;
+                        $firstCell['sisa'] = (float) ($bpTagih->nominal_tagihan ?? 0);
                         $firstCell['tagihan_id'] = $bpTagih->id;
                     }
                     if ($allLunas) {
@@ -436,7 +436,7 @@ protected static ?string $navigationIcon  = 'heroicon-o-banknotes';
                         'nominal' => $totalNominal,
                     ];
                     if (!$allLunas && $duTagih) {
-                        $firstCell['sisa'] = (float) $duTagih->nominal_tagihan;
+                        $firstCell['sisa'] = (float) ($duTagih->nominal_tagihan ?? 0);
                         $firstCell['tagihan_id'] = $duTagih->id;
                     }
                     if ($allLunas) {
