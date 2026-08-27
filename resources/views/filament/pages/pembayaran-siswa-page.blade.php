@@ -516,8 +516,30 @@
 
         <div style="background:#fff;border-radius:1rem;border:1px solid #f1f5f9;
                     box-shadow:0 1px 4px rgba(0,0,0,.06);overflow:hidden;">
+            <style>
+                .k-sticky-no,.k-sticky-nama,.k-sticky-kls{position:sticky;z-index:2;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;box-sizing:border-box;}
+                .k-sticky-no{left:0;width:2.5rem;min-width:2.5rem;max-width:2.5rem;}
+                .k-sticky-nama{left:2.5rem;width:11rem;min-width:11rem;max-width:11rem;}
+                .k-sticky-kls{left:13.5rem;width:3rem;min-width:3rem;max-width:3rem;}
+                thead tr:nth-child(2) th.k-sticky-no,
+                thead tr:nth-child(2) th.k-sticky-nama,
+                thead tr:nth-child(2) th.k-sticky-kls{background:#374151 !important;}
+                tbody td.k-sticky-no{background:#fff !important;}
+                tbody td.k-sticky-nama{background:#fff !important;}
+                tbody td.k-sticky-kls{background:#fff !important;}
+                tbody tr:hover td.k-sticky-no,
+                tbody tr:hover td.k-sticky-nama,
+                tbody tr:hover td.k-sticky-kls{background:#f8fafc !important;}
+                tr.k-rekap-row td.k-sticky-no,
+                tr.k-rekap-row td.k-sticky-nama,
+                tr.k-rekap-row td.k-sticky-kls{background:#f8fafc !important;}
+                .k-sticky-siswa{position:sticky;left:0;z-index:2;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;box-sizing:border-box;width:16.5rem;min-width:16.5rem;max-width:16.5rem;}
+                thead th.k-sticky-siswa{background:#1f2937 !important;}
+                .k-sticky-kls::after{content:'';position:absolute;right:0;top:0;bottom:0;width:4px;background:linear-gradient(to right,rgba(0,0,0,0.08),transparent);pointer-events:none;z-index:3;}
+                .k-grid-table td,.k-grid-table th{box-sizing:border-box;overflow:hidden;}
+            </style>
             <div style="overflow-x:auto;">
-                <table class="k-grid-table" style="width:100%;border-collapse:collapse;font-size:0.78rem;min-width:1200px;">
+                <table class="k-grid-table" style="width:100%;border-collapse:separate;border-spacing:0;font-size:0.78rem;min-width:1200px;">
                     <thead>
                         @php
                             $months     = $matrix['months'];
@@ -530,7 +552,7 @@
                             $hasDuRow = collect($matrix['rows'])->contains(fn ($r) => !($r['is_new_entry'] ?? false));
                         @endphp
                         <tr style="background:#1f2937;color:#fff;">
-                            <th colspan="3" style="padding:0.6rem 0.75rem;text-align:center;font-size:0.7rem;
+                            <th colspan="3" class="k-sticky-siswa" style="padding:0.6rem 0.75rem;text-align:center;font-size:0.7rem;
                                                    font-weight:600;letter-spacing:0.05em;text-transform:uppercase;
                                                    border-right:1px solid #374151;">Siswa</th>
                             @if(!($matrix['is_dta'] ?? false))
@@ -551,9 +573,9 @@
                                        font-weight:600;border-left:1px solid #374151;white-space:nowrap;">Aksi</th>
                         </tr>
                         <tr style="background:#374151;color:#d1d5db;">
-                            <th style="padding:0.5rem 0.6rem;text-align:center;font-size:0.68rem;font-weight:600;width:2rem;border-right:1px solid #4b5563;">No</th>
-                            <th style="padding:0.5rem 0.75rem;text-align:left;font-size:0.68rem;font-weight:600;border-right:1px solid #4b5563;">Nama</th>
-                            <th style="padding:0.5rem 0.6rem;text-align:center;font-size:0.68rem;font-weight:600;width:3rem;border-right:1px solid #4b5563;">Kls</th>
+                            <th class="k-sticky-no" style="padding:0.5rem 0.6rem;text-align:center;font-size:0.68rem;font-weight:600;border-right:1px solid #4b5563;">No</th>
+                            <th class="k-sticky-nama" style="padding:0.5rem 0.75rem;text-align:left;font-size:0.68rem;font-weight:600;border-right:1px solid #4b5563;">Nama</th>
+                            <th class="k-sticky-kls" style="padding:0.5rem 0.6rem;text-align:center;font-size:0.68rem;font-weight:600;border-right:1px solid #4b5563;">Kls</th>
                             @if(!($matrix['is_dta'] ?? false))
                             <th style="background:#4338ca;color:#fff;padding:0.5rem 0.4rem;text-align:center;font-size:0.68rem;font-weight:600;min-width:7rem;border-right:1px solid #5b5bd6;">
                                 {{ $hasBpRow && $hasDuRow ? 'BP / DU' : ($hasBpRow ? 'BP' : 'DU') }}
@@ -575,9 +597,9 @@
                             <tr style="border-bottom:1px solid #f1f5f9;"
                                 onmouseover="this.style.background='#f8fafc'"
                                 onmouseout="this.style.background='transparent'">
-                                <td style="padding:0.5rem 0.6rem;text-align:center;color:#9ca3af;font-size:0.72rem;border-right:1px solid #f1f5f9;">{{ $row['no'] }}</td>
-                                <td style="padding:0.5rem 0.75rem;font-weight:600;color:#1f2937;border-right:1px solid #f1f5f9;">{{ $row['nama'] }}</td>
-                                <td style="padding:0.5rem 0.6rem;text-align:center;color:#6b7280;font-size:0.72rem;font-weight:600;border-right:1px solid #f1f5f9;">{{ $row['kelas'] }}</td>
+                                <td class="k-sticky-no" style="padding:0.5rem 0.6rem;text-align:center;color:#9ca3af;font-size:0.72rem;border-right:1px solid #f1f5f9;">{{ $row['no'] }}</td>
+                                <td class="k-sticky-nama" style="padding:0.5rem 0.75rem;font-weight:600;color:#1f2937;border-right:1px solid #f1f5f9;">{{ $row['nama'] }}</td>
+                                <td class="k-sticky-kls" style="padding:0.5rem 0.6rem;text-align:center;color:#6b7280;font-size:0.72rem;font-weight:600;border-right:1px solid #f1f5f9;">{{ $row['kelas'] }}</td>
 
                                 {{-- ── Cell pertama: BP (new entry) atau Daftar Ulang + Juli ── --}}
                                 @if(!($matrix['is_dta'] ?? false))
@@ -733,7 +755,7 @@
                                 </td>
                             </tr>
                         @endforeach
-                        <tr style="background:#f8fafc;border-top:2px solid #e5e7eb;">
+                        <tr class="k-rekap-row" style="background:#f8fafc;border-top:2px solid #e5e7eb;">
     @php
         $duLunas = $duTunggakan = $duBelum = 0;
         foreach ($matrix['rows'] as $row) {
@@ -746,7 +768,7 @@
             };
         }
     @endphp
-    <td colspan="3" style="padding:0.6rem 0.75rem;font-size:0.72rem;font-weight:700;color:#374151;border-right:1px solid #e5e7eb;">Rekap</td>
+    <td colspan="3" class="k-sticky-siswa" style="padding:0.6rem 0.75rem;font-size:0.72rem;font-weight:700;color:#374151;text-align:center;background:#f8fafc;border-right:1px solid #e5e7eb;">Rekap</td>
     @if(!($matrix['is_dta'] ?? false))
     <td style="padding:0.4rem 0.3rem;text-align:center;border:1px solid #e5e7eb;">
         @if ($duLunas > 0)<div style="font-size:0.65rem;color:#15803d;font-weight:700;">{{ $duLunas }}✓</div>@endif
