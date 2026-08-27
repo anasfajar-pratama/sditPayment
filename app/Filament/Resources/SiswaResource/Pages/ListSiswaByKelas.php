@@ -6,6 +6,7 @@ use App\Filament\Resources\SiswaResource;
 use App\Models\Siswa;
 use Filament\Actions\Action;
 use Filament\Resources\Pages\ListRecords;
+use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 
@@ -27,11 +28,26 @@ class ListSiswaByKelas extends ListRecords
 
     public function table(Table $table): Table
     {
-        return parent::table($table)
+        $table = parent::table($table)
             ->recordUrl(
                 fn (Siswa $record): string =>
                     SiswaResource::getUrl('detail', ['record' => $record])
             );
+
+        return $table->columns([
+            TextColumn::make('nomor')
+                ->label('No')
+                ->getStateUsing(function (Siswa $record, $rowLoop, $livewire): string {
+                    $iteration = $rowLoop->iteration ?? 1;
+                    $page      = $livewire->getTablePage() ?? 1;
+                    $perPage   = $livewire->getTableRecordsPerPage() ?? 10;
+
+                    return (string) ((($page - 1) * $perPage) + $iteration);
+                })
+                ->sortable(false)
+                ->searchable(false),
+            ...$table->getColumns(),
+        ]);
     }
 
     protected function getTableQuery(): Builder
