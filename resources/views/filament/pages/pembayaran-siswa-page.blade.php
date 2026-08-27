@@ -609,7 +609,7 @@
                                                 {{ number_format($fc['nominal'], 0, ',', '.') }}
                                             </div>
                                             <div style="font-size:0.6rem;color:#b91c1c;margin-top:0.15rem;">
-                                                Sisa: Rp {{ number_format($fc['sisa'], 0, ',', '.') }}
+                                                Sisa: Rp {{ number_format($fc['sisa'] ?? 0, 0, ',', '.') }}
                                             </div>
                                             @if ($fc['tagihan_id'] ?? null)
                                                 <button wire:click="mountAction('bayar', { tagihan_id: {{ $fc['tagihan_id'] }} })"
