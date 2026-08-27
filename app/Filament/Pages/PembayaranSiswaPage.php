@@ -374,7 +374,12 @@ protected static ?string $navigationIcon  = 'heroicon-o-banknotes';
 
             // ── Cell BP / Daftar Ulang + Juli ── (DTA tanpa DU/BP)
             if ($isDta) {
-                $firstCell = null;
+                $firstCell = [
+                    'status'  => 'belum_dibayar',
+                    'nominal' => 0,
+                    'tanggal' => null,
+                    'tipe'    => 'dta',
+                ];
             } elseif ($isBaruSiswa) {
                 $bpBayarList = $bpPembayaran->get($siswa->id);
                 $bpTagih = $bpTagihan->get($siswa->id);
@@ -472,9 +477,17 @@ protected static ?string $navigationIcon  = 'heroicon-o-banknotes';
                 if ($bayarGrp && $bayarGrp->isNotEmpty()) {
                     $p = $bayarGrp->sortByDesc('tanggal_bayar')->first();
                     $totalNominal = (float) $bayarGrp->sum('nominal');
-                    $sisaTagihan = $p->status === 'cicilan' && $tagGrp && $tagGrp->isNotEmpty()
-                        ? $tagGrp->first()
-                        : null;
+                    // Untuk DTA: sisa tagihan tidak memerlukan urutan bulan sebelumnya
+                    $sisaTagihan = null;
+                    if ($isDta) {
+                        $sisaTagihan = $tagGrp && $tagGrp->isNotEmpty()
+                            ? $tagGrp->first()
+                            : null;
+                    } else {
+                        $sisaTagihan = $p->status === 'cicilan' && $tagGrp && $tagGrp->isNotEmpty()
+                            ? $tagGrp->first()
+                            : null;
+                    }
                     $cells[] = [
                         'status'      => $p->status === 'lunas' ? 'lunas' : 'cicilan',
                         'tanggal'     => Carbon::parse($p->tanggal_bayar)->format('d-M-y'),
@@ -485,11 +498,21 @@ protected static ?string $navigationIcon  = 'heroicon-o-banknotes';
                         'bulan'       => $m['bulan'],
                         'tahun'       => $m['tahun'],
                     ];
-                    if ($sisaTagihan) {
-                        $tunggakan++;
-                        $adaBelumBayar = true;
+                    if ($isDta) {
+                        // DTA: sisa tagihan dianggap ada jika tagihan belum lunas
+                        if ($sisaTagihan && $sisaTagihan->status !== 'lunas') {
+                            $tunggakan++;
+                            $adaBelumBayar = true;
+                        } else {
+                            $lunas++;
+                        }
                     } else {
-                        $lunas++;
+                        if ($sisaTagihan) {
+                            $tunggakan++;
+                            $adaBelumBayar = true;
+                        } else {
+                            $lunas++;
+                        }
                     }
                 } elseif ($tagGrp && $tagGrp->isNotEmpty()) {
                     $t = $tagGrp->first();
@@ -1115,10 +1138,12 @@ protected static ?string $navigationIcon  = 'heroicon-o-banknotes';
         $nominal  = (float) $data['nominal_bayar'];
         $potongan = (float) ($data['potongan'] ?? 0);
         $isSpp    = $this->isSppByJenis($tagihan->jenisPembayaran?->nama);
+        $isDta    = strtoupper($this->filterJenisSekolah) === 'DTA';
 
         $nominalSetelahPotongan = (float) $tagihan->nominal_tagihan - $potongan;
 
-        if ($isSpp && abs($nominal - $nominalSetelahPotongan) > 1) {
+        // Lewati validasi SPP penuh untuk DTA (bulan sebelumnya tidak wajib dibayar)
+        if ($isSpp && ! $isDta && abs($nominal - $nominalSetelahPotongan) > 1) {
             Notification::make()
                 ->title('SPP harus dibayar penuh')
                 ->body('Nominal setelah potongan: Rp ' . number_format($nominalSetelahPotongan, 0, ',', '.'))
