@@ -126,34 +126,11 @@ protected static ?string $navigationIcon  = 'heroicon-o-banknotes';
     {
         if (! $this->siswa_id) return collect();
 
-        return Pembayaran::with(['jenisPembayaran', 'tagihan'])
+        return Pembayaran::with('jenisPembayaran')
             ->where('siswa_id', $this->siswa_id)
             ->orderByDesc('tanggal_bayar')
             ->limit(15)
-            ->get()
-            ->map(function ($p) {
-                $p->share_token = \DB::table('pdf_links')
-                    ->where('pdf_id', $p->id)
-                    ->where('jenis', 'kuitansi')
-                    ->where('expired_at', '>', now())
-                    ->value('token');
-
-                $semuaPembayaran = Pembayaran::where('tagihan_id', $p->tagihan_id)
-                    ->orderBy('tanggal_bayar')->orderBy('id')
-                    ->get(['id', 'nominal', 'tanggal_bayar', 'status']);
-
-                $totalTerbayar = $semuaPembayaran->sum('nominal');
-                $sisaTagihan   = ($p->tagihan && $p->tagihan->status !== 'lunas')
-                    ? $p->tagihan->nominal_tagihan : 0;
-
-                $p->total_tagihan  = $totalTerbayar + $sisaTagihan;
-                $p->total_terbayar = $totalTerbayar;
-                $p->sisa_tagihan   = $sisaTagihan;
-                $p->cicilan_list   = $semuaPembayaran->values();
-                $p->cicilan_ke     = $semuaPembayaran->search(fn($x) => $x->id === $p->id) + 1;
-
-                return $p;
-            });
+            ->get();
     }
 
     /**
@@ -194,6 +171,7 @@ protected static ?string $navigationIcon  = 'heroicon-o-banknotes';
             }
 
             $grouped[$taLabel]['pembayaran'][] = [
+                'id'         => $p->id,
                 'jenis'      => $p->jenisPembayaran?->nama ?? '—',
                 'bulan'      => $p->bulan ? $this->getBulanLabel($p->bulan) : '—',
                 'tahun'      => $p->tahun,
@@ -1457,7 +1435,9 @@ protected static ?string $navigationIcon  = 'heroicon-o-banknotes';
             'original_url' => "/kuitansi/{$pembayaranId}/pdf",
             'jenis'        => 'kuitansi',
             'jumlah_view'  => 0,
-            'expired_at'   => now()->addDays(30),
+            // Token publik belum aktif; expired_at baru di-set 10 hari
+            // saat admin menekan tombol WA (share-wa).
+            'expired_at'   => now(),
             'created_at'   => now(),
             'updated_at'   => now(),
         ]);
@@ -2056,68 +2036,5 @@ public function buatTagihanBulanAction(): Action
             'TK'   => $tingkat === 1 ? 'A' : 'B',
             default => (string) $tingkat,
         };
-    }
-
-    public function getWhatsappUrl($bayar): string
-    {
-        $namaSiswa  = $this->selectedSiswa?->nama ?? '-';
-        $nisSiswa   = $this->selectedSiswa?->nis  ?? '-';
-        $jenis      = $bayar->jenisPembayaran?->nama ?? '-';
-        $bulanLabel = $bayar->bulan ? $this->getBulanLabel($bayar->bulan) : '-';
-        $tahun      = $bayar->tahun ?? '-';
-        $linkUrl    = $bayar->share_token ? url('/k/' . $bayar->share_token) : '-';
-
-        $barisCicilan = $bayar->cicilan_list->map(function ($c, $i) {
-            $tgl = Carbon::parse($c->tanggal_bayar)->translatedFormat('d F Y');
-            $nom = 'Rp ' . number_format($c->nominal, 0, ',', '.');
-            return "  Cicilan " . ($i + 1) . "  : {$nom} ({$tgl})";
-        })->implode("\n");
-
-        $totalTagihan  = 'Rp ' . number_format($bayar->total_tagihan,  0, ',', '.');
-        $totalTerbayar = 'Rp ' . number_format($bayar->total_terbayar, 0, ',', '.');
-        $sisa          = 'Rp ' . number_format($bayar->sisa_tagihan,   0, ',', '.');
-
-        if ($bayar->status === 'lunas') {
-            $pesan = implode("\n", [
-                'Assalamualaikum,', '',
-                'Berikut kami sampaikan kuitansi pembayaran:', '',
-                "Nama          : {$namaSiswa}",
-                "NIS           : {$nisSiswa}",
-                "Jenis         : {$jenis}",
-                "Periode       : {$bulanLabel} {$tahun}", '',
-                'Rincian Pembayaran:',
-                $barisCicilan, '',
-                "Total Tagihan : {$totalTagihan}",
-                "Total Terbayar: {$totalTerbayar}",
-                "Sisa Tagihan  : Rp 0",
-                "Status        : *Lunas*", '',
-                'Silakan lihat kuitansi di tautan berikut:',
-                $linkUrl, '', 'Terima kasih.',
-            ]);
-        } else {
-            $pesan = implode("\n", [
-                'Assalamualaikum,', '',
-                'Berikut kami sampaikan bukti cicilan pembayaran:', '',
-                "Nama          : {$namaSiswa}",
-                "NIS           : {$nisSiswa}",
-                "Jenis         : {$jenis}",
-                "Periode       : {$bulanLabel} {$tahun}", '',
-                'Rincian Pembayaran:',
-                $barisCicilan, '',
-                "Total Tagihan : {$totalTagihan}",
-                "Total Terbayar: {$totalTerbayar}",
-                "Sisa Tagihan  : {$sisa}",
-                "Status        : *Cicilan*", '',
-                'Silakan lihat bukti cicilan di tautan berikut:',
-                $linkUrl, '', 'Terima kasih.',
-            ]);
-        }
-
-        $noHp = preg_replace('/\D/', '', $this->selectedSiswa?->no_hp_orang_tua ?? '');
-        if (str_starts_with($noHp, '0'))     $noHp = '62' . substr($noHp, 1);
-        elseif (str_starts_with($noHp, '8')) $noHp = '62' . $noHp;
-
-        $teks = rawurlencode($pesan);
-        return $noHp ? "https://wa.me/{$noHp}?text={$teks}" : "https://wa.me/?text={$teks}";
     }
 }

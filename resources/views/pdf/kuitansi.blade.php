@@ -281,7 +281,7 @@
                 @if($historiCicilan->count() > 1)
                     <span class="badge" style="background:#f3f4f6; color:#6b7280;
                                                border:1px solid #d1d5db;">
-                        Cicilan ke-{{ $historiCicilan->count() }}
+                        Cicilan ke-{{ $cicilanKe }}
                     </span>
                 @endif
             @endif

@@ -62,16 +62,52 @@ class KuitansiController extends Controller
 
     private function buildData(Pembayaran $pembayaran): array
     {
-        $pembayaran->load(['siswa', 'jenisPembayaran']);
+        $ringkasan = $this->ringkasanPembayaran($pembayaran);
         $isSpp = strtolower($pembayaran->jenisPembayaran?->nama ?? '') === 'spp';
 
-        if ($pembayaran->tagihan_id) {
-            $pembayaran = Pembayaran::with(['siswa', 'jenisPembayaran'])
-                ->where('tagihan_id', $pembayaran->tagihan_id)
-                ->latest('tanggal_bayar')
-                ->latest('id')
-                ->first();
-        }
+        $bulanLabels = [
+            '01' => 'Januari',  '02' => 'Februari', '03' => 'Maret',
+            '04' => 'April',    '05' => 'Mei',       '06' => 'Juni',
+            '07' => 'Juli',     '08' => 'Agustus',   '09' => 'September',
+            '10' => 'Oktober',  '11' => 'November',  '12' => 'Desember',
+        ];
+
+        // Generate nomor kuitansi: idPembayaran.idTagihan.ddmmyyyy
+        $tglBayar = \Carbon\Carbon::parse($pembayaran->tanggal_bayar);
+        $nomorKuitansi = $pembayaran->id
+            . '.' . ($pembayaran->tagihan_id ?? '0')
+            . '.' . $tglBayar->format('dmY');
+
+        // URL publik untuk barcode
+        $urlKuitansi = route('kuitansi.pdf', $pembayaran->id);
+        $terbilang = ucfirst($this->terbilang((int) $pembayaran->nominal)) . ' Rupiah';
+
+        return [
+            'pembayaran'     => $pembayaran,
+            'ttdBendahara'   => $this->loadTtd('ttd_bendahara'),
+            'ttdKepsek'      => '',
+            'isSpp'          => $isSpp,
+            'historiCicilan' => $ringkasan['historiCicilan'],
+            'totalTerbayar'  => $ringkasan['totalTerbayar'],
+            'nominalAsli'    => $ringkasan['nominalAsli'],
+            'sisaTagihan'    => $ringkasan['sisaTagihan'],
+            'bulanLabels'    => $bulanLabels,
+            'isLunas'        => $pembayaran->status === 'lunas',
+            'isCicilan'      => $pembayaran->status === 'cicilan',
+            'cicilanKe'      => $ringkasan['cicilanKe'],
+            'cetakTanggal'   => now()->format('d M Y H:i'),
+            'nomorKuitansi'  => $nomorKuitansi,
+            'urlKuitansi'    => $urlKuitansi,
+            'terbilang'      => $terbilang
+        ];
+    }
+
+    /**
+     * Ringkasan tagihan & cicilan untuk 1 pembayaran (dipakai PDF & share WA).
+     */
+    private function ringkasanPembayaran(Pembayaran $pembayaran): array
+    {
+        $pembayaran->load(['siswa', 'jenisPembayaran']);
 
         $historiCicilan = Pembayaran::with('jenisPembayaran')
             ->where('siswa_id', $pembayaran->siswa_id)
@@ -100,6 +136,47 @@ class KuitansiController extends Controller
 
         $sisaTagihan = max(0, $nominalAsli - $totalTerbayar);
 
+        $cicilanKe = $historiCicilan->search(fn ($c) => $c->id === $pembayaran->id) + 1;
+
+        return compact('historiCicilan', 'totalTerbayar', 'nominalAsli', 'sisaTagihan', 'cicilanKe');
+    }
+
+    /**
+     * Share via WA: segarkan token publik (berlaku 10 hari sejak klik ini),
+     * lalu buka WhatsApp dengan pesan berisi tautan kuitansi.
+     */
+    public function shareWa(Pembayaran $pembayaran)
+    {
+        $link = \DB::table('pdf_links')
+            ->where('pdf_id', $pembayaran->id)
+            ->where('jenis', 'kuitansi')
+            ->first();
+
+        if ($link) {
+            \DB::table('pdf_links')->where('id', $link->id)->update([
+                'expired_at' => now()->addDays(10),
+                'updated_at' => now(),
+            ]);
+            $token = $link->token;
+        } else {
+            $token = \Str::random(16);
+            \DB::table('pdf_links')->insert([
+                'token'        => $token,
+                'pdf_id'       => $pembayaran->id,
+                'original_url' => "/kuitansi/{$pembayaran->id}/pdf",
+                'jenis'        => 'kuitansi',
+                'jumlah_view'  => 0,
+                'expired_at'   => now()->addDays(10),
+                'created_at'   => now(),
+                'updated_at'   => now(),
+            ]);
+        }
+
+        $ringkasan = $this->ringkasanPembayaran($pembayaran);
+        $historiCicilan = $ringkasan['historiCicilan'];
+        $isLunas = $pembayaran->status === 'lunas';
+        $shareUrl = url('/k/' . $token);
+
         $bulanLabels = [
             '01' => 'Januari',  '02' => 'Februari', '03' => 'Maret',
             '04' => 'April',    '05' => 'Mei',       '06' => 'Juni',
@@ -107,33 +184,47 @@ class KuitansiController extends Controller
             '10' => 'Oktober',  '11' => 'November',  '12' => 'Desember',
         ];
 
-        // Generate nomor kuitansi: idPembayaran.idTagihan.ddmmyyyy
-        $tglBayar = \Carbon\Carbon::parse($pembayaran->tanggal_bayar);
-        $nomorKuitansi = $pembayaran->id
-            . '.' . ($pembayaran->tagihan_id ?? '0')
-            . '.' . $tglBayar->format('dmY');
+        $namaSiswa  = $pembayaran->siswa->nama ?? '-';
+        $nisSiswa   = $pembayaran->siswa->nis ?? '-';
+        $jenis      = $pembayaran->jenisPembayaran?->nama ?? '-';
+        $bulanLabel = $pembayaran->bulan ? ($bulanLabels[$pembayaran->bulan] ?? $pembayaran->bulan) : '-';
+        $tahun      = $pembayaran->tahun ?? '-';
 
-        // URL publik untuk barcode
-        $urlKuitansi = route('kuitansi.pdf', $pembayaran->id);
-        $terbilang = ucfirst($this->terbilang((int) $pembayaran->nominal)) . ' Rupiah';
+        $barisCicilan = $historiCicilan->map(function ($c, $i) {
+            $tgl = \Carbon\Carbon::parse($c->tanggal_bayar)->translatedFormat('d F Y');
+            $nom = 'Rp ' . number_format($c->nominal, 0, ',', '.');
+            return "  Cicilan " . ($i + 1) . "  : {$nom} ({$tgl})";
+        })->implode("\n");
 
-        return [
-            'pembayaran'     => $pembayaran,
-            'ttdBendahara'   => $this->loadTtd('ttd_bendahara'),
-            'ttdKepsek'      => '',
-            'isSpp'          => $isSpp,
-            'historiCicilan' => $historiCicilan,
-            'totalTerbayar'  => $totalTerbayar,
-            'nominalAsli'    => $nominalAsli,
-            'sisaTagihan'    => $sisaTagihan,
-            'bulanLabels'    => $bulanLabels,
-            'isLunas'        => $pembayaran->status === 'lunas',
-            'isCicilan'      => $pembayaran->status === 'cicilan',
-            'cetakTanggal'   => now()->format('d M Y H:i'),
-            'nomorKuitansi'  => $nomorKuitansi,
-            'urlKuitansi'    => $urlKuitansi,
-            'terbilang'      => $terbilang
-        ];
+        $totalTagihan  = 'Rp ' . number_format($ringkasan['nominalAsli'], 0, ',', '.');
+        $totalTerbayar = 'Rp ' . number_format($ringkasan['totalTerbayar'], 0, ',', '.');
+        $sisa          = 'Rp ' . number_format($ringkasan['sisaTagihan'], 0, ',', '.');
+
+        $pesan = implode("\n", [
+            'Assalamualaikum,', '',
+            'Berikut kami sampaikan ' . ($isLunas ? 'kuitansi' : 'bukti cicilan') . ' pembayaran:', '',
+            "Nama          : {$namaSiswa}",
+            "NIS           : {$nisSiswa}",
+            "Jenis         : {$jenis}",
+            "Periode       : {$bulanLabel} {$tahun}", '',
+            'Rincian Pembayaran:',
+            $barisCicilan, '',
+            "Total Tagihan : {$totalTagihan}",
+            "Total Terbayar: {$totalTerbayar}",
+            "Sisa Tagihan  : " . ($isLunas ? 'Rp 0' : $sisa),
+            "Status        : " . ($isLunas ? '*Lunas*' : '*Cicilan*'), '',
+            'Silakan lihat ' . ($isLunas ? 'kuitansi' : 'bukti cicilan') . ' di tautan berikut:',
+            $shareUrl, '', 'Terima kasih.',
+        ]);
+
+        $noHp = preg_replace('/\D/', '', $pembayaran->siswa->no_hp_orang_tua ?? '');
+        if (str_starts_with($noHp, '0'))     $noHp = '62' . substr($noHp, 1);
+        elseif (str_starts_with($noHp, '8')) $noHp = '62' . $noHp;
+
+        $teks = rawurlencode($pesan);
+        $waUrl = $noHp ? "https://wa.me/{$noHp}?text={$teks}" : "https://wa.me/?text={$teks}";
+
+        return redirect()->away($waUrl);
     }
 
     private function terbilang(int $angka): string

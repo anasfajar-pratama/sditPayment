@@ -1,0 +1,14 @@
+# Taste
+- Writes feature requests and communicates in Indonesian (casual, non-formal tone); expects responses that can match that language. Confidence: 0.75
+- Values prompt completion of the task at hand and gets frustrated by long stalls or side-tracking ("sudah 1 jam tidak selesai"); prefers staying focused on finishing the requested change. Confidence: 0.7
+- Prefers new UI/features to mirror existing implementations and patterns exactly ("buat sama persis dengan pola cetak kuitansi pembayaran") rather than introducing new layouts. Confidence: 0.6
+- Explains bug reports/feature requests with concrete numeric examples (e.g., tagihan 9jt, bayar 3.5jt lalu 5jt, sisa 500rb) to pin down expected behavior. Confidence: 0.6
+- Expects fixes to be applied consistently across parallel features (e.g., "calon siswa" and "siswa"), favoring the shared code path over per-page changes. Confidence: 0.6
+- Wants the agent to first inspect and explain the existing logic/rules behind a behavior (e.g., when buttons show/hide) before changing it, so changes are grounded in the current implementation. Confidence: 0.65
+- Prefers separating authenticated vs public/unauthenticated access: logged-in users should print/view without expiry, while public share links use a time-limited token whose expiry window resets (sliding) on each re-share. Confidence: 0.6
+- Prefers Excel (.xlsx) reports with a filter step (e.g., by year) before generating so data is separated into distinct exports. Confidence: 0.65
+- Prefers tagging records with a single checkbox/boolean flag on the data-entry form (e.g., "pendapatan/pengeluaran yayasan"), stored as a boolean column, rather than a separate enum/type or dedicated form. Confidence: 0.6
+- Prefers summary/report views split into tabs that cover each category individually plus combined aggregates and an all-inclusive view (e.g., non-yayasan, pendapatan yayasan, pengeluaran yayasan, gabungan yayasan, gabungan semua). Confidence: 0.6
+- Prefers a select box (dropdown) over a tab bar for switching between many tabs/categories. Confidence: 0.65
+- Prefers clickable summary cards for each category/tab in a report page, so each tab has a corresponding metric card — including combined/aggregate tabs (e.g., a "Gabungan" card). Confidence: 0.65
+- Prefers strict isolation between data categories in tabbed reports: a category's rows (e.g., yayasan transactions) should appear only in that category's own tabs plus the all-inclusive tab, and must not leak into other categories' tabs. Confidence: 0.6

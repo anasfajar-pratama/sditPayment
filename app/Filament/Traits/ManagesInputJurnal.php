@@ -8,6 +8,7 @@ use App\Models\KasHarianLog;
 use App\Models\MasterRekeningTujuan;
 use Carbon\Carbon;
 use Filament\Actions\Action;
+use Filament\Forms\Components\Checkbox;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Radio;
@@ -122,6 +123,11 @@ trait ManagesInputJurnal
                     ->default('kredit')->inline()->required()
                     ->live(),
 
+                Checkbox::make('is_yayasan')
+                    ->label('Pendapatan/Pengeluaran Yayasan')
+                    ->helperText('Centang jika transaksi ini milik yayasan (dipisah dari kas sekolah)')
+                    ->default(false),
+
                 TextInput::make('no_ref')
                     ->label('No. Referensi / Transfer')
                     ->placeholder('Contoh: TRF2025001')
@@ -162,6 +168,7 @@ trait ManagesInputJurnal
                     'source'                => 'manual',
                     'bulan'                 => $tanggal->format('m'),
                     'tahun'                 => $tanggal->format('Y'),
+                    'is_yayasan'            => (bool) ($data['is_yayasan'] ?? false),
                     'created_by'            => auth()->id(),
                 ]);
 

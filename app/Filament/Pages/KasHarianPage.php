@@ -14,6 +14,7 @@ use App\Models\MasterRekeningTujuan;
 use App\Models\SaldoAwalBulan;
 use Carbon\Carbon;
 use Filament\Actions\Action;
+use Filament\Forms\Components\Checkbox;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Placeholder;
@@ -326,6 +327,7 @@ class KasHarianPage extends Page
                     'rekening_tujuan'       => $entry->rekening_tujuan ?? 'Cash',
                     'nama_rekening_pengirim'=> $entry->nama_rekening_pengirim,
                     'bukti'                 => $entry->bukti,
+                    'is_yayasan'            => (bool) $entry->is_yayasan,
                 ];
             })
             ->form([
@@ -380,6 +382,11 @@ class KasHarianPage extends Page
                     ->inline()->required()
                     ->live(),
 
+                Checkbox::make('is_yayasan')
+                    ->label('Pendapatan/Pengeluaran Yayasan')
+                    ->helperText('Centang jika transaksi ini milik yayasan (dipisah dari kas sekolah)')
+                    ->default(false),
+
                 TextInput::make('no_ref')
                     ->label('No. Referensi / Transfer')
                     ->placeholder('Contoh: TRF2025001')
@@ -431,6 +438,7 @@ class KasHarianPage extends Page
                     'bukti'                 => $buktibaru ?? $entry->bukti,
                     'bulan'                 => $tanggal->format('m'),
                     'tahun'                 => $tanggal->format('Y'),
+                    'is_yayasan'            => (bool) ($data['is_yayasan'] ?? false),
                 ]);
 
                 $akunNamaEdit = $entry->akun?->nama_akun ?? 'Tanpa Akun';

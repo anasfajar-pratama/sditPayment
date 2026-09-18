@@ -27,25 +27,30 @@
                 style="display:inline-flex;align-items:center;gap:0.5rem;background:#ef4444;color:#fff;border-radius:0.5rem;padding:0.5rem 1rem;font-size:0.8rem;font-weight:600;text-decoration:none;border:none;cursor:pointer;">
                 <span style="font-size:1rem;">📄</span> Cetak PDF
             </a>
-            <div wire:click="setTab('kashariini')"
-                style="background:linear-gradient(135deg,#059669,#047857);color:#fff;border-radius:0.75rem;padding:0.6rem 1.25rem;text-align:right;min-width:180px;cursor:pointer;border:2px solid {{ $activeTab === 'kashariini' ? '#065f46' : 'transparent' }};transition:all 0.15s;">
-                <div style="font-size:0.65rem;text-transform:uppercase;letter-spacing:0.06em;opacity:0.85;margin-bottom:0.15rem;">Kas Hari Ini</div>
-                <div style="font-size:1.1rem;font-weight:800;font-variant-numeric:tabular-nums;">
-                    <!-- Rp {{ number_format($this->kasHariIni, 0, ',', '.') }} -->
-                    Rp {{ number_format($this->totalGabungan, 0, ',', '.') }}
-                </div>
-            </div>
+        </div>
+    </div>
+
+    {{-- ── KAS HARI INI BLOCK (baris sendiri) ──────────────────────────── --}}
+    <div wire:click="setTab('kashariini')"
+        style="background:linear-gradient(135deg,#059669,#047857);color:#fff;border-radius:0.75rem;padding:1rem 1.5rem;display:flex;align-items:center;justify-content:space-between;gap:1rem;cursor:pointer;border:2px solid {{ $activeTab === 'kashariini' ? '#065f46' : 'transparent' }};transition:all 0.15s;">
+        <div style="font-size:0.75rem;text-transform:uppercase;letter-spacing:0.06em;opacity:0.9;font-weight:700;">Kas Hari Ini</div>
+        <div style="font-size:1.4rem;font-weight:800;font-variant-numeric:tabular-nums;">
+            Rp {{ number_format($this->totalGabungan, 0, ',', '.') }}
         </div>
     </div>
 
     {{-- ── RINGKASAN GRID ──────────────────────────────────────────────── --}}
     @php
         $cards = [
-            'transfer'    => ['label' => 'Transfer',           'value' => $this->totalTransfer],
-            'cash'        => ['label' => 'Cash',               'value' => $this->totalCash],
-            'pengeluaran' => ['label' => 'Pengeluaran',        'value' => $this->totalKredit],
-            'kashariini'  => ['label' => 'Kas Admin',          'value' => $this->kasHariIni],
-            'gabungan'    => ['label' => 'Gabungan (Semua)',   'value' => $this->totalGabungan],
+            'transfer'             => ['label' => 'Transfer',              'value' => $this->totalTransfer],
+            'cash'                 => ['label' => 'Cash',                  'value' => $this->totalCash],
+            'pengeluaran'          => ['label' => 'Pengeluaran',           'value' => $this->totalKredit],
+            'kashariini'           => ['label' => 'Kas Admin',             'value' => $this->kasHariIni],
+            'gabungan'             => ['label' => 'Gabungan',              'value' => $this->totalGabungan],
+            'pendapatan_yayasan'   => ['label' => 'Pendapatan Yayasan',    'value' => $this->totalPendapatanYayasan],
+            'pengeluaran_yayasan'  => ['label' => 'Pengeluaran Yayasan',   'value' => $this->totalPengeluaranYayasan],
+            'yayasan'              => ['label' => 'Gabungan Yayasan',      'value' => $this->totalYayasan],
+            'semua'                => ['label' => 'Gabungan Semua',        'value' => $this->totalSemua],
         ];
     @endphp
 
@@ -77,50 +82,49 @@
     {{-- ── TAB SECTION ─────────────────────────────────────────────────── --}}
     @php
         $tabs = [
-            'transfer'    => 'Transfer',
-            'cash'        => 'Cash',
-            'pengeluaran' => 'Pengeluaran',
-            'kashariini'  => 'Kas Admin',
-            'gabungan'    => 'Gabungan (Semua)',
+            'transfer'             => 'Transfer',
+            'cash'                 => 'Cash',
+            'pengeluaran'          => 'Pengeluaran',
+            'kashariini'           => 'Kas Admin',
+            'gabungan'             => 'Gabungan',
+            
+            'pendapatan_yayasan'   => 'Pendapatan Yayasan',
+            'pengeluaran_yayasan'  => 'Pengeluaran Yayasan',
+            'yayasan'              => 'Gabungan Yayasan',
+            'semua'                => 'Gabungan Semua (Yayasan & Non Yayasan)',
         ];
     @endphp
-
+    <!-- 'non_yayasan'          => 'Gabungan Non Yayasan', -->
     <div style="background:#fff;border-radius:1rem;border:1px solid #e5e7eb;box-shadow:0 1px 3px rgba(0,0,0,0.06);overflow:hidden;">
 
-        {{-- Tab bar --}}
-        <div style="display:flex;overflow-x:auto;border-bottom:1px solid #f3f4f6;background:#fafafa;scrollbar-width:thin;">
-            @foreach($tabs as $key => $label)
-                @php $isActive = $activeTab === $key; @endphp
-                <button wire:click="setTab('{{ $key }}')"
-                    style="
-                        flex-shrink:0;
-                        padding:0.7rem 1.1rem;
-                        font-size:0.78rem;
-                        font-weight:{{ $isActive ? '700' : '500' }};
-                        white-space:nowrap;
-                        border:none;
-                        border-bottom:3px solid {{ $isActive ? '#059669' : 'transparent' }};
-                        color:{{ $isActive ? '#047857' : '#9ca3af' }};
-                        background:{{ $isActive ? '#ecfdf5' : 'transparent' }};
-                        cursor:pointer;
-                        letter-spacing:0.02em;
-                    ">
-                    {{ $label }}
-                </button>
-            @endforeach
+        {{-- Tab selector --}}
+        <div style="display:flex;align-items:center;gap:0.75rem;flex-wrap:wrap;border-bottom:1px solid #f3f4f6;background:#fafafa;padding:0.7rem 1.1rem;">
+            <label for="tab-select" style="font-size:0.78rem;font-weight:600;color:#6b7280;white-space:nowrap;">Pilih Tab</label>
+            <select id="tab-select" wire:model.live="activeTab"
+                style="border:1px solid #d1d5db;border-radius:0.5rem;padding:0.5rem 0.75rem;font-size:0.8rem;background:#fff;color:#374151;min-width:16rem;cursor:pointer;">
+                @foreach($tabs as $key => $label)
+                    <option value="{{ $key }}">{{ $label }}</option>
+                @endforeach
+            </select>
         </div>
 
         {{-- Isi tabel --}}
         @php
             $rows = match ($activeTab) {
-                'transfer'    => $this->entriesTransfer,
-                'cash'        => $this->entriesCash,
-                'pengeluaran' => $this->entriesKredit,
-                'kashariini'  => $this->entriesKasHariIni,
-                'gabungan'    => $this->entriesGabungan,
-                default       => [],
+                'transfer'             => $this->entriesTransfer,
+                'cash'                 => $this->entriesCash,
+                'pengeluaran'          => $this->entriesKredit,
+                'kashariini'           => $this->entriesKasHariIni,
+                'gabungan'             => $this->entriesGabungan,
+                'non_yayasan'          => $this->entriesNonYayasan,
+                'pendapatan_yayasan'   => $this->entriesPendapatanYayasan,
+                'pengeluaran_yayasan'  => $this->entriesPengeluaranYayasan,
+                'yayasan'              => $this->entriesYayasan,
+                'semua'                => $this->entriesSemua,
+                default                => [],
             };
             $tabLabel = $tabs[$activeTab] ?? 'Gabungan';
+            $combinedTabs = ['gabungan', 'non_yayasan', 'yayasan', 'semua'];
         @endphp
 
         @if(empty($rows))
@@ -142,14 +146,14 @@
                             <th style="padding:0.65rem 1rem;text-align:left;width:7rem;font-size:0.7rem;font-weight:600;letter-spacing:0.05em;">TANGGAL</th>
                             <th style="padding:0.65rem 1rem;text-align:left;font-size:0.7rem;font-weight:600;letter-spacing:0.05em;">KETERANGAN</th>
                             <th style="padding:0.65rem 1rem;text-align:left;font-size:0.7rem;font-weight:600;letter-spacing:0.05em;">AKUN</th>
-                            @if(in_array($activeTab, ['transfer', 'gabungan']))
+                            @if(in_array($activeTab, array_merge(['transfer'], $combinedTabs)))
                                 <th style="padding:0.65rem 1rem;text-align:left;width:9rem;font-size:0.7rem;font-weight:600;letter-spacing:0.05em;">REKENING TUJUAN</th>
                             @endif
-                            @if(in_array($activeTab, ['kashariini', 'gabungan']))
+                            @if(in_array($activeTab, array_merge(['kashariini'], $combinedTabs)))
                                 <th style="padding:0.65rem 1rem;text-align:center;width:5.5rem;font-size:0.7rem;font-weight:600;letter-spacing:0.05em;">TIPE</th>
                             @endif
                             <th style="padding:0.65rem 1rem;text-align:right;width:10rem;font-size:0.7rem;font-weight:600;letter-spacing:0.05em;">JUMLAH</th>
-                            @if(in_array($activeTab, ['kashariini', 'gabungan']))
+                            @if(in_array($activeTab, array_merge(['kashariini'], $combinedTabs)))
                                 <th style="padding:0.65rem 1rem;text-align:right;width:10rem;font-size:0.7rem;font-weight:600;letter-spacing:0.05em;background:#374151;">SALDO</th>
                             @endif
                         </tr>
@@ -159,16 +163,21 @@
                             <tr style="border-bottom:1px solid #f3f4f6;background:{{ $loop->index % 2 === 0 ? '#fff' : '#fafafa' }};">
                                 <td style="padding:0.6rem 1rem;text-align:center;color:#9ca3af;font-size:0.75rem;">{{ $row['no'] }}</td>
                                 <td style="padding:0.6rem 1rem;color:#6b7280;font-size:0.8rem;white-space:nowrap;">{{ $row['tanggal'] }}</td>
-                                <td style="padding:0.6rem 1rem;color:#1f2937;">{{ $row['uraian'] }}</td>
+                                <td style="padding:0.6rem 1rem;color:#1f2937;">
+                                    {{ $row['uraian'] }}
+                                    @if (!empty($row['is_yayasan']))
+                                        <span style="display:inline-block;margin-left:0.35rem;padding:0.05rem 0.45rem;border-radius:9999px;font-size:0.65rem;font-weight:700;background:#ede9fe;color:#6d28d9;">Yayasan</span>
+                                    @endif
+                                </td>
                                 <td style="padding:0.6rem 1rem;color:#374151;font-size:0.8rem;">
                                     {{ $row['akun'] }}{{ $row['sub_kategori'] ? ' — ' . $row['sub_kategori'] : '' }}
                                 </td>
-                                @if(in_array($activeTab, ['transfer', 'gabungan']))
+                                @if(in_array($activeTab, array_merge(['transfer'], $combinedTabs)))
                                     <td style="padding:0.6rem 1rem;color:#374151;font-size:0.8rem;">
                                         {{ $row['rekening'] }}{{ $row['pengirim'] ? ' (' . $row['pengirim'] . ')' : '' }}
                                     </td>
                                 @endif
-                                @if(in_array($activeTab, ['kashariini', 'gabungan']))
+                                @if(in_array($activeTab, array_merge(['kashariini'], $combinedTabs)))
                                     <td style="padding:0.6rem 1rem;text-align:center;font-size:0.75rem;font-weight:700;">
                                         <span style="display:inline-block;padding:0.15rem 0.6rem;border-radius:9999px;font-size:0.7rem;
                                             {{ $row['tipe'] === 'Masuk' ? 'background:#ecfdf5;color:#047857;' : 'background:#fef2f2;color:#b91c1c;' }}">
@@ -179,7 +188,7 @@
                                 <td style="padding:0.6rem 1rem;text-align:right;font-weight:600;color:{{ $row['tipe'] === 'Keluar' ? '#dc2626' : '#047857' }};font-variant-numeric:tabular-nums;">
                                     {{ number_format($row['jumlah'], 0, ',', '.') }}
                                 </td>
-                                @if(in_array($activeTab, ['kashariini', 'gabungan']))
+                                @if(in_array($activeTab, array_merge(['kashariini'], $combinedTabs)))
                                     <td style="padding:0.6rem 1rem;text-align:right;font-weight:700;color:#1f2937;font-variant-numeric:tabular-nums;background:#f9fafb;">
                                         {{ number_format($row['saldo'], 0, ',', '.') }}
                                     </td>
@@ -198,11 +207,16 @@
                 </span>
                 <span style="font-weight:800;color:#34d399;font-size:1.05rem;font-variant-numeric:tabular-nums;">
                     Rp {{ number_format(match ($activeTab) {
-                        'transfer'    => $this->totalTransfer,
-                        'cash'        => $this->totalCash,
-                        'pengeluaran' => $this->totalKredit,
-                        'kashariini'  => $this->kasHariIni,
-                        default       => $this->totalGabungan,
+                        'transfer'             => $this->totalTransfer,
+                        'cash'                 => $this->totalCash,
+                        'pengeluaran'          => $this->totalKredit,
+                        'kashariini'           => $this->kasHariIni,
+                        'non_yayasan'          => $this->totalNonYayasan,
+                        'pendapatan_yayasan'   => $this->totalPendapatanYayasan,
+                        'pengeluaran_yayasan'  => $this->totalPengeluaranYayasan,
+                        'yayasan'              => $this->totalYayasan,
+                        'semua'                => $this->totalSemua,
+                        default                => $this->totalGabungan,
                     }, 0, ',', '.') }}
                 </span>
             </div>

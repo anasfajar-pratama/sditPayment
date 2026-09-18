@@ -58,6 +58,7 @@ class RingkasanKasHarianPage extends Page
     {
         unset(
             $this->rows,
+            $this->rowsSekolah,
             $this->totalTransfer,
             $this->totalCash,
             $this->totalKredit,
@@ -68,6 +69,16 @@ class RingkasanKasHarianPage extends Page
             $this->entriesGabungan,
             $this->entriesKasHariIni,
             $this->totalGabungan,
+            $this->totalPendapatanYayasan,
+            $this->totalPengeluaranYayasan,
+            $this->totalYayasan,
+            $this->totalNonYayasan,
+            $this->totalSemua,
+            $this->entriesNonYayasan,
+            $this->entriesPendapatanYayasan,
+            $this->entriesPengeluaranYayasan,
+            $this->entriesYayasan,
+            $this->entriesSemua,
         );
     }
 
@@ -81,10 +92,19 @@ class RingkasanKasHarianPage extends Page
             ->get();
     }
 
+    /**
+     * Baris kas sekolah (tanpa transaksi yayasan).
+     */
+    #[Computed]
+    public function rowsSekolah(): Collection
+    {
+        return $this->rows->filter(fn ($r) => ! $r->is_yayasan)->values();
+    }
+
     #[Computed]
     public function totalTransfer(): float
     {
-        return (float) $this->rows
+        return (float) $this->rowsSekolah
             ->filter(fn ($r) => (float) ($r->debit ?? 0) > 0
                 && $r->rekening_tujuan !== null
                 && $r->rekening_tujuan !== 'Cash')
@@ -94,7 +114,7 @@ class RingkasanKasHarianPage extends Page
     #[Computed]
     public function totalCash(): float
     {
-        return (float) $this->rows
+        return (float) $this->rowsSekolah
             ->filter(fn ($r) => (float) ($r->debit ?? 0) > 0
                 && ($r->rekening_tujuan === null || $r->rekening_tujuan === 'Cash'))
             ->sum(fn ($r) => (float) $r->debit);
@@ -103,7 +123,7 @@ class RingkasanKasHarianPage extends Page
     #[Computed]
     public function totalKredit(): float
     {
-        return (float) $this->rows->sum(fn ($r) => (float) ($r->kredit ?? 0));
+        return (float) $this->rowsSekolah->sum(fn ($r) => (float) ($r->kredit ?? 0));
     }
 
     #[Computed]
@@ -119,9 +139,44 @@ class RingkasanKasHarianPage extends Page
     }
 
     #[Computed]
+    public function totalPendapatanYayasan(): float
+    {
+        return (float) $this->rows
+            ->filter(fn ($r) => $r->is_yayasan && (float) ($r->debit ?? 0) > 0)
+            ->sum(fn ($r) => (float) $r->debit);
+    }
+
+    #[Computed]
+    public function totalPengeluaranYayasan(): float
+    {
+        return (float) $this->rows
+            ->filter(fn ($r) => $r->is_yayasan && (float) ($r->kredit ?? 0) > 0)
+            ->sum(fn ($r) => (float) $r->kredit);
+    }
+
+    #[Computed]
+    public function totalYayasan(): float
+    {
+        return $this->totalPendapatanYayasan - $this->totalPengeluaranYayasan;
+    }
+
+    #[Computed]
+    public function totalNonYayasan(): float
+    {
+        return $this->totalGabungan;
+    }
+
+    #[Computed]
+    public function totalSemua(): float
+    {
+        return (float) $this->rows
+            ->sum(fn ($r) => (float) ($r->debit ?? 0) - (float) ($r->kredit ?? 0));
+    }
+
+    #[Computed]
     public function entriesTransfer(): array
     {
-        $rows = $this->rows
+        $rows = $this->rowsSekolah
             ->filter(fn ($r) => (float) ($r->debit ?? 0) > 0
                 && $r->rekening_tujuan !== null
                 && $r->rekening_tujuan !== 'Cash')
@@ -133,7 +188,7 @@ class RingkasanKasHarianPage extends Page
     #[Computed]
     public function entriesCash(): array
     {
-        $rows = $this->rows
+        $rows = $this->rowsSekolah
             ->filter(fn ($r) => (float) ($r->debit ?? 0) > 0
                 && ($r->rekening_tujuan === null || $r->rekening_tujuan === 'Cash'))
             ->values();
@@ -144,7 +199,7 @@ class RingkasanKasHarianPage extends Page
     #[Computed]
     public function entriesKredit(): array
     {
-        $rows = $this->rows
+        $rows = $this->rowsSekolah
             ->filter(fn ($r) => (float) ($r->kredit ?? 0) > 0)
             ->values();
 
@@ -157,7 +212,7 @@ class RingkasanKasHarianPage extends Page
         $saldo = 0.0;
         $entries = [];
 
-        foreach ($this->rows as $r) {
+        foreach ($this->rowsSekolah as $r) {
             $debit  = (float) ($r->debit  ?? 0);
             $kredit = (float) ($r->kredit ?? 0);
             $isCash = $r->rekening_tujuan === null || $r->rekening_tujuan === 'Cash';
@@ -181,21 +236,68 @@ class RingkasanKasHarianPage extends Page
     #[Computed]
     public function entriesGabungan(): array
     {
+        return $this->mapRunningSaldo($this->rowsSekolah, 'gabungan');
+    }
+
+    #[Computed]
+    public function entriesNonYayasan(): array
+    {
+        $rows = $this->rows->filter(fn ($r) => ! $r->is_yayasan)->values();
+
+        return $this->mapRunningSaldo($rows, 'non_yayasan');
+    }
+
+    #[Computed]
+    public function entriesPendapatanYayasan(): array
+    {
+        $rows = $this->rows
+            ->filter(fn ($r) => $r->is_yayasan && (float) ($r->debit ?? 0) > 0)
+            ->values();
+
+        return $this->mapEntries($rows, 'transfer');
+    }
+
+    #[Computed]
+    public function entriesPengeluaranYayasan(): array
+    {
+        $rows = $this->rows
+            ->filter(fn ($r) => $r->is_yayasan && (float) ($r->kredit ?? 0) > 0)
+            ->values();
+
+        return $this->mapEntries($rows, 'kredit');
+    }
+
+    #[Computed]
+    public function entriesYayasan(): array
+    {
+        $rows = $this->rows->filter(fn ($r) => $r->is_yayasan)->values();
+
+        return $this->mapRunningSaldo($rows, 'yayasan');
+    }
+
+    #[Computed]
+    public function entriesSemua(): array
+    {
+        return $this->mapRunningSaldo($this->rows->values(), 'semua');
+    }
+
+    private function mapRunningSaldo(Collection $rows, string $mode): array
+    {
         $saldo = 0.0;
         $entries = [];
 
-        foreach ($this->rows as $r) {
+        foreach ($rows as $r) {
             $debit  = (float) ($r->debit  ?? 0);
             $kredit = (float) ($r->kredit ?? 0);
 
             if ($debit > 0) {
                 $saldo += $debit;
-                $entry = $this->mapRow($r, 'gabungan', 'Masuk', $debit, $saldo);
+                $entry = $this->mapRow($r, $mode, 'Masuk', $debit, $saldo);
                 $entry['no'] = count($entries) + 1;
                 $entries[] = $entry;
             } elseif ($kredit > 0) {
                 $saldo -= $kredit;
-                $entry = $this->mapRow($r, 'gabungan', 'Keluar', $kredit, $saldo);
+                $entry = $this->mapRow($r, $mode, 'Keluar', $kredit, $saldo);
                 $entry['no'] = count($entries) + 1;
                 $entries[] = $entry;
             }
@@ -236,8 +338,9 @@ class RingkasanKasHarianPage extends Page
             'pengirim'     => $r->nama_rekening_pengirim,
             'tipe'         => $tipe ?: ($mode === 'kredit' ? 'Keluar' : 'Masuk'),
             'jumlah'       => $jumlah,
-            'saldo'        => in_array($mode, ['gabungan', 'kashariini']) ? $saldo : null,
+            'saldo'        => in_array($mode, ['gabungan', 'kashariini', 'non_yayasan', 'yayasan', 'semua']) ? $saldo : null,
             'id'           => $r->id,
+            'is_yayasan'   => (bool) $r->is_yayasan,
         ];
     }
 

@@ -305,29 +305,25 @@
                                     </td>
                                     <td class="py-2.5 text-center">
                                         <div class="inline-flex items-center gap-1.5">
-                                            @if ($bayar->share_token)
-                                                <a href="{{ url('/k/' . $bayar->share_token) }}" target="_blank"
-                                                    class="inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-medium transition
-                                                        {{ $bayar->status === 'lunas' ? 'bg-success-50 text-success-700 hover:bg-success-100 border border-success-200'
-                                                                                      : 'bg-warning-50 text-warning-700 hover:bg-warning-100 border border-warning-200' }}">
-                                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                            d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/>
-                                                    </svg>
-                                                    Kuitansi
-                                                </a>
-                                                <a href="{{ $this->getWhatsappUrl($bayar) }}" target="_blank"
-                                                    class="inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-medium transition
-                                                           bg-[#25D366]/10 text-[#128C7E] hover:bg-[#25D366]/20 border border-[#25D366]/30">
-                                                    <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">
-                                                        <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413z"/>
-                                                        <path d="M12 0C5.373 0 0 5.373 0 12c0 2.124.558 4.118 1.531 5.845L.057 23.428a.5.5 0 00.609.61l5.703-1.498A11.952 11.952 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 21.818a9.808 9.808 0 01-5.034-1.388l-.36-.214-3.733.98.999-3.645-.235-.374A9.818 9.818 0 012.182 12C2.182 6.57 6.57 2.182 12 2.182S21.818 6.57 21.818 12 17.43 21.818 12 21.818z"/>
-                                                    </svg>
-                                                    WA
-                                                </a>
-                                            @else
-                                                <span class="text-xs text-gray-400 italic">—</span>
-                                            @endif
+                                            <x-filament::button
+                                                tag="a"
+                                                size="xs"
+                                                color="success"
+                                                icon="heroicon-m-printer"
+                                                :href="route('kuitansi.cetak', $bayar)"
+                                                target="_blank"
+                                            >
+                                                Kuitansi
+                                            </x-filament::button>
+                                            <a href="{{ route('kuitansi.share-wa', $bayar) }}" target="_blank"
+                                                class="inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-medium transition
+                                                       bg-[#25D366]/10 text-[#128C7E] hover:bg-[#25D366]/20 border border-[#25D366]/30">
+                                                <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">
+                                                    <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413z"/>
+                                                    <path d="M12 0C5.373 0 0 5.373 0 12c0 2.124.558 4.118 1.531 5.845L.057 23.428a.5.5 0 00.609.61l5.703-1.498A11.952 11.952 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 21.818a9.808 9.808 0 01-5.034-1.388l-.36-.214-3.733.98.999-3.645-.235-.374A9.818 9.818 0 012.182 12C2.182 6.57 6.57 2.182 12 2.182S21.818 6.57 21.818 12 17.43 21.818 12 21.818z"/>
+                                                </svg>
+                                                WA
+                                            </a>
                                             @if ($bayar->bukti_bayar)
                                                 <button type="button"
                                                     x-data
@@ -391,6 +387,7 @@
                                             <th style="padding:0.4rem 0.5rem;text-align:right;color:#9ca3af;font-size:0.68rem;font-weight:600;text-transform:uppercase;">Nominal</th>
                                             <th style="padding:0.4rem 0.5rem;text-align:center;color:#9ca3af;font-size:0.68rem;font-weight:600;text-transform:uppercase;">Tanggal</th>
                                             <th style="padding:0.4rem 0 0.4rem 0.5rem;text-align:center;color:#9ca3af;font-size:0.68rem;font-weight:600;text-transform:uppercase;">Status</th>
+                                            <th style="padding:0.4rem 0 0.4rem 0.5rem;text-align:center;color:#9ca3af;font-size:0.68rem;font-weight:600;text-transform:uppercase;">Kuitansi</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -408,6 +405,14 @@
                                                                  color:{{ $p['status']==='lunas'?'#15803d':($p['status']==='cicilan'?'#78350f':'#374151') }};">
                                                         {{ ucfirst($p['status']) }}
                                                     </span>
+                                                </td>
+                                                <td style="padding:0.5rem 0 0.5rem 0.5rem;text-align:center;">
+                                                    <a href="{{ route('kuitansi.cetak', $p['id']) }}" target="_blank"
+                                                        style="display:inline-flex;align-items:center;gap:0.3rem;text-decoration:none;
+                                                               background:#dcfce7;color:#15803d;border:1px solid #86efac;
+                                                               border-radius:0.4rem;padding:0.2rem 0.55rem;font-size:0.7rem;font-weight:600;">
+                                                        Kuitansi
+                                                    </a>
                                                 </td>
                                             </tr>
                                         @endforeach
@@ -519,8 +524,8 @@
             <style>
                 .k-sticky-no,.k-sticky-nama,.k-sticky-kls{position:sticky;z-index:2;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;box-sizing:border-box;}
                 .k-sticky-no{left:0;width:2.5rem;min-width:2.5rem;max-width:2.5rem;}
-                .k-sticky-nama{left:2.5rem;width:11rem;min-width:11rem;max-width:11rem;}
-                .k-sticky-kls{left:13.5rem;width:3rem;min-width:3rem;max-width:3rem;}
+                .k-sticky-nama{left:2.5rem;width:18.3rem;min-width:18.3rem;max-width:18.3rem;}
+                /* .k-sticky-kls{left:16.8rem;width:3rem;min-width:3rem;max-width:3rem;} */
                 thead tr:nth-child(2) th.k-sticky-no,
                 thead tr:nth-child(2) th.k-sticky-nama,
                 thead tr:nth-child(2) th.k-sticky-kls{background:#374151 !important;}
@@ -552,7 +557,7 @@
                             $hasDuRow = collect($matrix['rows'])->contains(fn ($r) => !($r['is_new_entry'] ?? false));
                         @endphp
                         <tr style="background:#1f2937;color:#fff;">
-                            <th colspan="3" class="k-sticky-siswa" style="padding:0.6rem 0.75rem;text-align:center;font-size:0.7rem;
+                            <th colspan="2" class="k-sticky-siswa" style="padding:0.6rem 0.75rem;text-align:center;font-size:0.7rem;
                                                    font-weight:600;letter-spacing:0.05em;text-transform:uppercase;
                                                    border-right:1px solid #374151;">Siswa</th>
                             @if(!($matrix['is_dta'] ?? false))
@@ -575,7 +580,7 @@
                         <tr style="background:#374151;color:#d1d5db;">
                             <th class="k-sticky-no" style="padding:0.5rem 0.6rem;text-align:center;font-size:0.68rem;font-weight:600;border-right:1px solid #4b5563;">No</th>
                             <th class="k-sticky-nama" style="padding:0.5rem 0.75rem;text-align:left;font-size:0.68rem;font-weight:600;border-right:1px solid #4b5563;">Nama</th>
-                            <th class="k-sticky-kls" style="padding:0.5rem 0.6rem;text-align:center;font-size:0.68rem;font-weight:600;border-right:1px solid #4b5563;">Kls</th>
+                            <!-- <th class="k-sticky-kls" style="padding:0.5rem 0.6rem;text-align:center;font-size:0.68rem;font-weight:600;border-right:1px solid #4b5563;">Kls</th> -->
                             @if(!($matrix['is_dta'] ?? false))
                             <th style="background:#4338ca;color:#fff;padding:0.5rem 0.4rem;text-align:center;font-size:0.68rem;font-weight:600;min-width:7rem;border-right:1px solid #5b5bd6;">
                                 {{ $hasBpRow && $hasDuRow ? 'BP / DU' : ($hasBpRow ? 'BP' : 'DU') }}
@@ -599,7 +604,7 @@
                                 onmouseout="this.style.background='transparent'">
                                 <td class="k-sticky-no" style="padding:0.5rem 0.6rem;text-align:center;color:#9ca3af;font-size:0.72rem;border-right:1px solid #f1f5f9;">{{ $row['no'] }}</td>
                                 <td class="k-sticky-nama" style="padding:0.5rem 0.75rem;font-weight:600;color:#1f2937;border-right:1px solid #f1f5f9;">{{ $row['nama'] }}</td>
-                                <td class="k-sticky-kls" style="padding:0.5rem 0.6rem;text-align:center;color:#6b7280;font-size:0.72rem;font-weight:600;border-right:1px solid #f1f5f9;">{{ $row['kelas'] }}</td>
+                                <!-- <td class="k-sticky-kls" style="padding:0.5rem 0.6rem;text-align:center;color:#6b7280;font-size:0.72rem;font-weight:600;border-right:1px solid #f1f5f9;">{{ $row['kelas'] }}</td> -->
 
                                 {{-- ── Cell pertama: BP (new entry) atau Daftar Ulang + Juli ── --}}
                                 @if(!($matrix['is_dta'] ?? false))

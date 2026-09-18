@@ -20,6 +20,7 @@ class KasHarian extends Model
         'no_ref', 'rekening_tujuan', 'nama_rekening_pengirim',
         'verified_at', 'verified_by',
         'bulan', 'tahun',
+        'is_yayasan',
         'created_by',
     ];
 
@@ -28,6 +29,7 @@ class KasHarian extends Model
         'debit'        => 'decimal:2',
         'kredit'       => 'decimal:2',
         'verified_at'  => 'datetime',
+        'is_yayasan'   => 'boolean',
     ];
 
     protected $appends = [

@@ -2,9 +2,11 @@
 
 namespace App\Filament\Resources\SiswaResource\Pages;
 
+use App\Exports\CalonSiswaPembayaranExport;
 use App\Exports\CalonSiswaTemplateExport;
 use App\Filament\Resources\SiswaResource;
 use App\Imports\CalonSiswaImport;
+use App\Models\Pembayaran;
 use App\Models\Siswa;
 use App\Models\SiswaKelasHistory;
 use App\Models\Tagihan;
@@ -20,6 +22,8 @@ use Filament\Forms\Set;
 use Filament\Notifications\Notification;
 use Filament\Resources\Components\Tab;
 use Filament\Resources\Pages\ListRecords;
+use Filament\Support\Enums\IconPosition;
+use Filament\Tables\Actions\Action as TableAction;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
@@ -41,6 +45,10 @@ class ListCalonSiswa extends ListRecords
     {
         return $table
             ->columns([
+                TextColumn::make('no')
+                    ->label('No')
+                    ->rowIndex(),
+
                 TextColumn::make('nama')
                     ->label('Nama')
                     ->searchable()
@@ -88,7 +96,21 @@ class ListCalonSiswa extends ListRecords
                         'cicilan'     => 'Cicilan (Sebagian)',
                         'belum_bayar' => 'Belum Bayar',
                         default       => ucfirst($state),
-                    }),
+                    })
+                    ->icon('heroicon-m-clock')
+                    ->iconPosition(IconPosition::After)
+                    ->tooltip('Klik untuk melihat riwayat & cetak bukti pembayaran')
+                    ->action(
+                        TableAction::make('riwayat_biaya_masuk')
+                            ->modalHeading(fn (Siswa $record): string => 'Riwayat Pembayaran Biaya Masuk — ' . $record->nama)
+                            ->modalWidth('3xl')
+                            ->modalSubmitAction(false)
+                            ->modalCancelActionLabel('Tutup')
+                            ->modalContent(fn (Siswa $record) => view(
+                                'filament.modals.riwayat-pembayaran-calon',
+                                $this->riwayatBiayaMasukData($record),
+                            )),
+                    ),
             ])
             ->defaultSort('nama', 'asc');
     }
@@ -106,6 +128,35 @@ class ListCalonSiswa extends ListRecords
         };
     }
 
+    protected function riwayatBiayaMasukData(Siswa $siswa): array
+    {
+        $tagihan = $siswa->tagihanPendaftaran;
+
+        $pembayarans = Pembayaran::with('jenisPembayaran')
+            ->where('siswa_id', $siswa->id)
+            ->where('jenis_pembayaran_id', 1)
+            ->orderBy('tanggal_bayar')
+            ->orderBy('id')
+            ->get();
+
+        $totalTerbayar = (float) $pembayarans->sum('nominal');
+        $sisaTagihan   = ($tagihan && $tagihan->status !== 'lunas') ? (float) $tagihan->nominal_tagihan : 0.0;
+
+        $jenjangLabel = strtoupper($siswa->calon_jenis ?? '');
+        $tingkatLabel = static::formatTingkat($siswa->calon_tingkat, $siswa->calon_jenis);
+
+        return [
+            'siswa'         => $siswa,
+            'tagihan'       => $tagihan,
+            'pembayarans'   => $pembayarans,
+            'totalTerbayar' => $totalTerbayar,
+            'sisaTagihan'   => $sisaTagihan,
+            'totalTagihan'  => $totalTerbayar + $sisaTagihan,
+            'jenjangLabel'  => $jenjangLabel,
+            'tingkatLabel'  => $tingkatLabel,
+        ];
+    }
+
     public function getTitle(): string
     {
         return 'Calon Siswa';
@@ -121,6 +172,32 @@ class ListCalonSiswa extends ListRecords
     protected function getHeaderActions(): array
     {
         return [
+            Action::make('export_report')
+                ->label('Export Excel')
+                ->color('success')
+                ->icon('heroicon-o-document-arrow-down')
+                ->modalHeading('Export Report Pembayaran Calon Siswa')
+                ->modalDescription('Pilih tahun untuk memisahkan data pembayaran.')
+                ->modalWidth('sm')
+                ->form([
+                    Select::make('tahun')
+                        ->label('Tahun')
+                        ->options(fn () => Pembayaran::where('jenis_pembayaran_id', 1)
+                            ->distinct()
+                            ->orderByDesc('tahun')
+                            ->pluck('tahun', 'tahun')
+                            ->toArray())
+                        ->native(false)
+                        ->placeholder('Pilih tahun')
+                        ->required(),
+                ])
+                ->action(function (array $data) {
+                    return Excel::download(
+                        new CalonSiswaPembayaranExport((int) $data['tahun']),
+                        'report-pembayaran-calon-' . $data['tahun'] . '.xlsx',
+                    );
+                }),
+
             // Action::make('download_template')
             //     ->label('Download Template')
             //     ->color('gray')

@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "powershell",
+      "Shell(php artisan view:clear)",
+      "Shell(php artisan route:list --name=kuitansi --json)",
+      "Shell(php -l appHttpControllersKuitansiController.php)",
+      "Shell(php -l appFilamentResourcesSiswaResourcePagesListCalonSiswa.php)",
+      "Shell(php artisan view:cache)",
+      "Shell(php -l app\\Http\\Controllers\\KuitansiController.php)",
+      "Shell(php -l app\\Filament\\Resources\\SiswaResource\\Pages\\ListCalonSiswa.php)"
+    ],
+    "deny": [],
+    "defaultMode": "default"
+  }
+}

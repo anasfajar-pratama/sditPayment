@@ -38,6 +38,9 @@ Route::middleware('auth')->group(function () {
     Route::get('/kuitansi/{pembayaran}', [KuitansiController::class, 'cetak'])
     ->name('kuitansi.cetak');
 
+    Route::get('/kuitansi/{pembayaran}/share-wa', [KuitansiController::class, 'shareWa'])
+        ->name('kuitansi.share-wa');
+
     Route::get('/slip-gaji/pdf', [SlipGajiController::class, 'cetak'])
         ->name('slip-gaji.pdf');
 
