@@ -524,7 +524,7 @@
             <style>
                 .k-sticky-no,.k-sticky-nama,.k-sticky-kls{position:sticky;z-index:2;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;box-sizing:border-box;}
                 .k-sticky-no{left:0;width:2.5rem;min-width:2.5rem;max-width:2.5rem;}
-                .k-sticky-nama{left:2.5rem;width:18.3rem;min-width:18.3rem;max-width:18.3rem;}
+                .k-sticky-nama{left:2.5rem;width:22rem;min-width:22rem;max-width:22rem;}
                 /* .k-sticky-kls{left:16.8rem;width:3rem;min-width:3rem;max-width:3rem;} */
                 thead tr:nth-child(2) th.k-sticky-no,
                 thead tr:nth-child(2) th.k-sticky-nama,
@@ -538,13 +538,13 @@
                 tr.k-rekap-row td.k-sticky-no,
                 tr.k-rekap-row td.k-sticky-nama,
                 tr.k-rekap-row td.k-sticky-kls{background:#f8fafc !important;}
-                .k-sticky-siswa{position:sticky;left:0;z-index:2;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;box-sizing:border-box;width:16.5rem;min-width:16.5rem;max-width:16.5rem;}
+                .k-sticky-siswa{position:sticky;left:0;z-index:2;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;box-sizing:border-box;width:24.5rem;min-width:24.5rem;max-width:24.5rem;}
                 thead th.k-sticky-siswa{background:#1f2937 !important;}
                 .k-sticky-kls::after{content:'';position:absolute;right:0;top:0;bottom:0;width:4px;background:linear-gradient(to right,rgba(0,0,0,0.08),transparent);pointer-events:none;z-index:3;}
                 .k-grid-table td,.k-grid-table th{box-sizing:border-box;overflow:hidden;}
             </style>
             <div style="overflow-x:auto;">
-                <table class="k-grid-table" style="width:100%;border-collapse:separate;border-spacing:0;font-size:0.78rem;min-width:1200px;">
+                <table class="k-grid-table" style="width:100%;border-collapse:separate;border-spacing:0;font-size:0.78rem;min-width:1500px;">
                     <thead>
                         @php
                             $months     = $matrix['months'];

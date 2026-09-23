@@ -23,7 +23,7 @@ class CalonSiswaPembayaranExport implements FromArray, WithHeadings, WithStyles,
 
     public function headings(): array
     {
-        $headings = ['No', 'Nama', 'Total Tagihan'];
+        $headings = ['No', 'Nama', 'Total Tagihan', 'Total Terbayar', 'Status'];
 
         for ($i = 1; $i <= $this->maxCicilan(); $i++) {
             $headings[] = "Cicilan ke-{$i}";
@@ -58,11 +58,24 @@ class CalonSiswaPembayaranExport implements FromArray, WithHeadings, WithStyles,
 
             $totalTerbayar = (float) $pembayarans->sum('nominal');
             $sisaTagihan   = ($tagihan && $tagihan->status !== 'lunas') ? (float) $tagihan->nominal_tagihan : 0.0;
+            $totalTagihan  = $totalTerbayar + $sisaTagihan;
+            
+            if (!$tagihan) {
+                $status = 'Belum Bayar';
+            } elseif ($tagihan->status === 'lunas') {
+                $status = 'Lunas';
+            } elseif ($totalTerbayar > 0) {
+                $status = 'Cicilan';
+            } else {
+                $status = 'Belum Bayar';
+            }
 
             $row = [
                 $no + 1,
                 $siswa->nama,
-                $totalTerbayar + $sisaTagihan,
+                'Rp ' . number_format($totalTagihan, 0, ',', '.'),
+                'Rp ' . number_format($totalTerbayar, 0, ',', '.'),
+                $status,
             ];
 
             foreach ($pembayarans as $p) {

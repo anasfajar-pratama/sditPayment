@@ -38,7 +38,7 @@ class ListCalonSiswa extends ListRecords
     {
         return Siswa::query()
             ->where('is_calon', 1)
-            ->with(['tagihanPendaftaran.pembayaran']);
+            ->with(['tagihanPendaftaran.pembayarans']);
     }
 
     public function table(Table $table): Table
@@ -71,9 +71,16 @@ class ListCalonSiswa extends ListRecords
                     ->label('Tingkat Tujuan')
                     ->formatStateUsing(fn ($state, $record) => static::formatTingkat($state, $record->calon_jenis)),
 
-                TextColumn::make('no_hp_orang_tua')
-                    ->label('No HP Orang Tua')
-                    ->searchable()
+                TextColumn::make('nominal_tagihan')
+                    ->label('Nominal Tagihan')
+                    ->state(fn (Siswa $record): ?float => $record->tagihanPendaftaran ? (float) $record->tagihanPendaftaran->nominal_tagihan : null)
+                    ->formatStateUsing(fn ($state): string => 'Rp ' . number_format((float) $state, 0, ',', '.'))
+                    ->placeholder('-'),
+
+                TextColumn::make('total_bayar')
+                    ->label('Total Bayar')
+                    ->state(fn (Siswa $record): ?float => $record->tagihanPendaftaran ? (float) $record->tagihanPendaftaran->pembayarans->sum('nominal') : null)
+                    ->formatStateUsing(fn ($state): string => 'Rp ' . number_format((float) $state, 0, ',', '.'))
                     ->placeholder('-'),
 
                 TextColumn::make('tagihan_status')
@@ -83,7 +90,7 @@ class ListCalonSiswa extends ListRecords
                         $t = $record->tagihanPendaftaran;
                         if (! $t) return 'belum_bayar';
                         if ($t->status === 'lunas') return 'lunas';
-                        return $t->pembayaran ? 'cicilan' : 'belum_bayar';
+                        return $t->pembayarans->isNotEmpty() ? 'cicilan' : 'belum_bayar';
                     })
                     ->color(fn (string $state): string => match ($state) {
                         'lunas'       => 'success',
