@@ -102,6 +102,9 @@ Route::get('/k/{token}', function (string $token) {
 Route::get('/tagihan/{tagihan}/pdf', [TagihanController::class, 'pdf'])
      ->name('tagihan.pdf');
 
+Route::get('/tagihan/gabungan/{siswa}/pdf', [TagihanController::class, 'gabungan'])
+     ->name('tagihan.gabungan.pdf');
+
 // Route::get('/', function () {
 //     return view('landing');
 // });

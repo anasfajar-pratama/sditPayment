@@ -40,9 +40,13 @@ class ListSiswaByKelas extends ListRecords
                 ->getStateUsing(function (Siswa $record, $rowLoop, $livewire): string {
                     $iteration = $rowLoop->iteration ?? 1;
                     $page      = $livewire->getTablePage() ?? 1;
-                    $perPage   = $livewire->getTableRecordsPerPage() ?? 10;
+                    $perPage   = $livewire->getTableRecordsPerPage();
 
-                    return (string) ((($page - 1) * $perPage) + $iteration);
+                    if (! is_numeric($perPage)) {
+                        return (string) $iteration;
+                    }
+
+                    return (string) ((($page - 1) * (int) $perPage) + $iteration);
                 })
                 ->sortable(false)
                 ->searchable(false),

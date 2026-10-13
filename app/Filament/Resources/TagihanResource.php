@@ -56,6 +56,50 @@ class TagihanResource extends Resource
         };
     }
 
+    // ─── Helper: label kolom untuk tagihan multi-item (dari detail JSON) ──────
+
+    public static function detailJenisLabel(Tagihan $record): string
+    {
+        $names = collect($record->detail)
+            ->pluck('jenis')
+            ->filter()
+            ->map(fn ($j) => match (strtoupper(trim((string) $j))) {
+                'SPP'                        => 'SPP',
+                'DAFTAR ULANG'               => 'Daftar Ulang',
+                'BIAYA PENDAFTARAN', 'DAFTAR MASUK' => 'Pendaftaran',
+                default                      => (string) $j,
+            })
+            ->unique()
+            ->values();
+
+        return $names->isNotEmpty() ? 'Multi (' . $names->implode('/') . ')' : 'Multi';
+    }
+
+    public static function detailBulanLabel(Tagihan $record): string
+    {
+        $bulans = collect($record->detail)
+            ->pluck('bulan')
+            ->filter()
+            ->unique()
+            ->sort()
+            ->values()
+            ->map(fn ($b) => static::namaBulan($b));
+
+        return $bulans->isNotEmpty() ? $bulans->implode(', ') : '—';
+    }
+
+    // ─── Helper: tagihan belum bayar paling akhir (bulan terakhir) ────────────
+
+    public static function latestUnpaidTagihan(int $siswaId): ?Tagihan
+    {
+        return Tagihan::where('siswa_id', $siswaId)
+            ->where('status', 'belum_bayar')
+            ->orderByDesc('tahun')
+            ->orderByDesc('bulan')
+            ->orderByDesc('id')
+            ->first();
+    }
+
     // ─── Helper: build URL WhatsApp dengan pesan otomatis ────────────────────
 
     public static function whatsappUrl(Tagihan $record): string
@@ -103,6 +147,87 @@ class TagihanResource extends Resource
         return 'https://wa.me/?text=' . urlencode($pesan);
     }
 
+    // ─── Helper: URL WhatsApp untuk tagihan gabungan (semua belum bayar) ──────
+
+    public static function whatsappGabunganUrl($siswa): string
+    {
+        $unpaid = Tagihan::where('siswa_id', $siswa->id)->where('status', 'belum_bayar')->get();
+        $total  = (float) $unpaid->sum('nominal_tagihan');
+        $link   = route('tagihan.gabungan.pdf', $siswa->id);
+
+        $pesan = implode("\n", [
+            "Yth. Orang Tua/Wali *{$siswa->nama}*",
+            '',
+            'Berikut informasi tagihan sekolah (gabungan):',
+            '• Jumlah   : ' . $unpaid->count() . ' tagihan belum bayar',
+            '• Total    : Rp ' . number_format($total, 0, ',', '.'),
+            '',
+            'Lihat semua tagihan:',
+            $link,
+            '',
+            'Terima kasih. 🙏',
+        ]);
+
+        return 'https://wa.me/?text=' . urlencode($pesan);
+    }
+
+    /**
+     * HTML tabel tagihan belum bayar milik siswa (dipakai modal cetak & kirim WA).
+     * Return: ['html' => string, 'count' => int, 'total' => float]
+     */
+    public static function tagihanListModal(Tagihan $record): array
+    {
+        $unpaid = Tagihan::with('jenisPembayaran')
+            ->where('siswa_id', $record->siswa_id)
+            ->where('status', 'belum_bayar')
+            ->orderBy('tahun')
+            ->orderBy('bulan')
+            ->get();
+
+        $latest = static::latestUnpaidTagihan($record->siswa_id);
+
+        $count = $unpaid->count();
+        $total = (float) $unpaid->sum('nominal_tagihan');
+
+        $rowsHtml = '';
+        foreach ($unpaid->take(10) as $t) {
+            $isMulti = $t->detail && count($t->detail) > 0;
+            $jenis   = $isMulti
+                ? static::detailJenisLabel($t)
+                : ($t->jenisPembayaran?->nama ?? 'Tagihan');
+            $periode = $isMulti
+                ? (static::detailBulanLabel($t) . ($t->tahun ? ' ' . $t->tahun : ''))
+                : ($t->bulan ? (static::namaBulan($t->bulan) . ' ' . $t->tahun) : ($t->tahun ?: '—'));
+            $nominal = 'Rp ' . number_format((float) $t->nominal_tagihan, 0, ',', '.');
+            $bg      = ($latest && $t->id === $latest->id) ? 'background:#fef9c3;' : '';
+
+            $rowsHtml .= '<tr style="' . $bg . '">'
+                . '<td style="padding:2px 6px;">' . e($jenis) . '</td>'
+                . '<td style="padding:2px 6px;">' . e($periode) . '</td>'
+                . '<td style="padding:2px 6px;text-align:right;white-space:nowrap;">' . e($nominal) . '</td>'
+                . '</tr>';
+        }
+
+        if ($count > 10) {
+            $rowsHtml .= '<tr><td colspan="3" style="padding:2px 6px;color:#6b7280;">'
+                . '… dan ' . ($count - 10) . ' tagihan lainnya</td></tr>';
+        }
+
+        $html = '<div style="font-size:0.8rem;">'
+            . '<div style="margin-bottom:4px;">Siswa: <strong>' . e(static::formatNamaSiswa($record->siswa)) . '</strong></div>'
+            . '<div style="margin-bottom:6px;color:#6b7280;">Tagihan belum bayar: <strong>' . $count . '</strong>'
+            . ' &bull; Total: <strong>Rp ' . number_format($total, 0, ',', '.') . '</strong></div>'
+            . '<table style="width:100%;border-collapse:collapse;">'
+            . '<thead><tr style="border-bottom:1px solid #e5e7eb;color:#6b7280;">'
+            . '<th style="padding:2px 6px;text-align:left;font-weight:600;">Jenis</th>'
+            . '<th style="padding:2px 6px;text-align:left;font-weight:600;">Bulan &amp; Tahun</th>'
+            . '<th style="padding:2px 6px;text-align:right;font-weight:600;">Nominal</th>'
+            . '</tr></thead><tbody>' . $rowsHtml . '</tbody></table>'
+            . '</div>';
+
+        return ['html' => $html, 'count' => $count, 'total' => $total, 'latest' => $latest];
+    }
+
     // ─── Table ────────────────────────────────────────────────────────────────
 
     public static function table(Table $table): Table
@@ -121,12 +246,12 @@ class TagihanResource extends Resource
                     ->formatStateUsing(fn ($record) => static::formatNamaSiswa($record->siswa)),
                 Tables\Columns\TextColumn::make('jenisPembayaran.nama')
                     ->label('Jenis')
-                    ->formatStateUsing(fn ($record) => $record->detail && count($record->detail) > 0
-                        ? 'Multi (' . count($record->detail) . ' item)'
+                    ->formatStateUsing(fn ($record) => ($record->detail && count($record->detail) > 0)
+                        ? static::detailJenisLabel($record)
                         : ($record->jenisPembayaran?->nama ?? '—')),
                 Tables\Columns\TextColumn::make('bulan')
-                    ->formatStateUsing(fn ($record) => $record->detail && count($record->detail) > 0
-                        ? 'Multi'
+                    ->formatStateUsing(fn ($record) => ($record->detail && count($record->detail) > 0)
+                        ? static::detailBulanLabel($record)
                         : static::namaBulan($record->bulan ?? '')),
                 Tables\Columns\TextColumn::make('tahun'),
                 Tables\Columns\TextColumn::make('nominal_tagihan')
@@ -214,22 +339,56 @@ class TagihanResource extends Resource
             ])
             ->actions([
 
-                // ── Cetak: buka PDF di tab baru ───────────────────────────────
+                // ── Cetak Tagihan: modal + opsi gabungan bila > 1 tagihan ─────
                 Action::make('cetak')
-                    ->tooltip(fn (Tagihan $record) => $record->status === 'lunas'
-                        ? 'Cetak Kuitansi'
-                        : 'Cetak Tagihan')
+                    ->tooltip('Cetak Tagihan')
                     ->icon('heroicon-o-printer')
-                    ->color(fn (Tagihan $record) => $record->status === 'lunas' ? 'success' : 'warning')
+                    ->color('warning')
                     ->iconButton()
+                    ->visible(fn (Tagihan $record) => $record->status !== 'lunas')
+                    ->modalHeading('Cetak Tagihan')
+                    ->modalWidth('lg')
+                    ->modalSubmitActionLabel('Cetak')
+                    ->form(function (Tagihan $record) {
+                        $d = static::tagihanListModal($record);
+
+                        return [
+                            Placeholder::make('daftar_tagihan')
+                                ->hiddenLabel()
+                                ->content(new \Illuminate\Support\HtmlString($d['html'])),
+
+                            Forms\Components\Radio::make('pilihan')
+                                ->label('Pilih cetak')
+                                ->options([
+                                    'single'   => 'Cetak tagihan bulan terakhir saja',
+                                    'gabungan' => 'Cetak Tagihan Gabungan (' . $d['count'] . ' tagihan belum bayar)',
+                                ])
+                                ->default('single')
+                                ->visible($d['count'] > 1),
+                        ];
+                    })
+                    ->action(function (array $data, Tagihan $record, $livewire) {
+                        $latest = static::latestUnpaidTagihan($record->siswa_id) ?? $record;
+                        $url = (($data['pilihan'] ?? 'single') === 'gabungan')
+                            ? route('tagihan.gabungan.pdf', $record->siswa_id)
+                            : route('tagihan.pdf', $latest);
+
+                        $livewire->js("window.open('{$url}', '_blank')");
+                    }),
+
+                // ── Cetak Kuitansi (tagihan sudah lunas) ──────────────────────
+                Action::make('cetak_kuitansi')
+                    ->tooltip('Cetak Kuitansi')
+                    ->icon('heroicon-o-printer')
+                    ->color('success')
+                    ->iconButton()
+                    ->visible(fn (Tagihan $record) => $record->status === 'lunas')
                     ->url(function (Tagihan $record) {
-                        if ($record->status === 'lunas') {
-                            $pembayaran = $record->pembayaran;
-                            if ($pembayaran) {
-                                return "/kuitansi/{$pembayaran->id}";
-                            }
-                        }
-                        return route('tagihan.pdf', $record);
+                        $pembayaran = $record->pembayaran;
+
+                        return $pembayaran
+                            ? "/kuitansi/{$pembayaran->id}"
+                            : route('tagihan.pdf', $record);
                     })
                     ->openUrlInNewTab(),
 
@@ -262,8 +421,35 @@ class TagihanResource extends Resource
                     ->icon('heroicon-o-chat-bubble-left-ellipsis')
                     ->color('success')
                     ->iconButton()
-                    ->url(fn (Tagihan $record): string => static::whatsappUrl($record))
-                    ->openUrlInNewTab(),
+                    ->modalHeading('Kirim Tagihan via WhatsApp')
+                    ->modalWidth('lg')
+                    ->modalSubmitActionLabel('Kirim via WhatsApp')
+                    ->form(function (Tagihan $record) {
+                        $d = static::tagihanListModal($record);
+
+                        return [
+                            Placeholder::make('daftar_tagihan')
+                                ->hiddenLabel()
+                                ->content(new \Illuminate\Support\HtmlString($d['html'])),
+
+                            Forms\Components\Radio::make('pilihan')
+                                ->label('Pilih yang dikirim')
+                                ->options([
+                                    'single'   => 'Kirim tagihan bulan terakhir saja',
+                                    'gabungan' => 'Kirim Tagihan Gabungan (' . $d['count'] . ' tagihan belum bayar)',
+                                ])
+                                ->default('single')
+                                ->visible($d['count'] > 1),
+                        ];
+                    })
+                    ->action(function (array $data, Tagihan $record, $livewire) {
+                        $latest = static::latestUnpaidTagihan($record->siswa_id) ?? $record;
+                        $url = (($data['pilihan'] ?? 'single') === 'gabungan')
+                            ? static::whatsappGabunganUrl($record->siswa)
+                            : static::whatsappUrl($latest);
+
+                        $livewire->js("window.open('" . addslashes($url) . "', '_blank')");
+                    }),
 
             ]);
     }

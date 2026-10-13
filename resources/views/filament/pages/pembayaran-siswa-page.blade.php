@@ -173,6 +173,19 @@
 
         {{-- TAGIHAN BELUM BAYAR --}}
         <x-filament::section heading="Tagihan Belum Bayar">
+            <x-slot name="headerEnd">
+                @if (! $this->tagihans->isEmpty())
+                    <x-filament::button
+                        tag="a"
+                        href="{{ route('tagihan.gabungan.pdf', $selectedSiswa) }}"
+                        target="_blank"
+                        icon="heroicon-o-printer"
+                        color="warning">
+                        Cetak Tagihan Gabungan
+                    </x-filament::button>
+                @endif
+            </x-slot>
+
             @if ($this->tagihans->isEmpty())
                 <div class="py-8 text-center text-gray-400">
                     <x-heroicon-o-check-circle class="mx-auto h-10 w-10 mb-2 text-success-400" />
@@ -196,7 +209,11 @@
                                     <td class="py-3 pr-4 font-medium">
                                         {{ $tagihan->jenisPembayaran?->nama }}
                                         @if ($this->isSpp($tagihan))
-                                            <span class="ml-1 rounded-full bg-danger-100 text-danger-700 text-xs px-2 py-0.5">Wajib Lunas</span>
+                                            @if (($tagihan->pembayarans_sum_nominal ?? 0) > 0)
+                                                <span class="ml-1 rounded-full bg-amber-100 text-amber-700 text-xs px-2 py-0.5">Kurang Bayar</span>
+                                            @else
+                                                <span class="ml-1 rounded-full bg-danger-100 text-danger-700 text-xs px-2 py-0.5">Wajib Lunas</span>
+                                            @endif
                                         @else
                                             <span class="ml-1 rounded-full bg-blue-100 text-blue-700 text-xs px-2 py-0.5">Bisa Cicil</span>
                                         @endif
@@ -205,10 +222,22 @@
                                     <td class="py-3 pr-4">{{ $tagihan->tahun }}</td>
                                     <td class="py-3 pr-4 text-right font-semibold whitespace-nowrap">
                                         Rp {{ number_format($tagihan->nominal_tagihan, 0, ',', '.') }}
+                                        @if (($tagihan->pembayarans_sum_nominal ?? 0) > 0)
+                                            <div class="text-xs font-normal text-amber-600">
+                                                Terbayar Rp {{ number_format($tagihan->pembayarans_sum_nominal, 0, ',', '.') }}
+                                            </div>
+                                        @endif
                                     </td>
                                     <td class="py-3 text-center">
-                                        @role('admin')
                                         <div class="inline-flex items-center gap-1.5">
+                                            <x-filament::icon-button
+                                                tag="a"
+                                                href="{{ route('tagihan.pdf', $tagihan) }}"
+                                                target="_blank"
+                                                icon="heroicon-o-printer"
+                                                color="warning"
+                                                tooltip="Cetak Tagihan" />
+                                            @role('admin')
                                             @if ($this->canEditTagihan($tagihan))
                                             <x-filament::icon-button
                                                 wire:click="mountAction('editNominal', { tagihan_id: {{ $tagihan->id }} })"
@@ -227,6 +256,8 @@
                                                 color="danger"
                                                 tooltip="Hapus Tagihan" />
                                             @endif
+                                            @endrole
+                                            @if (auth()->user()->hasRole('admin') || auth()->user()->hasRole('kasir') || auth()->user()->hasRole('operator'))
                                             <x-filament::button
                                                 wire:click="mountAction('bayar', { tagihan_id: {{ $tagihan->id }} })"
                                                 wire:loading.attr="disabled"
@@ -235,8 +266,8 @@
                                                 color="primary">
                                                 Bayar
                                             </x-filament::button>
+                                            @endif
                                         </div>
-                                        @endrole
                                     </td>
                                 </tr>
                             @endforeach
@@ -691,16 +722,16 @@
                                                 {{ number_format($cell['nominal'], 0, ',', '.') }}
                                             </div>
                                         @elseif ($cell['status'] === 'cicilan')
-                                            <div style="font-size:0.65rem;color:#92400e;font-weight:600;line-height:1.3;white-space:nowrap;">
-                                                {{ $cell['tanggal'] }}
+                                            <div style="font-size:0.6rem;color:#b45309;font-weight:700;line-height:1.2;">🟠 Kurang Bayar</div>
+                                            <div style="font-size:0.62rem;color:#92400e;white-space:nowrap;">
+                                                {{ $cell['tanggal'] }} • Rp {{ number_format($cell['nominal'], 0, ',', '.') }}
                                             </div>
-                                            <div style="font-size:0.68rem;color:#78350f;font-variant-numeric:tabular-nums;font-weight:700;">
-                                                {{ number_format($cell['nominal'], 0, ',', '.') }}
-                                            </div>
-                                            @if (($cell['sisa'] ?? 0) > 0 && ($cell['tagihan_id'] ?? null))
-                                                <div style="font-size:0.6rem;color:#b91c1c;margin-top:0.15rem;">
+                                            @if (($cell['sisa'] ?? 0) > 0)
+                                                <div style="font-size:0.6rem;color:#b91c1c;font-weight:700;margin-top:0.1rem;">
                                                     Sisa: Rp {{ number_format($cell['sisa'], 0, ',', '.') }}
                                                 </div>
+                                            @endif
+                                            @if ($cell['tagihan_id'] ?? null)
                                                 <button wire:click="mountAction('bayar', { tagihan_id: {{ $cell['tagihan_id'] }} })"
                                                     style="margin-top:0.25rem;font-size:0.6rem;background:#dc2626;color:#fff;
                                                            border:none;border-radius:0.25rem;padding:0.1rem 0.35rem;cursor:pointer;"
@@ -740,21 +771,17 @@
                                         </button>
                                     @endif
                                     @if ($row['latest_tagihan_id'])
-                                        @php
-                                            $ltId = $row['latest_tagihan_id'];
-                                            $encId = \App\Http\Controllers\TagihanPublicController::encryptId($ltId);
-                                            $shareUrl = url('/tagihan/share/' . $encId);
-                                        @endphp
+                                        @php $ltId = $row['latest_tagihan_id']; @endphp
                                         <div style="display:flex;gap:0.3rem;justify-content:center;margin-top:0.2rem;">
                                             <a href="{{ url("/tagihan/{$ltId}/pdf") }}" target="_blank"
                                                style="font-size:0.65rem;background:#f59e0b;color:#fff;border-radius:0.25rem;
                                                       padding:0.15rem 0.35rem;text-decoration:none;white-space:nowrap;"
                                                title="Download PDF Tagihan">🖨 PDF</a>
-                                            <a href="https://wa.me/?text={{ urlencode('Yth. Orang Tua/Wali ' . $row['nama'] . "\n\nBerikut tagihan sekolah:\n" . $shareUrl . "\n\nTerima kasih.") }}"
-                                               target="_blank"
-                                               style="font-size:0.65rem;background:#25D366;color:#fff;border-radius:0.25rem;
-                                                      padding:0.15rem 0.35rem;text-decoration:none;white-space:nowrap;"
-                                               title="Kirim via WhatsApp">📤 WA</a>
+                                            <button type="button"
+                                               wire:click="mountAction('kirimWa', { siswa_id: {{ $row['siswa_id'] }}, tagihan_id: {{ $ltId }} })"
+                                               style="font-size:0.65rem;background:#25D366;color:#fff;border:none;cursor:pointer;border-radius:0.25rem;
+                                                      padding:0.15rem 0.35rem;white-space:nowrap;"
+                                               title="Kirim via WhatsApp">📤 WA</button>
                                         </div>
                                     @endif
                                 </td>
@@ -773,7 +800,7 @@
             };
         }
     @endphp
-    <td colspan="3" class="k-sticky-siswa" style="padding:0.6rem 0.75rem;font-size:0.72rem;font-weight:700;color:#374151;text-align:center;background:#f8fafc;border-right:1px solid #e5e7eb;">Rekap</td>
+    <td colspan="2" class="k-sticky-siswa" style="padding:0.6rem 0.75rem;font-size:0.72rem;font-weight:700;color:#374151;text-align:center;background:#f8fafc;border-right:1px solid #e5e7eb;">Rekap</td>
     @if(!($matrix['is_dta'] ?? false))
     <td style="padding:0.4rem 0.3rem;text-align:center;border:1px solid #e5e7eb;">
         @if ($duLunas > 0)<div style="font-size:0.65rem;color:#15803d;font-weight:700;">{{ $duLunas }}✓</div>@endif

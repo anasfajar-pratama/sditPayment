@@ -5,20 +5,25 @@ namespace App\Filament\Resources\TokenListrikResource\Pages;
 
 use App\Filament\Traits\ConvertsToWebp;
 use App\Filament\Resources\TokenListrikResource;
+use App\Models\KasHarian;
+use App\Models\KasHarianLog;
 use App\Models\TokenListrik;
 use App\Models\TokenPembelian;
 use Filament\Actions\Action;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Grid;
+use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Concerns\InteractsWithForms;
 use Filament\Forms\Contracts\HasForms;
 use Filament\Forms\Form;
+use Filament\Forms\Get;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\Page;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Hash;
 
 class DetailTokenListrik extends Page implements HasForms
 {
@@ -152,6 +157,89 @@ class DetailTokenListrik extends Page implements HasForms
             ->orderByDesc('tanggal')
             ->orderByDesc('id')
             ->get();
+    }
+
+    // ─── Field sandi (verifikasi hapus) ───────────────────────────────────────
+
+    private function sandiField(): TextInput
+    {
+        return TextInput::make('sandi')
+            ->label('Konfirmasi Sandi')
+            ->password()
+            ->autocomplete('new-password')
+            ->required()
+            ->helperText('Masukkan sandi akun Anda untuk mengonfirmasi penghapusan');
+    }
+
+    // ─── Action: Hapus History Pembelian Token ────────────────────────────────
+
+    public function hapusPembelianAction(): Action
+    {
+        return Action::make('hapusPembelian')
+            ->modalHeading('Hapus History Pembelian Token')
+            ->modalDescription('Tindakan ini tidak dapat dibatalkan. Baris Kas Harian terkait juga akan ikut terhapus.')
+            ->modalSubmitActionLabel('Ya, Hapus')
+            ->color('danger')
+            ->fillForm(function (array $arguments): array {
+                $pembelian = TokenPembelian::findOrFail($arguments['id']);
+
+                return [
+                    'preview_tanggal' => $pembelian->tanggal?->format('d M Y') ?? '—',
+                    'preview_nominal' => 'Rp ' . number_format((int) $pembelian->nominal, 0, ',', '.'),
+                    'preview_token'   => $pembelian->nomor_token ?: '—',
+                ];
+            })
+            ->form([
+                Placeholder::make('preview_tanggal')
+                    ->label('Tanggal')
+                    ->content(fn (Get $get) => $get('preview_tanggal')),
+
+                Placeholder::make('preview_nominal')
+                    ->label('Nominal')
+                    ->content(fn (Get $get) => $get('preview_nominal')),
+
+                Placeholder::make('preview_token')
+                    ->label('Nomor Token')
+                    ->content(fn (Get $get) => $get('preview_token')),
+
+                $this->sandiField(),
+            ])
+            ->action(function (array $data, array $arguments): void {
+                if (! Hash::check($data['sandi'], auth()->user()->password)) {
+                    Notification::make()->title('Sandi salah')->danger()->send();
+                    $this->halt();
+
+                    return;
+                }
+
+                $pembelian = TokenPembelian::findOrFail($arguments['id']);
+
+                $kasHarian = KasHarian::where('source', 'token')
+                    ->where('source_id', $pembelian->id)
+                    ->first();
+
+                if ($kasHarian) {
+                    KasHarianLog::catat(
+                        aksi: 'hapus',
+                        kasHarianId: $kasHarian->id,
+                        sebelum: $kasHarian->toArray(),
+                        sesudah: null,
+                        keterangan: "Hapus token: {$kasHarian->uraian}",
+                    );
+                }
+
+                // Menghapus pembelian otomatis menghapus baris Kas Harian terkait
+                // melalui event TokenPembelian::deleted().
+                $pembelian->delete();
+
+                unset($this->historyPembelian);
+
+                Notification::make()
+                    ->title('History pembelian token dihapus')
+                    ->body('Baris Kas Harian terkait juga telah dihapus.')
+                    ->success()
+                    ->send();
+            });
     }
 
     // ─── Header actions ───────────────────────────────────────────────────────

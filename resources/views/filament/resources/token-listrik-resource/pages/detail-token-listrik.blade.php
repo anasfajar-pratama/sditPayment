@@ -140,6 +140,9 @@
                             <th style="padding:0.75rem 1rem;text-align:left;font-size:0.7rem;
                                        font-weight:600;letter-spacing:0.05em;text-transform:uppercase;">
                                 Catatan</th>
+                            <th style="padding:0.75rem 1rem;text-align:center;font-size:0.7rem;
+                                       font-weight:600;letter-spacing:0.05em;text-transform:uppercase;
+                                       width:4rem;">Aksi</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -211,6 +214,19 @@
                                 <td style="padding:0.75rem 1rem;color:#6b7280;font-size:0.78rem;">
                                     {{ $p->note ?? '—' }}
                                 </td>
+
+                                <td style="padding:0.75rem 1rem;text-align:center;">
+                                    <button
+                                        type="button"
+                                        wire:click="mountAction('hapusPembelian', { id: {{ $p->id }} })"
+                                        style="background:none;border:none;cursor:pointer;
+                                               color:#d1d5db;padding:0.25rem;border-radius:0.25rem;"
+                                        onmouseover="this.style.color='#ef4444';this.style.background='#fff1f2'"
+                                        onmouseout="this.style.color='#d1d5db';this.style.background='none'"
+                                        title="Hapus">
+                                        <x-heroicon-o-trash style="width:1rem;height:1rem;" />
+                                    </button>
+                                </td>
                             </tr>
                         @endforeach
                     </tbody>
@@ -225,6 +241,7 @@
                                        font-size:0.875rem;font-weight:800;color:#92400e;">
                                 Rp {{ number_format($total, 0, ',', '.') }}
                             </td>
+                            <td></td>
                             <td></td>
                             <td></td>
                         </tr>
@@ -246,7 +263,8 @@
             <li>Setiap pembelian token otomatis tercatat di <strong>Kas Harian</strong>
                 sebagai pengeluaran (kredit) dengan akun TOKEN & PULSA.</li>
             <li><strong>Nomor Token</strong> adalah 20 digit angka yang tertera di struk pembelian PLN.</li>
-            <li>Untuk menghapus transaksi, hapus data dari Kas Harian — posting akan ikut terhapus.</li>
+            <li>Untuk menghapus transaksi, gunakan tombol hapus (🗑) pada baris history.
+                Baris <strong>Kas Harian</strong> terkait akan ikut terhapus dan dicatat pada log audit.</li>
         </ul>
     </div>
 
