@@ -602,9 +602,6 @@ protected static ?string $navigationIcon  = 'heroicon-o-banknotes';
                 $tahunMulai = $this->akademikTahunMulai();
                 $tahun = $arguments['tahun'] ?? (string) $tahunMulai;
 
-                $tahunAjaran = (int) $bulanDari <= 6 ? (int) $tahun - 1 : (int) $tahun;
-                $standarSpp  = (float) (\App\Models\MasterBiaya::where('tahun', $tahunAjaran)->value('nominal_spp') ?? 0);
-
                 return [
                     '_mode'           => 'direct',
                     '_siswa_id'       => $arguments['siswa_id'],
@@ -612,7 +609,7 @@ protected static ?string $navigationIcon  = 'heroicon-o-banknotes';
                     '_tahun'          => $tahun,
                     '_jenis'          => $jenis,
                     'sampai_bulan'    => $bulanDari,
-                    'nominal_spp_per_bulan' => $jenis === 'spp' && $standarSpp > 0 ? $standarSpp : null,
+                    'nominal_spp_per_bulan' => null,
                     'nominal_awal'    => null,
                     'pakai_potongan'  => false,
                     'potongan'              => 0,
@@ -821,7 +818,7 @@ protected static ?string $navigationIcon  = 'heroicon-o-banknotes';
                         ->numeric()->prefix('Rp')->default(0)
                         ->lazy()
                         ->afterStateUpdated($kalkulasiNominal)
-                        ->helperText('Terisi otomatis dari Pengaturan Keuangan. Pembayaran langsung (tanpa tagihan) tidak boleh kurang bayar — nominal minimal sesuai standar.'),
+                        ->helperText('Isi nominal SPP untuk satu bulan.'),
 
                     // ── DU/BP: nominal awal ──
                     TextInput::make('nominal_awal')
@@ -1303,18 +1300,6 @@ protected static ?string $navigationIcon  = 'heroicon-o-banknotes';
 
         $tahunMulai = (int) $bulanDari <= 6 ? (int) $tahun - 1 : (int) $tahun;
 
-        // Verifikasi: pembayaran langsung (tanpa tagihan) tidak boleh SPP kurang bayar.
-        // Nominal per bulan minimal harus sesuai standar Pengaturan Keuangan.
-        $standarSpp = (float) (\App\Models\MasterBiaya::where('tahun', $tahunMulai)->value('nominal_spp') ?? 0);
-        if ($standarSpp > 0 && $sppPerBulan < $standarSpp - 1) {
-            Notification::make()
-                ->title('Nominal SPP tidak sesuai')
-                ->body('Standar SPP per bulan Rp ' . number_format($standarSpp, 0, ',', '.')
-                    . ' (Pengaturan Keuangan). Pembayaran langsung tanpa tagihan tidak boleh kurang bayar.')
-                ->danger()->send();
-            $this->halt();
-            return;
-        }
         $bulanRange = $this->rangeBulan($bulanDari, $bulanSampai, $tahunMulai);
         $jmlBulan   = count($bulanRange);
         $nominalPerBulan = $sppPerBulan - $potongan;
