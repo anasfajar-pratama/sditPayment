@@ -339,18 +339,35 @@ class TagihanPublicController extends Controller
         $items   = [];
 
         if (count($details) > 0) {
-            // Sisa tagihan (nominal_tagihan sudah dikurangi cicilan) dialokasikan
-            // proporsional ke tiap item detail, agar sisa tidak memakai nominal asli.
+            // Sisa tagihan (nominal_tagihan sudah dikurangi cicilan) dialokasikan berurutan
+            // dari periode paling awal, sehingga periode yang sudah tertutup pembayaran
+            // menjadi lunas dan sisa menempel pada periode berikutnya (bukan proporsional).
+            $ordered   = [];
             $origTotal = 0.0;
-            foreach ($details as $it) {
-                $origTotal += (float) ($it['nominal'] ?? 0);
-            }
-            $remaining = (float) $tagihan->nominal_tagihan;
-            $factor    = $origTotal > 0 ? ($remaining / $origTotal) : 1;
-
             foreach ($details as $item) {
-                $jenis        = strtoupper($item['jenis'] ?? '');
-                $itemRemaining = (float) ($item['nominal'] ?? 0) * $factor;
+                $nominalItem = (float) ($item['nominal'] ?? 0);
+                $origTotal  += $nominalItem;
+                $tahunItem    = (int) ($item['tahun'] ?? $tagihan->tahun);
+                $urut        = !empty($item['bulan'])
+                    ? $tahunItem * 100 + (int) $item['bulan']
+                    : $tahunItem * 100;
+                $ordered[]   = ['urut' => $urut, 'item' => $item, 'nominal' => $nominalItem];
+            }
+            usort($ordered, fn ($a, $b) => $a['urut'] <=> $b['urut']);
+
+            $sudahDibayar = max(0.0, $origTotal - (float) $tagihan->nominal_tagihan);
+
+            foreach ($ordered as $row) {
+                $bayarItem = min($row['nominal'], $sudahDibayar);
+                $sudahDibayar -= $bayarItem;
+                $itemRemaining = $row['nominal'] - $bayarItem;
+
+                if ($itemRemaining <= 0) {
+                    continue;
+                }
+
+                $item  = $row['item'];
+                $jenis = strtoupper($item['jenis'] ?? '');
 
                 if ($jenis === 'SPP') {
                     if ($isDuColumn) {

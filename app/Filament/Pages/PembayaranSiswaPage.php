@@ -257,38 +257,53 @@ protected static ?string $navigationIcon  = 'heroicon-o-banknotes';
             ->get()
             ->groupBy(fn ($p) => "{$p->siswa_id}_{$p->bulan}_{$p->tahun}");
 
-        $tagihanSppAll = collect();
+        // Tagihan multi-item (punya detail) — baik belum bayar maupun sudah lunas —
+        // dipetakan per bulan. Pembayaran tagihan gabungan hanya tercatat pada bulan
+        // pertama, jadi bulan lain tidak punya record pembayaran sendiri; status tiap
+        // bulan harus diturunkan dari alokasi tagihan, bukan dari record pembayaran.
+        $tagihanDetailSpp = collect();
+        $tagihanSppAll    = collect();
         $tagihanSemua = Tagihan::whereIn('siswa_id', $siswaIds)
             ->whereIn('tahun', $tahunList)
-            ->where('status', 'belum_bayar')
             ->get();
+
+        $tanggalBayarPerTagihan = Pembayaran::whereIn('siswa_id', $siswaIds)
+            ->whereNotNull('tagihan_id')
+            ->get()
+            ->groupBy('tagihan_id')
+            ->map(fn ($g) => $g->sortByDesc('tanggal_bayar')->first()?->tanggal_bayar);
+
         foreach ($tagihanSemua as $t) {
             if ($t->detail && count($t->detail) > 0) {
-                // Hitung sisa per item dari SISA tagihan (nominal_tagihan sudah dikurangi cicilan),
-                // bukan dari nominal asli detail. Dialokasikan proporsional agar total tetap benar.
-                $sppItems = collect($t->detail)->filter(
-                    fn ($i) => ($i['jenis'] ?? '') === 'SPP' && !empty($i['bulan'])
-                );
-                $origTotal = (float) $sppItems->sum(fn ($i) => (float) ($i['nominal'] ?? 0));
-                $sisaTotal = (float) $t->nominal_tagihan;
+                // Sisa tagihan (nominal_tagihan sudah dikurangi cicilan) dialokasikan
+                // berurutan dari bulan paling awal, sehingga bulan yang sudah tertutup
+                // pembayaran menjadi lunas dan sisa menempel pada bulan berikutnya.
+                $sppItems = collect($t->detail)
+                    ->filter(fn ($i) => ($i['jenis'] ?? '') === 'SPP' && !empty($i['bulan']))
+                    ->sortBy(fn ($i) => ((int) ($i['tahun'] ?? 0)) * 100 + (int) ($i['bulan'] ?? 0))
+                    ->values();
+                $origTotal    = (float) $sppItems->sum(fn ($i) => (float) ($i['nominal'] ?? 0));
+                $sudahDibayar = max(0.0, $origTotal - (float) $t->nominal_tagihan);
+                $tanggalBayar = $tanggalBayarPerTagihan->get($t->id);
 
                 foreach ($sppItems as $item) {
                     $nominalItem = (float) ($item['nominal'] ?? 0);
-                    $sisaItem = $origTotal > 0
-                        ? round($sisaTotal * ($nominalItem / $origTotal), 2)
-                        : 0;
+                    $bayarItem   = min($nominalItem, $sudahDibayar);
+                    $sudahDibayar -= $bayarItem;
 
-                    $v = (object) [
-                        'id' => $t->id,
-                        'siswa_id' => $t->siswa_id,
-                        'bulan' => $item['bulan'],
-                        'tahun' => $item['tahun'],
-                        'nominal_tagihan' => $sisaItem,
-                        'status' => $t->status,
-                    ];
-                    $tagihanSppAll->push($v);
+                    $tagihanDetailSpp->put("{$t->siswa_id}_{$item['bulan']}_{$item['tahun']}", (object) [
+                        'id'              => $t->id,
+                        'siswa_id'        => $t->siswa_id,
+                        'bulan'           => $item['bulan'],
+                        'tahun'           => $item['tahun'],
+                        'nominal_item'    => $nominalItem,
+                        'nominal_bayar'   => $bayarItem,
+                        'nominal_tagihan' => $nominalItem - $bayarItem,
+                        'status'          => $t->status,
+                        'tanggal'         => $tanggalBayar,
+                    ]);
                 }
-            } elseif ($t->jenis_pembayaran_id == $jenisSppId && $t->bulan) {
+            } elseif ($t->jenis_pembayaran_id == $jenisSppId && $t->bulan && $t->status === 'belum_bayar') {
                 $tagihanSppAll->push($t);
             }
         }
@@ -461,48 +476,88 @@ protected static ?string $navigationIcon  = 'heroicon-o-banknotes';
             // ── Cell bulan (Jul–Jun untuk new entry, Agu–Jun untuk standard) ──
             foreach ($months as $m) {
                 $key       = "{$siswa->id}_{$m['bulan']}_{$m['tahun']}";
+                $detailGrp = $tagihanDetailSpp->get($key);
                 $bayarGrp  = $pembayaranAll->get($key);
                 $tagGrp    = $tagihanSppAll->get($key);
 
-                if ($bayarGrp && $bayarGrp->isNotEmpty()) {
+                if ($detailGrp) {
+                    // Bulan milik tagihan multi-item: status & nominal dari alokasi tagihan
+                    // supaya bulan yang sudah tertutup pembayaran tampil lunas walau tidak
+                    // ada record pembayaran tersendiri untuk bulan itu.
+                    $sisaBulan    = (float) $detailGrp->nominal_tagihan;
+                    $bayarBulan   = (float) $detailGrp->nominal_bayar;
+                    $lunasBulan   = $sisaBulan <= 0.5;
+                    $tanggalBulan = $detailGrp->tanggal
+                        ? Carbon::parse($detailGrp->tanggal)->format('d-M-y')
+                        : null;
+
+                    if ($lunasBulan) {
+                        $cells[] = [
+                            'status'     => 'lunas',
+                            'tanggal'    => $tanggalBulan,
+                            'nominal'    => (float) $detailGrp->nominal_item,
+                            'siswa_id'   => $siswa->id,
+                            'tagihan_id' => $detailGrp->id,
+                            'bulan'      => $m['bulan'],
+                            'tahun'      => $m['tahun'],
+                        ];
+                        $lunas++;
+                    } elseif ($bayarBulan > 0) {
+                        $cells[] = [
+                            'status'     => 'cicilan',
+                            'tanggal'    => $tanggalBulan,
+                            'nominal'    => $bayarBulan,
+                            'sisa'       => $sisaBulan,
+                            'siswa_id'   => $siswa->id,
+                            'tagihan_id' => $detailGrp->id,
+                            'bulan'      => $m['bulan'],
+                            'tahun'      => $m['tahun'],
+                        ];
+                        $tunggakan++;
+                        $adaBelumBayar = true;
+                    } else {
+                        $cells[] = [
+                            'status'     => 'tunggakan',
+                            'nominal'    => $sisaBulan,
+                            'siswa_id'   => $siswa->id,
+                            'tagihan_id' => $detailGrp->id,
+                            'bulan'      => $m['bulan'],
+                            'tahun'      => $m['tahun'],
+                        ];
+                        $tunggakan++;
+                        $adaBelumBayar = true;
+                    }
+                } elseif ($bayarGrp && $bayarGrp->isNotEmpty()) {
                     $p = $bayarGrp->sortByDesc('tanggal_bayar')->first();
                     $totalNominal = (float) $bayarGrp->sum('nominal');
-                    // Untuk DTA: sisa tagihan tidak memerlukan urutan bulan sebelumnya
-                    $sisaTagihan = null;
-                    if ($isDta) {
-                        $sisaTagihan = $tagGrp && $tagGrp->isNotEmpty()
-                            ? $tagGrp->first()
-                            : null;
+
+                    // Status bulan ditentukan oleh sisa alokasi tagihan bulan itu, bukan
+                    // status pembayaran. Cicilan pada tagihan multi-bulan ditandai "cicilan"
+                    // untuk keseluruhan tagihan, padahal bulan tertentu bisa sudah lunas.
+                    if ($tagGrp && $tagGrp->isNotEmpty()) {
+                        $sisaBulan  = (float) $tagGrp->first()->nominal_tagihan;
+                        $lunasBulan = $sisaBulan <= 0.5;
                     } else {
-                        $sisaTagihan = $p->status === 'cicilan' && $tagGrp && $tagGrp->isNotEmpty()
-                            ? $tagGrp->first()
-                            : null;
+                        $sisaBulan  = 0.0;
+                        $lunasBulan = $p->status === 'lunas';
                     }
+
                     $cells[] = [
-                        'status'      => $p->status === 'lunas' ? 'lunas' : 'cicilan',
-                        'tanggal'     => Carbon::parse($p->tanggal_bayar)->format('d-M-y'),
-                        'nominal'     => $totalNominal,
-                        'sisa'        => $sisaTagihan ? (float) $sisaTagihan->nominal_tagihan : 0,
-                        'siswa_id'    => $siswa->id,
-                        'tagihan_id'  => $sisaTagihan?->id ?? $p->tagihan_id,
-                        'bulan'       => $m['bulan'],
-                        'tahun'       => $m['tahun'],
+                        'status'     => $lunasBulan ? 'lunas' : 'cicilan',
+                        'tanggal'    => Carbon::parse($p->tanggal_bayar)->format('d-M-y'),
+                        'nominal'    => $totalNominal,
+                        'sisa'       => $lunasBulan ? 0 : $sisaBulan,
+                        'siswa_id'   => $siswa->id,
+                        'tagihan_id' => ($tagGrp && $tagGrp->isNotEmpty()) ? $tagGrp->first()->id : $p->tagihan_id,
+                        'bulan'      => $m['bulan'],
+                        'tahun'      => $m['tahun'],
                     ];
-                    if ($isDta) {
-                        // DTA: sisa tagihan dianggap ada jika tagihan belum lunas
-                        if ($sisaTagihan && $sisaTagihan->status !== 'lunas') {
-                            $tunggakan++;
-                            $adaBelumBayar = true;
-                        } else {
-                            $lunas++;
-                        }
+
+                    if ($lunasBulan) {
+                        $lunas++;
                     } else {
-                        if ($sisaTagihan) {
-                            $tunggakan++;
-                            $adaBelumBayar = true;
-                        } else {
-                            $lunas++;
-                        }
+                        $tunggakan++;
+                        $adaBelumBayar = true;
                     }
                 } elseif ($tagGrp && $tagGrp->isNotEmpty()) {
                     $t = $tagGrp->first();
