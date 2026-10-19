@@ -1225,7 +1225,7 @@ protected static ?string $navigationIcon  = 'heroicon-o-banknotes';
 
         $lunas = $nominal >= ($tagihan->nominal_tagihan - $potongan - 1);
 
-        $siswaModel = $this->selectedSiswa ?? Siswa::find($tagihan->siswa_id);
+        $siswaModel = Siswa::find($tagihan->siswa_id);
 
         $pembayaran = Pembayaran::create([
             'siswa_id'            => $tagihan->siswa_id,
@@ -1449,11 +1449,14 @@ protected static ?string $navigationIcon  = 'heroicon-o-banknotes';
 
     protected function checkPreviousUnpaid(int $siswaId, string $bulan, string $tahun): ?string
     {
+        // DTA: pembayaran boleh dilakukan kapan pun tanpa melunasi bulan sebelumnya.
+        $siswa = Siswa::with('kelasSaatIni')->find($siswaId);
+        if (strtoupper((string) ($siswa?->kelasSaatIni?->jenis_sekolah ?? '')) === 'DTA') {
+            return null;
+        }
+
         $tahunMulai = (int) $bulan <= 6 ? (int) $tahun - 1 : (int) $tahun;
-        $isDta      = strtoupper($this->filterJenisSekolah) === 'DTA';
-        $allMonths  = $isDta
-            ? ['07','08','09','10','11','12','01','02','03','04','05','06']
-            : ['08','09','10','11','12','01','02','03','04','05','06'];
+        $allMonths  = ['08','09','10','11','12','01','02','03','04','05','06'];
         $jenisSppId = JenisPembayaran::whereRaw('LOWER(nama) = ?', ['spp'])->value('id');
         $jenisDuId  = JenisPembayaran::whereRaw('LOWER(nama) = ?', ['daftar ulang'])->value('id');
         $unpaid     = [];
@@ -1461,23 +1464,21 @@ protected static ?string $navigationIcon  = 'heroicon-o-banknotes';
         $isNewEntry = $this->isNewEntryMatrix()
             || Tagihan::where('siswa_id', $siswaId)->where('jenis_pembayaran_id', 1)->exists();
 
-        if (!$isDta) {
-            if ($isNewEntry) {
-                $bpPaid = Pembayaran::where('siswa_id', $siswaId)
-                    ->where('jenis_pembayaran_id', 1)
-                    ->whereIn('status', ['lunas', 'cicilan'])
-                    ->exists();
-                if (!$bpPaid) {
-                    $unpaid[] = 'Biaya Pendaftaran';
-                }
-            } else {
-                $duPaid = Pembayaran::where('siswa_id', $siswaId)
-                    ->where('jenis_pembayaran_id', $jenisDuId)
-                    ->where('tahun', (string) $tahunMulai)
-                    ->exists();
-                if (!$duPaid) {
-                    $unpaid[] = 'Daftar Ulang ' . $tahunMulai . '/' . ($tahunMulai + 1);
-                }
+        if ($isNewEntry) {
+            $bpPaid = Pembayaran::where('siswa_id', $siswaId)
+                ->where('jenis_pembayaran_id', 1)
+                ->whereIn('status', ['lunas', 'cicilan'])
+                ->exists();
+            if (!$bpPaid) {
+                $unpaid[] = 'Biaya Pendaftaran';
+            }
+        } else {
+            $duPaid = Pembayaran::where('siswa_id', $siswaId)
+                ->where('jenis_pembayaran_id', $jenisDuId)
+                ->where('tahun', (string) $tahunMulai)
+                ->exists();
+            if (!$duPaid) {
+                $unpaid[] = 'Daftar Ulang ' . $tahunMulai . '/' . ($tahunMulai + 1);
             }
         }
 

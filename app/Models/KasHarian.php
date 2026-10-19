@@ -95,13 +95,13 @@ class KasHarian extends Model
             '09' => 'Sep', '10' => 'Okt', '11' => 'Nov', '12' => 'Des',
         ];
 
-        $siswa      = $pembayaran->siswa;
+        $siswa      = Siswa::with('kelasSaatIni')->find($pembayaran->siswa_id);
         $bulanLabel = $bulanLabels[$pembayaran->bulan] ?? '';
         $kelas = $pembayaran->jenisPembayaran->nama === 'Daftar Masuk'
             ? ''
-            : ' Kls ' . ($siswa->kelasSaatIni?->kelas ?? '-');
+            : ' Kls ' . ($siswa?->kelasSaatIni?->kelas ?? '-');
 
-        $uraian = "{$siswa->nama}{$kelas}"
+        $uraian = "{$siswa?->nama}{$kelas}"
             . " — {$pembayaran->jenisPembayaran->nama}"
             . ($bulanLabel ? " {$bulanLabel}" : '')
             . " {$pembayaran->tahun}";
