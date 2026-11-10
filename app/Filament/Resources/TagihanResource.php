@@ -268,7 +268,10 @@ class TagihanResource extends Resource
             ])
             ->defaultSort('created_at', 'desc')
             ->searchable()
-            ->modifyQueryUsing(fn ($query) => $query->withSum('pembayarans', 'nominal')->withSum('pembayarans', 'potongan'))
+            ->modifyQueryUsing(fn ($query) => $query
+                ->withSum('pembayarans', 'nominal')
+                ->withSum('pembayarans', 'potongan')
+                ->withExists('pembayarans'))
 
             // ── Filter di atas tabel ──────────────────────────────────────────
             ->filtersLayout(FiltersLayout::AboveContent)
@@ -449,6 +452,37 @@ class TagihanResource extends Resource
                             : static::whatsappUrl($latest);
 
                         $livewire->js("window.open('" . addslashes($url) . "', '_blank')");
+                    }),
+
+                // ── Hapus Tagihan (hanya yang belum dibayar) ──────────────────
+                Action::make('hapus_tagihan')
+                    ->tooltip('Hapus Tagihan')
+                    ->icon('heroicon-o-trash')
+                    ->color('danger')
+                    ->iconButton()
+                    ->visible(fn (Tagihan $record): bool => $record->status === 'belum_bayar'
+                        && (int) $record->pembayarans_exists === 0)
+                    ->requiresConfirmation()
+                    ->modalHeading('Hapus Tagihan')
+                    ->modalDescription('Tagihan ini akan dihapus permanen. Tindakan ini tidak dapat dibatalkan.')
+                    ->modalSubmitActionLabel('Ya, Hapus')
+                    ->action(function (Tagihan $record): void {
+                        if ($record->status !== 'belum_bayar' || $record->pembayarans()->exists()) {
+                            Notification::make()
+                                ->title('Tagihan tidak dapat dihapus')
+                                ->body('Hanya tagihan yang belum dibayar yang dapat dihapus.')
+                                ->danger()
+                                ->send();
+
+                            return;
+                        }
+
+                        $record->delete();
+
+                        Notification::make()
+                            ->title('Tagihan berhasil dihapus')
+                            ->success()
+                            ->send();
                     }),
 
             ]);

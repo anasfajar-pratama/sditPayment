@@ -32,9 +32,10 @@
             <div style="display:flex;align-items:center;gap:1rem;flex-wrap:wrap;">
                 <div style="text-align:right;">
                     <div style="font-size:0.7rem;font-weight:600;color:#9ca3af;
-                                text-transform:uppercase;letter-spacing:0.05em;">Total Pembelian</div>
+                                text-transform:uppercase;letter-spacing:0.05em;">
+                        Total Pembelian {{ $this->labelPeriode }}</div>
                     <div style="font-size:1.25rem;font-weight:800;color:#1e3a8a;">
-                        Rp {{ number_format($token->totalPembelian(), 0, ',', '.') }}
+                        Rp {{ number_format($this->totalPembelianPeriode, 0, ',', '.') }}
                     </div>
                 </div>
                 @if ($token->is_active)
@@ -100,19 +101,40 @@
                 box-shadow:0 1px 4px rgba(0,0,0,0.06);overflow:hidden;">
 
         <div style="padding:1rem 1.5rem;border-bottom:1px solid #f1f5f9;
-                    display:flex;align-items:center;justify-content:space-between;">
+                    display:flex;align-items:center;justify-content:space-between;
+                    gap:0.75rem;flex-wrap:wrap;">
             <h3 style="font-size:0.9rem;font-weight:700;color:#1f2937;margin:0;">
                 History Pembelian Token
             </h3>
-            <span style="font-size:0.75rem;color:#9ca3af;">
-                {{ $this->historyPembelian->count() }} transaksi
-            </span>
+            <div style="display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap;">
+                <select wire:model.live="filterBulan"
+                    aria-label="Filter bulan"
+                    style="border:1px solid #d1d5db;border-radius:0.5rem;background:#fff;
+                           padding:0.45rem 0.65rem;font-size:0.8rem;color:#374151;
+                           outline:none;cursor:pointer;">
+                    @foreach ($this->bulanOptions as $value => $label)
+                        <option value="{{ $value }}" @selected($filterBulan === $value)>{{ $label }}</option>
+                    @endforeach
+                </select>
+                <select wire:model.live="filterTahun"
+                    aria-label="Filter tahun"
+                    style="border:1px solid #d1d5db;border-radius:0.5rem;background:#fff;
+                           padding:0.45rem 0.65rem;font-size:0.8rem;color:#374151;
+                           outline:none;cursor:pointer;">
+                    @foreach ($this->tahunOptions as $tahun)
+                        <option value="{{ $tahun }}" @selected($filterTahun === (string) $tahun)>{{ $tahun }}</option>
+                    @endforeach
+                </select>
+                <span style="font-size:0.75rem;color:#9ca3af;">
+                    {{ $this->historyPembelian->count() }} transaksi
+                </span>
+            </div>
         </div>
 
         @if ($this->historyPembelian->isEmpty())
             <div style="padding:3rem 1.5rem;text-align:center;color:#9ca3af;">
                 <x-heroicon-o-bolt style="width:2.5rem;height:2.5rem;margin:0 auto 0.75rem;opacity:0.4;" />
-                <p style="font-size:0.875rem;">Belum ada history pembelian token.</p>
+                <p style="font-size:0.875rem;">Belum ada pembelian token pada periode ini.</p>
             </div>
         @else
             <div style="overflow-x:auto;">

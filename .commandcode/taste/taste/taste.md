@@ -9,6 +9,7 @@
 - Frequently asks the agent to analyze a page/feature and propose recommendations ("berikan saran baiknya seperti apa") for review before deciding, rather than jumping straight to implementation. Confidence: 0.6
 - Prefers separating authenticated vs public/unauthenticated access: logged-in users should print/view without expiry, while public share links use a time-limited token whose expiry window resets (sliding) on each re-share. Confidence: 0.6
 - Prefers Excel (.xlsx) reports with a filter step (e.g., by year) before generating so data is separated into distinct exports. Confidence: 0.65
+- Prefers summary/aggregate figures (e.g., "Total Pembelian" in a header card) to be scoped to a period (default: current month) instead of all-time totals, paired with month/year filters on the related history/transaction lists so counts and totals follow the selected period. Confidence: 0.55
 - Prefers tagging records with a single checkbox/boolean flag on the data-entry form (e.g., "pendapatan/pengeluaran yayasan"), stored as a boolean column, rather than a separate enum/type or dedicated form. Confidence: 0.6
 - Prefers summary/report views split into tabs that cover each category individually plus combined aggregates and an all-inclusive view (e.g., non-yayasan, pendapatan yayasan, pengeluaran yayasan, gabungan yayasan, gabungan semua). Confidence: 0.6
 - Prefers a select box (dropdown) over a tab bar for switching between many tabs/categories. Confidence: 0.65

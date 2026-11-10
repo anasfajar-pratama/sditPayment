@@ -1,10 +1,11 @@
 <?php
+
 // File: app/Filament/Resources/TokenListrikResource/Pages/DetailTokenListrik.php
 
 namespace App\Filament\Resources\TokenListrikResource\Pages;
 
-use App\Filament\Traits\ConvertsToWebp;
 use App\Filament\Resources\TokenListrikResource;
+use App\Filament\Traits\ConvertsToWebp;
 use App\Models\KasHarian;
 use App\Models\KasHarianLog;
 use App\Models\TokenListrik;
@@ -22,15 +23,17 @@ use Filament\Forms\Form;
 use Filament\Forms\Get;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\Page;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Hash;
 
 class DetailTokenListrik extends Page implements HasForms
 {
-    use InteractsWithForms, ConvertsToWebp;
+    use ConvertsToWebp, InteractsWithForms;
 
     protected static string $resource = TokenListrikResource::class;
-    protected static string $view     = 'filament.resources.token-listrik-resource.pages.detail-token-listrik';
+
+    protected static string $view = 'filament.resources.token-listrik-resource.pages.detail-token-listrik';
 
     // ── Record ────────────────────────────────────────────────────────────────
     public TokenListrik $token;
@@ -38,18 +41,25 @@ class DetailTokenListrik extends Page implements HasForms
     // ── State form pembelian ──────────────────────────────────────────────────
     public array $pembelianData = [];
 
+    public string $filterBulan;
+
+    public string $filterTahun;
+
     // ─── Mount ────────────────────────────────────────────────────────────────
 
     public function mount(int|string $record): void
     {
         $this->token = TokenListrik::findOrFail($record);
 
+        $this->filterBulan = now()->format('m');
+        $this->filterTahun = now()->format('Y');
+
         $this->pembelianForm->fill([
-            'tanggal'      => now()->toDateString(),
-            'nominal'      => null,
-            'nomor_token'  => null,
-            'kwh'          => null,
-            'note'         => null,
+            'tanggal' => now()->toDateString(),
+            'nominal' => null,
+            'nomor_token' => null,
+            'kwh' => null,
+            'note' => null,
         ]);
     }
 
@@ -115,31 +125,31 @@ class DetailTokenListrik extends Page implements HasForms
 
     public function simpanPembelian(): void
     {
-        $data    = $this->pembelianForm->getState();
-        $tanggal = \Illuminate\Support\Carbon::parse($data['tanggal']);
+        $data = $this->pembelianForm->getState();
+        $tanggal = Carbon::parse($data['tanggal']);
 
         TokenPembelian::create([
             'token_listrik_id' => $this->token->id,
-            'tanggal'          => $tanggal->toDateString(),
-            'nominal'          => $data['nominal'],
-            'bukti'            => $this->convertToWebp($data['bukti'] ?? null),
-            'nomor_token'      => $data['nomor_token'] ?? null,
-            'kwh'              => $data['kwh'] ?? null,
-            'note'             => $data['note'] ?? null,
-            'bulan'            => $tanggal->format('m'),
-            'tahun'            => $tanggal->format('Y'),
-            'created_by'       => auth()->id(),
+            'tanggal' => $tanggal->toDateString(),
+            'nominal' => $data['nominal'],
+            'bukti' => $this->convertToWebp($data['bukti'] ?? null),
+            'nomor_token' => $data['nomor_token'] ?? null,
+            'kwh' => $data['kwh'] ?? null,
+            'note' => $data['note'] ?? null,
+            'bulan' => $tanggal->format('m'),
+            'tahun' => $tanggal->format('Y'),
+            'created_by' => auth()->id(),
         ]);
 
         $this->token->refresh();
 
         $this->pembelianForm->fill([
-            'tanggal'     => now()->toDateString(),
-            'nominal'     => null,
-            'bukti'       => null,
+            'tanggal' => now()->toDateString(),
+            'nominal' => null,
+            'bukti' => null,
             'nomor_token' => null,
-            'kwh'         => null,
-            'note'        => null,
+            'kwh' => null,
+            'note' => null,
         ]);
 
         Notification::make()
@@ -154,9 +164,66 @@ class DetailTokenListrik extends Page implements HasForms
     {
         return $this->token
             ->pembelians()
+            ->when(
+                $this->filterBulan !== 'all',
+                fn ($query) => $query->whereMonth('tanggal', (int) $this->filterBulan)
+            )
+            ->whereYear('tanggal', (int) $this->filterTahun)
             ->orderByDesc('tanggal')
             ->orderByDesc('id')
             ->get();
+    }
+
+    public function getTotalPembelianPeriodeProperty(): float
+    {
+        return (float) $this->token
+            ->pembelians()
+            ->when(
+                $this->filterBulan !== 'all',
+                fn ($query) => $query->whereMonth('tanggal', (int) $this->filterBulan)
+            )
+            ->whereYear('tanggal', (int) $this->filterTahun)
+            ->sum('nominal');
+    }
+
+    public function getLabelPeriodeProperty(): string
+    {
+        if ($this->filterBulan === 'all') {
+            return 'Tahun '.$this->filterTahun;
+        }
+
+        return ($this->bulanOptions[$this->filterBulan] ?? $this->filterBulan).' '.$this->filterTahun;
+    }
+
+    public function getBulanOptionsProperty(): array
+    {
+        return [
+            'all' => 'Semua Bulan',
+            '01' => 'Januari', '02' => 'Februari', '03' => 'Maret',
+            '04' => 'April', '05' => 'Mei', '06' => 'Juni',
+            '07' => 'Juli', '08' => 'Agustus', '09' => 'September',
+            '10' => 'Oktober', '11' => 'November', '12' => 'Desember',
+        ];
+    }
+
+    public function getTahunOptionsProperty(): array
+    {
+        $tahun = $this->token->pembelians()
+            ->distinct()
+            ->orderByDesc('tahun')
+            ->pluck('tahun')
+            ->map(fn ($tahun) => (string) $tahun)
+            ->all();
+
+        $tahunSekarang = now()->format('Y');
+
+        if (! in_array($tahunSekarang, $tahun, true)) {
+            $tahun[] = $tahunSekarang;
+        }
+
+        rsort($tahun);
+
+        return $tahun;
     }
 
     // ─── Field sandi (verifikasi hapus) ───────────────────────────────────────
@@ -185,8 +252,8 @@ class DetailTokenListrik extends Page implements HasForms
 
                 return [
                     'preview_tanggal' => $pembelian->tanggal?->format('d M Y') ?? '—',
-                    'preview_nominal' => 'Rp ' . number_format((int) $pembelian->nominal, 0, ',', '.'),
-                    'preview_token'   => $pembelian->nomor_token ?: '—',
+                    'preview_nominal' => 'Rp '.number_format((int) $pembelian->nominal, 0, ',', '.'),
+                    'preview_token' => $pembelian->nomor_token ?: '—',
                 ];
             })
             ->form([
@@ -270,7 +337,7 @@ class DetailTokenListrik extends Page implements HasForms
     {
         return [
             TokenListrikResource::getUrl('index') => 'Token Listrik',
-            '#'                                   => $this->token->nama_ruangan,
+            '#' => $this->token->nama_ruangan,
         ];
     }
 }
