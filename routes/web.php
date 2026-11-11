@@ -66,6 +66,9 @@ Route::middleware('auth')->group(function () {
     Route::get('/export/kas-harian', [KasHarianPrintController::class, 'exportCsv'])
         ->name('export.kas-harian');
 
+    Route::get('/export/kas-harian-excel', [KasHarianPrintController::class, 'exportExcel'])
+        ->name('export.kas-harian.excel');
+
     Route::get('/export/pendapatan', [PendapatanController::class, 'exportCsv'])
         ->name('export.pendapatan');
 

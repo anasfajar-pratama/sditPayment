@@ -121,6 +121,8 @@
         tbody td.center { text-align: center; color: #9ca3af; font-size: 10.5px; }
         tbody td.tanggal { color: #6b7280; font-size: 10.5px; white-space: nowrap; }
         tbody td.akun    { color: #9ca3af; font-size: 10.5px; }
+        tbody td.rekening,
+        tbody td.sub     { color: #6b7280; font-size: 10.5px; }
         tbody td.debit   { color: #15803d; font-weight: 600; font-variant-numeric: tabular-nums; }
         tbody td.kredit  { color: #dc2626; font-weight: 600; font-variant-numeric: tabular-nums; }
         tbody td.saldo   { color: #111827; font-weight: 700; font-variant-numeric: tabular-nums; }
@@ -288,13 +290,15 @@
         <table>
             <thead>
                 <tr>
-                    <th class="center" style="width:32px;">No</th>
-                    <th style="width:80px;">Tanggal</th>
+                    <th class="center" style="width:30px;">No</th>
+                    <th style="width:75px;">Tanggal</th>
                     <th>Uraian</th>
-                    <th style="width:130px;">Akun</th>
-                    <th class="right" style="width:100px;">Debit</th>
-                    <th class="right" style="width:100px;">Kredit</th>
-                    <th class="right" style="width:115px;">Saldo</th>
+                    <th style="width:115px;">Akun</th>
+                    <th style="width:105px;">Rekening Tujuan</th>
+                    <th style="width:95px;">Sub Kategori</th>
+                    <th class="right" style="width:90px;">Debit</th>
+                    <th class="right" style="width:90px;">Kredit</th>
+                    <th class="right" style="width:105px;">Saldo</th>
                 </tr>
             </thead>
             <tbody>
@@ -309,6 +313,8 @@
                             {{ $e['uraian'] }}
                         </td>
                         <td class="akun">{{ $e['akun'] }}</td>
+                        <td class="rekening">{{ $e['rekening_tujuan'] ?: '—' }}</td>
+                        <td class="sub">{{ $e['sub_kategori'] ?: '—' }}</td>
                         <td class="right {{ $e['debit'] ? 'debit' : 'muted' }}">
                             {{ $e['debit'] ? number_format($e['debit'], 0, ',', '.') : '—' }}
                         </td>
@@ -321,7 +327,7 @@
             </tbody>
             <tfoot>
                 <tr>
-                    <td colspan="4" style="font-size:10px;color:#6b7280;">
+                    <td colspan="6" style="font-size:10px;color:#6b7280;">
                         {{ count($entries) }} transaksi
                     </td>
                     <td class="right debit-total">

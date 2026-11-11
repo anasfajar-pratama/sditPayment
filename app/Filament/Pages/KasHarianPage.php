@@ -143,6 +143,7 @@ class KasHarianPage extends Page
                 'uraian'           => $row->uraian,
                 'sub_kategori'     => $row->sub_kategori,
                 'akun'             => $row->akun?->nama_akun,
+                'rekening_tujuan'  => $row->rekening_tujuan,
                 'debit'            => $row->debit,
                 'kredit'           => $row->kredit,
                 'saldo'            => $saldo,
@@ -535,6 +536,22 @@ class KasHarianPage extends Page
                 ->color('success')
                 ->action(function () {
                     $url = route('export.kas-harian', [
+                        'mode'    => $this->filterMode,
+                        'bulan'   => $this->filterBulan,
+                        'tahun'   => $this->filterTahun,
+                        'tanggal' => $this->filterTanggal,
+                        'dari'    => $this->filterDari,
+                        'sampai'  => $this->filterSampai,
+                    ]);
+                    $this->js("window.open('{$url}', '_blank')");
+                }),
+
+            Action::make('exportExcel')
+                ->label('Export Excel')
+                ->icon('heroicon-o-document-arrow-down')
+                ->color('success')
+                ->action(function () {
+                    $url = route('export.kas-harian.excel', [
                         'mode'    => $this->filterMode,
                         'bulan'   => $this->filterBulan,
                         'tahun'   => $this->filterTahun,

@@ -240,18 +240,24 @@
                                 <th style="padding:0.75rem 1rem;text-align:left;font-size:0.7rem;
                                            font-weight:600;letter-spacing:0.05em;text-transform:uppercase;
                                            width:10rem;">Akun</th>
+                                <th style="padding:0.75rem 1rem;text-align:left;font-size:0.7rem;
+                                           font-weight:600;letter-spacing:0.05em;text-transform:uppercase;
+                                           width:10rem;">Rekening Tujuan</th>
+                                <th style="padding:0.75rem 1rem;text-align:left;font-size:0.7rem;
+                                           font-weight:600;letter-spacing:0.05em;text-transform:uppercase;
+                                           width:9rem;">Sub Kategori</th>
                                 <th style="padding:0.75rem 1rem;text-align:right;font-size:0.7rem;
                                            font-weight:600;letter-spacing:0.05em;text-transform:uppercase;
                                            width:8rem;">Debit</th>
                                 <th style="padding:0.75rem 1rem;text-align:right;font-size:0.7rem;
                                            font-weight:600;letter-spacing:0.05em;text-transform:uppercase;
                                            width:8rem;">Kredit</th>
-                                <th style="padding:0.75rem 1rem;text-align:center;font-size:0.7rem;
-                                           font-weight:600;letter-spacing:0.05em;text-transform:uppercase;
-                                           width:3rem;">Bukti</th>
                                 <th style="padding:0.75rem 1rem;text-align:right;font-size:0.7rem;
                                            font-weight:600;letter-spacing:0.05em;text-transform:uppercase;
                                            width:9rem;">Saldo</th>
+                                <th style="padding:0.75rem 1rem;text-align:center;font-size:0.7rem;
+                                           font-weight:600;letter-spacing:0.05em;text-transform:uppercase;
+                                           width:3rem;">Bukti</th>
                                 <th style="padding:0.75rem 1rem;text-align:center;font-size:0.7rem;
                                            font-weight:600;letter-spacing:0.05em;text-transform:uppercase;
                                            width:4rem;">Aksi</th>
@@ -288,6 +294,12 @@
                                     <td style="padding:0.75rem 1rem;color:#9ca3af;font-size:0.75rem;">
                                         {{ $e['akun'] ?? '—' }}
                                     </td>
+                                    <td style="padding:0.75rem 1rem;color:#6b7280;font-size:0.75rem;">
+                                        {{ $e['rekening_tujuan'] ?? '—' }}
+                                    </td>
+                                    <td style="padding:0.75rem 1rem;color:#6b7280;font-size:0.75rem;">
+                                        {{ $e['sub_kategori'] ?? '—' }}
+                                    </td>
                                     <td style="padding:0.75rem 1rem;text-align:right;font-weight:600;
                                                color:#15803d;font-variant-numeric:tabular-nums;">
                                         @if ($e['debit'])
@@ -303,6 +315,10 @@
                                         @else
                                             <span style="color:#d1d5db;">—</span>
                                         @endif
+                                    </td>
+                                    <td style="padding:0.75rem 1rem;text-align:right;font-weight:700;
+                                               color:#111827;font-variant-numeric:tabular-nums;">
+                                        {{ number_format($e['saldo'], 0, ',', '.') }}
                                     </td>
                                     <td style="padding:0.75rem 1rem;text-align:center;">
                                         @php $buktiUrl = $e['bukti_url'] ?? $e['source_bukti_url']; @endphp
@@ -320,10 +336,6 @@
                                         @else
                                             <span style="color:#d1d5db;">—</span>
                                         @endif
-                                    </td>
-                                    <td style="padding:0.75rem 1rem;text-align:right;font-weight:700;
-                                               color:#111827;font-variant-numeric:tabular-nums;">
-                                        {{ number_format($e['saldo'], 0, ',', '.') }}
                                     </td>
                                     <td style="padding:0.75rem 0.5rem;text-align:center;">
                                         @if ($e['source'] === 'manual')
